@@ -2,28 +2,9 @@
 
 import { getStoredToken } from './storage';
 
-const DEPLOYED_API_ORIGIN = 'https://api.vuapp.dev';
-
-function getDefaultApiBaseUrl() {
-  if (!import.meta.env.PROD) return '/api';
-  if (typeof window !== 'undefined' && window.location.hostname.endsWith('vercel.app')) {
-    return '/api';
-  }
-  return DEPLOYED_API_ORIGIN;
-}
-
-function getApiBaseUrl() {
-  if (import.meta.env.PROD && typeof window !== 'undefined') {
-    if (window.location.hostname.endsWith('vercel.app')) return '/api';
-  }
-  return import.meta.env.VITE_API_BASE_URL || getDefaultApiBaseUrl();
-}
-
-export const API_BASE_URL = getApiBaseUrl();
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 export const API_PUBLIC_ORIGIN =
-  import.meta.env.VITE_PUBLIC_API_ORIGIN ||
-  import.meta.env.VITE_BACKEND_URL ||
-  (import.meta.env.PROD ? DEPLOYED_API_ORIGIN : 'http://localhost:4000'); // for public files
+  import.meta.env.VITE_PUBLIC_API_ORIGIN || import.meta.env.VITE_BACKEND_URL || API_BASE_URL; // for public files
 
 export class ApiError extends Error {
   constructor(payload, response) {
