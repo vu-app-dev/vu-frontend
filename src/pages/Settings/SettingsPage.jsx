@@ -7,6 +7,13 @@ import { THEMES, applyTheme, persistTheme } from '../../utils/theme';
 import { loadSettings, saveSettings, getDefaults } from '../../utils/settings';
 import './SettingsPage.css';
 
+const JOB_STATUS_OPTIONS = [
+  { value: 'All', label: 'All' },
+  { value: 'Active', label: 'Active' },
+  { value: 'Scheduled', label: 'Scheduled' },
+  { value: 'Closed', label: 'Closed' },
+];
+
 export default function SettingsPage() {
   // Load persisted settings
   const persisted = typeof window !== 'undefined' ? loadSettings() : getDefaults();
@@ -36,7 +43,10 @@ export default function SettingsPage() {
 
   const [privacy, setPrivacy] = useState(() => persisted.privacy || getDefaults().privacy);
   const [defaultJobStatus, setDefaultJobStatus] = useState(
-    () => persisted.defaultJobStatus || getDefaults().defaultJobStatus
+    () =>
+      JOB_STATUS_OPTIONS.some((option) => option.value === persisted.defaultJobStatus)
+        ? persisted.defaultJobStatus
+        : getDefaults().defaultJobStatus
   );
   const [showSaved, setShowSaved] = useState(false);
 
@@ -114,13 +124,7 @@ export default function SettingsPage() {
               <div className="settings-page__row-action">
                 <DropdownInput
                   value={defaultJobStatus}
-                  options={[
-                    { value: 'All', label: 'All' },
-                    { value: 'Active', label: 'Active' },
-                    { value: 'Scheduled', label: 'Scheduled' },
-                    { value: 'Closed', label: 'Closed' },
-                    { value: 'Draft', label: 'Draft' },
-                  ]}
+                  options={JOB_STATUS_OPTIONS}
                   onChange={(val) => setDefaultJobStatus(val)}
                 />
               </div>

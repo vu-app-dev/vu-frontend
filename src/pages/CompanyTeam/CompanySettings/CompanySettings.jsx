@@ -3,21 +3,10 @@ import { Save, Upload, Building2, Globe, RotateCcw } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { SectionTitle } from '../../../components/ui/SectionTitle';
 import { Tags } from '../../../components/ui/Tags';
-import { COMPANY, updateCompany } from '../../../api';
+import { COMPANY, INDUSTRY_OPTIONS, updateCompany } from '../../../api';
 import './CompanySettings.css';
 
 const ICON_SM = 14;
-
-const INDUSTRY_OPTIONS = [
-  'Software & Technology',
-  'Healthcare',
-  'Finance & Banking',
-  'Education',
-  'E-commerce',
-  'Manufacturing',
-  'Consulting',
-  'Media & Entertainment',
-];
 
 const SIZE_OPTIONS = [
   '1–10 employees',
@@ -33,6 +22,8 @@ export const CompanySettings = memo(function CompanySettings() {
     name: COMPANY.name,
     industry: COMPANY.industry,
     website: COMPANY.website,
+    phone: COMPANY.phone || '',
+    description: COMPANY.description || '',
     size: COMPANY.size,
     defaultCandidateStatuses: [...COMPANY.defaultCandidateStatuses],
     departments: [...COMPANY.departments],
@@ -44,10 +35,14 @@ export const CompanySettings = memo(function CompanySettings() {
     setSaved(false);
   }, []);
 
-  const handleSave = useCallback(() => {
-    updateCompany(form);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const handleSave = useCallback(async () => {
+    try {
+      await updateCompany(form);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (error) {
+      window.alert(error.message || 'Unable to update company.');
+    }
   }, [form]);
 
   const handleReset = useCallback(() => {
@@ -55,6 +50,8 @@ export const CompanySettings = memo(function CompanySettings() {
       name: COMPANY.name,
       industry: COMPANY.industry,
       website: COMPANY.website,
+      phone: COMPANY.phone || '',
+      description: COMPANY.description || '',
       size: COMPANY.size,
       defaultCandidateStatuses: [...COMPANY.defaultCandidateStatuses],
       departments: [...COMPANY.departments],
@@ -144,8 +141,8 @@ export const CompanySettings = memo(function CompanySettings() {
                 onChange={(e) => handleChange('industry', e.target.value)}
               >
                 {INDUSTRY_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
                   </option>
                 ))}
               </select>
@@ -190,7 +187,7 @@ export const CompanySettings = memo(function CompanySettings() {
             <Tags
               tags={form.defaultCandidateStatuses}
               onAdd={handleAddStatus}
-              onRemove={handleRemoveStatus}
+              onRemove={(_, index) => handleRemoveStatus(index)}
               placeholder="Add status..."
             />
           </div>
@@ -208,7 +205,7 @@ export const CompanySettings = memo(function CompanySettings() {
             <Tags
               tags={form.departments}
               onAdd={handleAddDepartment}
-              onRemove={handleRemoveDepartment}
+              onRemove={(_, index) => handleRemoveDepartment(index)}
               placeholder="Add department..."
             />
           </div>

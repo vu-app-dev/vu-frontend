@@ -54,6 +54,39 @@
   backface-visibility: hidden;
 }
 
+/* -- Toggles -- */
+.create-mock__toggles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-lg);
+}
+
+.create-mock__toggle-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-lg);
+}
+
+.create-mock__toggle-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+}
+
+.create-mock__toggle-label {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.create-mock__toggle-desc {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text-subtle);
+}
+
 /* -- Step content area -- */
 .create-mock__body {
   display: flex;

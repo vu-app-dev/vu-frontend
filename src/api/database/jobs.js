@@ -641,7 +641,7 @@ export function duplicateJob(id) {
   return addJob({
     ...rest,
     title: `${rest.title} (Copy)`,
-    status: 'draft',
+    status: rest.status === 'scheduled' ? 'scheduled' : 'active',
     totalApplied: 0,
     shortlisted: 0,
     accepted: 0,

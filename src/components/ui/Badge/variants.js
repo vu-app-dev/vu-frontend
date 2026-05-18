@@ -21,6 +21,7 @@ export const BADGE_VARIANTS = {
     accepted: { label: 'Accepted', color: 'green', Icon: CircleCheck },
     pending: { label: 'Pending', color: 'yellow', Icon: Clock },
     shortlist: { label: 'Shortlist', color: 'blue', Icon: Star },
+    shortlisted: { label: 'Shortlist', color: 'blue', Icon: Star },
     rejected: { label: 'Rejected', color: 'red', Icon: Ban },
   },
   cheatingFlag: {
@@ -32,7 +33,6 @@ export const BADGE_VARIANTS = {
     active: { label: 'Active', color: 'green', Icon: Sparkles },
     scheduled: { label: 'Scheduled', color: 'yellow', Icon: CalendarClock },
     closed: { label: 'Closed', color: 'gray', Icon: CircleMinus },
-    draft: { label: 'Draft', color: 'purple', Icon: CirclePause },
     inactive: { label: 'Inactive', color: 'gray', Icon: CirclePause },
   },
   role: {

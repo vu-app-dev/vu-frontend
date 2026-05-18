@@ -63,7 +63,7 @@ export const MOCK_LIBRARY = MOCKS.map((m) => ({
   difficulty: m.difficulty,
   duration: m.duration,
   durationMin: m.durationMin,
-  skills: m.skills.slice(0, 3),
+  technologies: (m.technologies || []).slice(0, 3),
 }));
 
 export const EMAIL_TRIGGERS = [
@@ -86,11 +86,12 @@ export const INITIAL_JOB_FORM = {
   jobType: '',
   seniority: '',
   description: '',
-  skills: [],
+  technologies: [],
   locationType: '',
   location: '',
   mocks: [],
   emails: { 'on-apply': true, 'on-shortlist': true, 'on-reject': false },
+  scheduleMode: 'active',
   startDate: '',
   endDate: '',
   maxCandidates: '',
@@ -106,13 +107,13 @@ export function parseDurationMin(str) {
    ------------------------------------------------- */
 
 export const MOCK_STEPS_CREATE = [
-  { label: 'Basic Info & Skills' },
+  { label: 'Basic Info & Technologies' },
   { label: 'Evaluation' },
   { label: 'Review & Publish' },
 ];
 
 export const MOCK_STEPS_EDIT = [
-  { label: 'Basic Info & Skills' },
+  { label: 'Basic Info & Technologies' },
   { label: 'Evaluation' },
   { label: 'Review & Save' },
 ];
@@ -149,7 +150,9 @@ export const INITIAL_MOCK_FORM = {
   difficulty: '',
   durationMin: '',
   description: '',
-  skills: [],
-  criteria: [],
+  technologies: [],
+  topics: [],
   questions: [],
+  enableFollowUpQuestions: true,
+  enableRecordReplay: true,
 };

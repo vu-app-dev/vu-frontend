@@ -1,5 +1,5 @@
 ﻿import { useState, useCallback, useMemo, useRef, useEffect, memo } from 'react';
-import { ArrowLeft, ArrowRight, Rocket, Save } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Rocket } from 'lucide-react';
 import { Stepper } from '../../../components/ui/Stepper';
 import { Button } from '../../../components/ui/Button';
 import { EditBanner } from './edit/EditBanner';
@@ -15,36 +15,79 @@ import {
 import { redistributeWeights } from '../../../utils';
 import './JobConfigForm.css';
 
+const MIN_TITLE_LENGTH = 3;
+const MIN_DESCRIPTION_LENGTH = 10;
+
+function dateInputToTimestamp(dateValue) {
+  if (!dateValue) return null;
+  const date = new Date(`${dateValue}T09:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date.getTime();
+}
+
+function dateInputToEndTimestamp(dateValue) {
+  if (!dateValue) return null;
+  const date = new Date(`${dateValue}T23:59:59`);
+  return Number.isNaN(date.getTime()) ? null : date.getTime();
+}
+
+function startOfTodayTimestamp() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today.getTime();
+}
+
+function normalizeJobForm(source = INITIAL_FORM) {
+  const technologies = Array.isArray(source.technologies)
+    ? source.technologies
+    : Array.isArray(source.skills)
+      ? source.skills
+      : [];
+
+  return {
+    ...INITIAL_FORM,
+    ...source,
+    technologies,
+    emails: { ...INITIAL_FORM.emails, ...(source.emails || {}) },
+    mocks: Array.isArray(source.mocks) ? source.mocks : [],
+    scheduleMode: source.scheduleMode === 'scheduled' ? 'scheduled' : 'active',
+  };
+}
+
 /* -------------------------------------------------
    JobConfigForm
    Props:
      mode          â€“ 'create' | 'edit'
      initialData   â€“ pre-filled form values (edit mode)
-     status        â€“ 'draft' | 'scheduled' | 'active' | 'closed' (edit)
-     candidateCount â€“ number of existing candidates (edit)
+     status        â€“ 'scheduled' | 'active' | 'closed' (edit)
      onPublish     â€“ (form) => void
-     onSaveDraft   â€“ (form) => void
      onSaveChanges â€“ (form) => void
-     onStatusChange â€“ (newStatus) => void
    ------------------------------------------------- */
 
 export const JobConfigForm = memo(function JobConfigForm({
   mode = 'create',
   initialData,
   status,
-  candidateCount = 0,
   onPublish,
-  onSaveDraft,
   onSaveChanges,
-  onStatusChange,
 }) {
   const isEdit = mode === 'edit';
-  const isLive = isEdit && status === 'active' && candidateCount > 0;
+  const isActiveEdit = isEdit && status === 'active';
 
   const STEPS = isEdit ? STEPS_EDIT : STEPS_CREATE;
+  const initialForm = useMemo(() => {
+    const normalized = normalizeJobForm(initialData ?? INITIAL_FORM);
+    return isActiveEdit ? { ...normalized, scheduleMode: 'active', startDate: '' } : normalized;
+  }, [initialData, isActiveEdit]);
+  const [initialEndDateInput] = useState(initialForm.endDate || '');
 
-  const [activeStep, setActiveStep] = useState(0);
-  const [form, setForm] = useState(initialData ?? INITIAL_FORM);
+  const [activeStep, setActiveStep] = useState(() => (isActiveEdit ? 2 : 0));
+  const [form, setForm] = useState(initialForm);
+  const [touched, setTouched] = useState({});
+  const [attemptedErrors, setAttemptedErrors] = useState({});
+
+  const markTouched = useCallback((field) => {
+    setTouched((p) => ({ ...p, [field]: true }));
+  }, []);
   const [showMockLibrary, setShowMockLibrary] = useState(false);
   const [librarySearch, setLibrarySearch] = useState('');
   const dragIndexRef = useRef(null);
@@ -60,24 +103,25 @@ export const JobConfigForm = memo(function JobConfigForm({
     []
   );
 
-  /* -- Skills -- */
-  const addSkill = useCallback((tag) => {
+  /* -- Technologies -- */
+  const addTechnology = useCallback((tag) => {
     const n = tag.trim().charAt(0).toUpperCase() + tag.trim().slice(1);
     if (!n) return;
     setForm((p) =>
-      p.skills.some((s) => s.toLowerCase() === n.toLowerCase())
+      p.technologies.some((s) => s.toLowerCase() === n.toLowerCase())
         ? p
-        : { ...p, skills: [...p.skills, n] }
+        : { ...p, technologies: [...p.technologies, n] }
     );
   }, []);
 
-  const removeSkill = useCallback(
-    (tag) => setForm((p) => ({ ...p, skills: p.skills.filter((s) => s !== tag) })),
+  const removeTechnology = useCallback(
+    (tag) => setForm((p) => ({ ...p, technologies: p.technologies.filter((s) => s !== tag) })),
     []
   );
 
   /* -- Mock management -- */
   const addMock = useCallback((mock) => {
+    if (isActiveEdit) return;
     manualWeightIds.current.clear();
     setForm((p) => {
       if (p.mocks.some((m) => m.id === mock.id)) return p;
@@ -93,11 +137,11 @@ export const JobConfigForm = memo(function JobConfigForm({
       };
     });
     setShowMockLibrary(false);
-  }, []);
+  }, [isActiveEdit]);
 
   const removeMock = useCallback(
     (id) => {
-      if (isLive) return;
+      if (isActiveEdit) return;
       manualWeightIds.current.delete(id);
       setForm((p) => {
         const filtered = p.mocks.filter((m) => m.id !== id);
@@ -105,28 +149,34 @@ export const JobConfigForm = memo(function JobConfigForm({
         return { ...p, mocks: redistributeWeights(filtered, manualWeightIds.current) };
       });
     },
-    [isLive]
+    [isActiveEdit]
   );
 
-  const updateWeight = useCallback((id, weight) => {
-    const num = Math.max(0, Math.min(100, parseInt(weight, 10) || 0));
-    manualWeightIds.current.add(id);
-    setForm((p) => ({
-      ...p,
-      mocks: redistributeWeights(p.mocks, manualWeightIds.current, id, num),
-    }));
-  }, []);
+  const updateWeight = useCallback(
+    (id, weight) => {
+      if (isActiveEdit) return;
+      const num = Math.max(0, Math.min(100, parseInt(weight, 10) || 0));
+      manualWeightIds.current.add(id);
+      setForm((p) => ({
+        ...p,
+        mocks: redistributeWeights(p.mocks, manualWeightIds.current, id, num),
+      }));
+    },
+    [isActiveEdit]
+  );
 
   /* -- Drag & drop -- */
   const handleDragStart = useCallback((i) => {
+    if (isActiveEdit) return;
     dragIndexRef.current = i;
     setDragIndex(i);
-  }, []);
+  }, [isActiveEdit]);
   const handleDragEnd = useCallback(() => {
     dragIndexRef.current = null;
     setDragIndex(null);
   }, []);
   const handleDragOver = useCallback((e, i) => {
+    if (isActiveEdit) return;
     e.preventDefault();
     const prev = dragIndexRef.current;
     if (prev === null || prev === i) return;
@@ -138,7 +188,7 @@ export const JobConfigForm = memo(function JobConfigForm({
     });
     dragIndexRef.current = i;
     setDragIndex(i);
-  }, []);
+  }, [isActiveEdit]);
 
   /* -- Derived values -- */
   const totalWeight = useMemo(() => form.mocks.reduce((s, m) => s + m.weight, 0), [form.mocks]);
@@ -147,22 +197,116 @@ export const JobConfigForm = memo(function JobConfigForm({
     [form.mocks]
   );
 
-  const stepValidity = useMemo(
-    () => ({
-      0: !!(form.title.trim() && form.department && form.jobType && form.seniority),
-      1: form.mocks.length > 0 && totalWeight === 100,
-      2: true,
-      3: true,
-    }),
-    [form.title, form.department, form.jobType, form.seniority, form.mocks.length, totalWeight]
+  const fieldErrors = useMemo(() => {
+    const errors = {};
+    const scheduleMode = isActiveEdit ? 'active' : form.scheduleMode || 'active';
+    const today = startOfTodayTimestamp();
+    const startDate = dateInputToTimestamp(form.startDate);
+    const endDate = dateInputToEndTimestamp(form.endDate);
+    const initialEndDate = dateInputToEndTimestamp(initialEndDateInput);
+    if (form.title.trim().length < MIN_TITLE_LENGTH)
+      errors.title = `Job title must be at least ${MIN_TITLE_LENGTH} characters.`;
+    if (!form.department) errors.department = 'Department is required.';
+    if (!form.jobType) errors.jobType = 'Job type is required.';
+    if (!form.seniority) errors.seniority = 'Seniority level is required.';
+    if (form.description.trim().length < MIN_DESCRIPTION_LENGTH)
+      errors.description = `Description must be at least ${MIN_DESCRIPTION_LENGTH} characters.`;
+    if (!form.technologies.length) errors.technologies = 'Add at least one technology.';
+    if (!form.mocks.length) errors.mocks = 'Add at least one mock interview.';
+    if (form.mocks.length && totalWeight !== 100) errors.mockWeights = 'Mock weights must total 100%.';
+
+    if (scheduleMode === 'scheduled') {
+      if (!form.startDate) {
+        errors.startDate = 'Start date is required.';
+      } else if (!startDate) {
+        errors.startDate = 'Enter a valid start date.';
+      } else if (startDate < today) {
+        errors.startDate = 'Start date cannot be in the past.';
+      }
+    }
+
+    if (!form.endDate) {
+      errors.endDate = 'End date is required.';
+    } else if (!endDate) {
+      errors.endDate = 'Enter a valid end date.';
+    } else if (scheduleMode === 'scheduled' && startDate && endDate <= startDate) {
+      errors.endDate = 'End date must be after the start date.';
+    } else if (scheduleMode !== 'scheduled' && endDate < today) {
+      errors.endDate = 'End date must be after today.';
+    } else if (isActiveEdit && initialEndDate && endDate < initialEndDate) {
+      errors.endDate = 'Active jobs can only have their end date extended.';
+    }
+
+    return errors;
+  }, [
+    form.department,
+    form.description,
+    form.endDate,
+    form.jobType,
+    form.mocks.length,
+    form.seniority,
+    form.scheduleMode,
+    form.startDate,
+    form.technologies,
+    form.title,
+    initialEndDateInput,
+    isActiveEdit,
+    totalWeight,
+  ]);
+
+  const showFieldError = useCallback(
+    (field) =>
+      Boolean(fieldErrors[field]) &&
+      (Boolean(touched[field]) || Boolean(attemptedErrors[activeStep])),
+    [fieldErrors, touched, attemptedErrors, activeStep]
   );
 
-  const canNext = stepValidity[activeStep];
+  const stepValidity = useMemo(
+    () => {
+      const jobInfoValid =
+        !fieldErrors.title &&
+        !fieldErrors.description &&
+        !fieldErrors.department &&
+        !fieldErrors.jobType &&
+        !fieldErrors.seniority &&
+        !fieldErrors.technologies;
+      const mocksValid = !fieldErrors.mocks && !fieldErrors.mockWeights;
+      const schedulingValid = !fieldErrors.startDate && !fieldErrors.endDate;
+
+      return {
+        0: jobInfoValid,
+        1: mocksValid,
+        2: schedulingValid,
+        3: isActiveEdit ? schedulingValid : jobInfoValid && mocksValid && schedulingValid,
+      };
+    },
+    [
+      fieldErrors.department,
+      fieldErrors.description,
+      fieldErrors.endDate,
+      fieldErrors.jobType,
+      fieldErrors.mockWeights,
+      fieldErrors.mocks,
+      fieldErrors.seniority,
+      fieldErrors.startDate,
+      fieldErrors.technologies,
+      fieldErrors.title,
+      isActiveEdit,
+    ]
+  );
 
   const goNext = useCallback(
     () => setActiveStep((s) => Math.min(s + 1, STEPS.length - 1)),
     [STEPS.length]
   );
+  const handleNext = useCallback(() => {
+    if (stepValidity[activeStep]) {
+      setAttemptedErrors((p) => ({ ...p, [activeStep]: false }));
+      goNext();
+    } else {
+      setAttemptedErrors((p) => ({ ...p, [activeStep]: true }));
+    }
+  }, [activeStep, goNext, stepValidity]);
   const goBack = useCallback(() => setActiveStep((s) => Math.max(s - 1, 0)), []);
 
   useEffect(() => {
@@ -171,8 +315,9 @@ export const JobConfigForm = memo(function JobConfigForm({
 
   const statusPreview = useMemo(() => {
     const lines = [];
+    const scheduleMode = isActiveEdit ? 'active' : form.scheduleMode || 'active';
     const now = new Date();
-    const start = form.startDate ? new Date(form.startDate) : null;
+    const start = scheduleMode === 'scheduled' && form.startDate ? new Date(form.startDate) : null;
     const end = form.endDate ? new Date(form.endDate) : null;
     if (!start || start <= now) lines.push({ color: 'green', text: 'Will be Active immediately' });
     else
@@ -191,7 +336,7 @@ export const JobConfigForm = memo(function JobConfigForm({
         text: `Will Auto-close after ${form.maxCandidates} applications`,
       });
     return lines;
-  }, [form.startDate, form.endDate, form.maxCandidates]);
+  }, [form.scheduleMode, form.startDate, form.endDate, form.maxCandidates, isActiveEdit]);
 
   const departmentOptions = useMemo(() => {
     if (!form.department) return DEPARTMENT_OPTIONS;
@@ -220,8 +365,12 @@ export const JobConfigForm = memo(function JobConfigForm({
             form={form}
             updateField={updateField}
             departmentOptions={departmentOptions}
-            addSkill={addSkill}
-            removeSkill={removeSkill}
+            addTechnology={addTechnology}
+            removeTechnology={removeTechnology}
+            validationErrors={fieldErrors}
+            markTouched={markTouched}
+            showFieldError={showFieldError}
+            disabled={isActiveEdit}
           />
         );
       case 1:
@@ -241,7 +390,9 @@ export const JobConfigForm = memo(function JobConfigForm({
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
-            isLive={isLive}
+            isLocked={isActiveEdit}
+            validationErrors={fieldErrors}
+            showError={Boolean(attemptedErrors[activeStep])}
           />
         );
       case 2:
@@ -251,6 +402,10 @@ export const JobConfigForm = memo(function JobConfigForm({
             updateField={updateField}
             updateEmail={updateEmail}
             statusPreview={statusPreview}
+            validationErrors={fieldErrors}
+            markTouched={markTouched}
+            showFieldError={showFieldError}
+            isActiveEdit={isActiveEdit}
           />
         );
       case 3:
@@ -282,9 +437,7 @@ export const JobConfigForm = memo(function JobConfigForm({
         </div>
 
         {/* Edit context banner */}
-        {isEdit && status && status !== 'draft' && (
-          <EditBanner status={status} candidateCount={candidateCount} />
-        )}
+        {isEdit && status && <EditBanner status={status} />}
 
         {activeStep > 0 && (
           <div className="create-job__mobile-back">
@@ -311,37 +464,23 @@ export const JobConfigForm = memo(function JobConfigForm({
 
           <div className="create-job__footer-right">
             {activeStep < STEPS.length - 1 ? (
-              <Button
-                variant="primary"
-                iconRight={<ArrowRight size={16} />}
-                onClick={goNext}
-                disabled={!canNext}
-              >
+              <Button variant="primary" iconRight={<ArrowRight size={16} />} onClick={handleNext}>
                 Continue
               </Button>
             ) : isEdit ? (
               <EditFooterActions
-                status={status}
                 onSaveChanges={() => onSaveChanges?.(form)}
-                onStatusChange={onStatusChange}
+                disabled={!stepValidity[3]}
               />
             ) : (
-              <>
-                <Button
-                  variant="ghost"
-                  iconLeft={<Save size={16} />}
-                  onClick={() => onSaveDraft?.(form)}
-                >
-                  Save Draft
-                </Button>
-                <Button
-                  variant="primary"
-                  iconLeft={<Rocket size={16} />}
-                  onClick={() => onPublish?.(form)}
-                >
-                  Publish Job
-                </Button>
-              </>
+              <Button
+                variant="primary"
+                iconLeft={<Rocket size={16} />}
+                onClick={() => onPublish?.(form)}
+                disabled={!stepValidity[3]}
+              >
+                Publish Job
+              </Button>
             )}
           </div>
         </div>

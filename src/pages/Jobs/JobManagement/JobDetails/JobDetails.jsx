@@ -1,9 +1,6 @@
 import { memo, useState, useMemo, useCallback, useRef } from 'react';
 import {
   Pencil,
-  PauseCircle,
-  XCircle,
-  Copy,
   Users,
   Clock,
   Briefcase,
@@ -11,20 +8,25 @@ import {
   Target,
   TrendingUp,
   CalendarDays,
-  PlayCircle,
-  Rocket,
   Eye,
   Share2,
   Check,
+  UserSearch,
 } from 'lucide-react';
 import { EntityCard, QuickInfoCard } from '../../../../components/ui/Cards';
 import { Button } from '../../../../components/ui/Button';
 import { Badge } from '../../../../components/ui/Badge';
+import { EmptyState } from '../../../../components/ui/EmptyState';
 import { SectionTitle } from '../../../../components/ui/SectionTitle';
 import { Tabs } from '../../../../components/ui/Tabs';
 import { TableHeader, TableRow, TableCell } from '../../../../components/ui/Tables';
 import { RadarChart, AreaChart, RadialBarChart } from '../../../../components/ui/Charts';
-import { getJobById, updateJob, duplicateJob, getCandidatesByJobId } from '../../../../api';
+import {
+  getJobById,
+  getCandidatesByJobId,
+  getApplicationSharePath,
+  useBackendData,
+} from '../../../../api';
 import './JobDetails.css';
 
 /* -------------------------------------------------
@@ -53,18 +55,19 @@ const ICON_SM = 14;
    JobDetails
    ------------------------------------------------- */
 export const JobDetails = memo(function JobDetails({
-  jobId = 1,
+  jobId,
   onEdit,
-  onDuplicate,
-  onViewJob,
   onTest,
+  onShowCandidates,
+  canEditJob = true,
 }) {
-  const [refreshKey, setRefreshKey] = useState(0);
-  const _ = refreshKey; // consume to trigger re-render on mutation
+  const { dataVersion } = useBackendData();
+  void dataVersion;
   const [copied, setCopied] = useState(false);
   const [activeMobileTab, setActiveMobileTab] = useState('analysis');
   const mobileScrollRef = useRef(null);
   const job = getJobById(jobId);
+  const applyPath = getApplicationSharePath(job);
 
   const totalDuration = useMemo(
     () => (job ? job.mocks.reduce((s, m) => s + m.durationMin, 0) : 0),
@@ -88,35 +91,18 @@ export const JobDetails = memo(function JobDetails({
         : [],
     [job]
   );
+  const jobCandidates = useMemo(() => {
+    void dataVersion;
+    return job ? getCandidatesByJobId(job.id) : [];
+  }, [job, dataVersion]);
 
   const handleEdit = useCallback(() => onEdit?.(jobId), [onEdit, jobId]);
 
   const handleShare = useCallback(() => {
-    navigator.clipboard.writeText(`${window.location.origin}/apply/${jobId}`);
+    navigator.clipboard.writeText(`${window.location.origin}${applyPath}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  }, [jobId]);
-
-  const handleClose = useCallback(() => {
-    updateJob(jobId, { status: 'closed' });
-    setRefreshKey((k) => k + 1);
-  }, [jobId]);
-
-  const handlePause = useCallback(() => {
-    updateJob(jobId, { status: 'scheduled' });
-    setRefreshKey((k) => k + 1);
-  }, [jobId]);
-
-  const handlePublish = useCallback(() => {
-    updateJob(jobId, { status: 'active' });
-    setRefreshKey((k) => k + 1);
-  }, [jobId]);
-
-  const handleDuplicate = useCallback(() => {
-    const dup = duplicateJob(jobId);
-    if (dup && onDuplicate) onDuplicate(dup.id);
-    else if (dup && onViewJob) onViewJob(dup.id);
-  }, [jobId, onDuplicate, onViewJob]);
+  }, [applyPath]);
 
   const mobileTabs = useMemo(
     () => [
@@ -133,6 +119,14 @@ export const JobDetails = memo(function JobDetails({
     ],
     [activeMobileTab]
   );
+
+  if (!job) {
+    return (
+      <div className="job-details job-details--empty">
+        <span>Job not found.</span>
+      </div>
+    );
+  }
 
   const analysisPanel = (
     <div className="job-details__panel job-details__panel--analysis">
@@ -219,44 +213,62 @@ export const JobDetails = memo(function JobDetails({
         <SectionTitle variant="inline">Top Candidates</SectionTitle>
         <div className="job-details__cand-table">
           <TableHeader columns={TABLE_COLUMNS} gridTemplateColumns={GRID_TEMPLATE} />
-          {getCandidatesByJobId(job.id).map((c) => (
-            <TableRow key={c.id} gridTemplateColumns={GRID_TEMPLATE}>
-              <TableCell
-                color="tertiary"
-                icon={
-                  <span className="job-details__avatar">
-                    {c.name
-                      .split(' ')
-                      .map((n) => n[0])
-                      .join('')}
+          {jobCandidates.length > 0 ? (
+            jobCandidates.map((c) => (
+              <TableRow key={c.id} gridTemplateColumns={GRID_TEMPLATE}>
+                <TableCell
+                  color="tertiary"
+                  icon={
+                    <span className="job-details__avatar">
+                      {c.name
+                        .split(' ')
+                        .map((n) => n[0])
+                        .join('')}
+                    </span>
+                  }
+                >
+                  {c.name}
+                </TableCell>
+                <TableCell className="job-details__score-cell">
+                  <span className="job-details__score">
+                    <span className="job-details__score-bar">
+                      <span
+                        className="job-details__score-fill"
+                        style={{
+                          width: `${c.score}%`,
+                          backgroundColor: getScoreColor(c.score),
+                        }}
+                      />
+                    </span>
+                    <span className="job-details__score-value">{c.score}</span>
                   </span>
-                }
-              >
-                {c.name}
-              </TableCell>
-              <TableCell className="job-details__score-cell">
-                <span className="job-details__score">
-                  <span className="job-details__score-bar">
-                    <span
-                      className="job-details__score-fill"
-                      style={{
-                        width: `${c.score}%`,
-                        backgroundColor: getScoreColor(c.score),
-                      }}
-                    />
-                  </span>
-                  <span className="job-details__score-value">{c.score}</span>
-                </span>
-              </TableCell>
-              <TableCell color="tertiary">{c.date}</TableCell>
-              <TableCell>
-                <Badge type="cheatingFlag" variant={c.antiCheat} iconLeft outline />
-              </TableCell>
-              <TableCell>
-                <Badge type="candidateState" variant={c.status} />
-              </TableCell>
-            </TableRow>
-          ))}
+                </TableCell>
+                <TableCell color="tertiary">{c.date}</TableCell>
+                <TableCell>
+                  <Badge type="cheatingFlag" variant={c.antiCheat} iconLeft outline />
+                </TableCell>
+                <TableCell>
+                  <Badge type="candidateState" variant={c.status} />
+                </TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <EmptyState
+              icon={<Users size={24} />}
+              title="No candidates yet"
+              description="Applications for this job will appear here as candidates apply."
+              action={
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  iconLeft={<UserSearch size={ICON_SM} />}
+                  onClick={() => onShowCandidates?.(jobId)}
+                >
+                  Open Pipeline
+                </Button>
+              }
+            />
+          )}
         </div>
       </section>
     </div>
@@ -266,84 +278,45 @@ export const JobDetails = memo(function JobDetails({
     <div className="job-details__panel job-details__panel--actions">
       <div className="job-details__card">
         <div className="job-details__action-list">
-          <Button
-            variant="primary"
-            size="sm"
-            iconLeft={copied ? <Check size={ICON_SM} /> : <Share2 size={ICON_SM} />}
-            onClick={handleShare}
-          >
-            {copied ? 'Copied!' : 'Share Job'}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconLeft={<Eye size={ICON_SM} />}
-            onClick={() => onTest?.()}
-          >
-            Test Application
-          </Button>
+          {canEditJob && (
+            <>
+              <Button
+                variant="primary"
+                size="sm"
+                iconLeft={copied ? <Check size={ICON_SM} /> : <Share2 size={ICON_SM} />}
+                onClick={handleShare}
+              >
+                {copied ? 'Copied!' : 'Share Job'}
+              </Button>
 
-          <div className="job-details__action-divider" />
-
+              <Button
+                variant="secondary"
+                size="sm"
+                iconLeft={<Eye size={ICON_SM} />}
+                onClick={() => onTest?.(applyPath)}
+              >
+                Test Application
+              </Button>
+            </>
+          )}
           <Button
             variant="secondary"
             size="sm"
-            iconLeft={<Pencil size={ICON_SM} />}
-            onClick={handleEdit}
+            iconLeft={<UserSearch size={ICON_SM} />}
+            onClick={() => onShowCandidates?.(jobId)}
           >
-            Edit Job
+            Show Candidates
           </Button>
-          {(job.status === 'draft' || job.status === 'scheduled') && (
+          {canEditJob && (
             <Button
               variant="ghost"
               size="sm"
-              iconLeft={<Rocket size={ICON_SM} />}
-              onClick={handlePublish}
+              iconLeft={<Pencil size={ICON_SM} />}
+              onClick={handleEdit}
             >
-              Publish Job
+              Edit Job
             </Button>
           )}
-          {job.status === 'active' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              iconLeft={<PauseCircle size={ICON_SM} />}
-              onClick={handlePause}
-            >
-              Pause Job
-            </Button>
-          )}
-          {job.status === 'closed' && (
-            <Button
-              variant="secondary"
-              size="sm"
-              iconLeft={<PlayCircle size={ICON_SM} />}
-              onClick={handlePublish}
-            >
-              Re-open Job
-            </Button>
-          )}
-          {job.status !== 'closed' && (
-            <Button
-              variant="danger"
-              size="sm"
-              iconLeft={<XCircle size={ICON_SM} />}
-              onClick={handleClose}
-            >
-              Close Job
-            </Button>
-          )}
-
-          <div className="job-details__action-divider" />
-
-          <Button
-            variant="ghost"
-            size="sm"
-            iconLeft={<Copy size={ICON_SM} />}
-            onClick={handleDuplicate}
-          >
-            Duplicate
-          </Button>
         </div>
       </div>
 
@@ -392,14 +365,6 @@ export const JobDetails = memo(function JobDetails({
       </div>
     </div>
   );
-
-  if (!job) {
-    return (
-      <div className="job-details job-details--empty">
-        <span>Job not found.</span>
-      </div>
-    );
-  }
 
   return (
     <div className="job-details">

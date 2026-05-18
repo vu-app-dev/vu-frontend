@@ -1,7 +1,6 @@
 import { memo, useState, useCallback } from 'react';
 import {
   Phone,
-  MapPin,
   Clock,
   CalendarDays,
   Building2,
@@ -15,27 +14,32 @@ import { EntityCard } from '../../components/ui/Cards';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { SectionTitle } from '../../components/ui/SectionTitle';
-import { getMemberActivities, TEAM_MEMBERS, CURRENT_USER_ID, ROLES } from '../../api';
+import {
+  changePassword,
+  editCurrentUser,
+  getMemberActivities,
+  TEAM_MEMBERS,
+  CURRENT_USER_ID,
+  ROLES,
+} from '../../api';
 import './ProfilePage.css';
 
 const ICON_SM = 14;
 
 /* ── Static profile data (personal info layer on top of team member data) ── */
-const INITIAL_PROFILE = {
-  phone: '+966 55 123 4567',
-  location: 'Riyadh, Saudi Arabia',
-  timezone: 'Arabia Standard Time (UTC+3)',
-};
-
 /* ── Component ── */
 export const ProfilePage = memo(function ProfilePage() {
   const member = TEAM_MEMBERS.find((m) => m.id === CURRENT_USER_ID);
   const activities = getMemberActivities(CURRENT_USER_ID);
   const roleConfig = ROLES[member?.role];
+  const initialProfile = {
+    phone: member?.phone || '',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Not provided',
+  };
 
   const [isEditing, setIsEditing] = useState(false);
-  const [profile, setProfile] = useState(INITIAL_PROFILE);
-  const [draft, setDraft] = useState(INITIAL_PROFILE);
+  const [profile, setProfile] = useState(initialProfile);
+  const [draft, setDraft] = useState(initialProfile);
   const [pwForm, setPwForm] = useState({ oldPw: '', newPw: '', confirmPw: '' });
   const [pwSaved, setPwSaved] = useState(false);
   const [pwError, setPwError] = useState('');
@@ -45,9 +49,14 @@ export const ProfilePage = memo(function ProfilePage() {
     setIsEditing(true);
   }, [profile]);
 
-  const handleSave = useCallback(() => {
-    setProfile(draft);
-    setIsEditing(false);
+  const handleSave = useCallback(async () => {
+    try {
+      await editCurrentUser({ phone: draft.phone });
+      setProfile(draft);
+      setIsEditing(false);
+    } catch (error) {
+      window.alert(error.message || 'Unable to update profile.');
+    }
   }, [draft]);
 
   const handleCancel = useCallback(() => {
@@ -65,22 +74,31 @@ export const ProfilePage = memo(function ProfilePage() {
     setPwSaved(false);
   }, []);
 
-  const handlePasswordSave = useCallback(() => {
+  const handlePasswordSave = useCallback(async () => {
     if (!pwForm.oldPw) {
       setPwError('Enter your current password.');
       return;
     }
-    if (pwForm.newPw.length < 6) {
-      setPwError('New password must be at least 6 characters.');
+    if (pwForm.newPw.length < 8) {
+      setPwError('New password must be at least 8 characters.');
       return;
     }
     if (pwForm.newPw !== pwForm.confirmPw) {
       setPwError('Passwords do not match.');
       return;
     }
-    setPwSaved(true);
-    setPwForm({ oldPw: '', newPw: '', confirmPw: '' });
-    setTimeout(() => setPwSaved(false), 2500);
+    try {
+      await changePassword({
+        oldPassword: pwForm.oldPw,
+        password: pwForm.newPw,
+        confirmPassword: pwForm.confirmPw,
+      });
+      setPwSaved(true);
+      setPwForm({ oldPw: '', newPw: '', confirmPw: '' });
+      setTimeout(() => setPwSaved(false), 2500);
+    } catch (error) {
+      setPwError(error.message || 'Unable to update password.');
+    }
   }, [pwForm]);
 
   if (!member) {
@@ -186,25 +204,6 @@ export const ProfilePage = memo(function ProfilePage() {
           <div className="profile-page__info-group">
             <span className="profile-page__info-label">Phone</span>
             <span className="profile-page__info-value">{profile.phone}</span>
-          </div>
-        )}
-      </div>
-
-      <div className="profile-page__divider" />
-
-      <div className="profile-page__info-row">
-        <MapPin size={14} className="profile-page__info-icon" />
-        {isEditing ? (
-          <input
-            className="profile-page__info-input"
-            value={draft.location}
-            onChange={(e) => handleDraftChange('location', e.target.value)}
-            placeholder="Location"
-          />
-        ) : (
-          <div className="profile-page__info-group">
-            <span className="profile-page__info-label">Location</span>
-            <span className="profile-page__info-value">{profile.location}</span>
           </div>
         )}
       </div>

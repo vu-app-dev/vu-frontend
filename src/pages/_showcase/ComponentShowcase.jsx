@@ -1004,7 +1004,7 @@ export default function ComponentShowcase() {
           tags={editableTags}
           variant="editable"
           onAdd={handleAddTag}
-          onRemove={handleRemoveTag}
+          onRemove={(_, index) => handleRemoveTag(index)}
         />
 
         <Tags title="Read-only Tags" tags={readonlyTags} variant="readonly" />
@@ -1014,7 +1014,7 @@ export default function ComponentShowcase() {
           variant="editable"
           showTitle={false}
           onAdd={(tag) => console.log('Add tag:', tag)}
-          onRemove={(i) => console.log('Remove', i)}
+          onRemove={(tag, index) => console.log('Remove', tag, index)}
         />
       </Section>
 

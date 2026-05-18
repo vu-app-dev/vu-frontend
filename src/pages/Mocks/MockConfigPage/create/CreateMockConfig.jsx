@@ -1,41 +1,5 @@
 import { MockConfigForm } from '../MockConfigForm';
-import { addMock, MOCK_TYPE_OPTIONS, DIFFICULTY_OPTIONS } from '../../../../api';
-
-/**
- * Convert the create-form shape into the shared-data mock shape.
- */
-function formToMock(form) {
-  const typeLabel =
-    MOCK_TYPE_OPTIONS.find((o) => o.value === form.type)?.label || form.type || 'Technical';
-  const diffLabel =
-    DIFFICULTY_OPTIONS.find((o) => o.value === form.difficulty)?.label ||
-    form.difficulty ||
-    'Medium';
-  const durationMin = parseInt(form.durationMin, 10) || 30;
-
-  return {
-    title: form.title,
-    type: typeLabel,
-    difficulty: diffLabel,
-    duration: `${durationMin} min`,
-    durationMin,
-    description: form.description,
-    skills: [...form.skills],
-    criteria: form.criteria.map((c, i) => ({
-      id: c.id || `c${i + 1}`,
-      name: c.name,
-      weight: parseInt(c.weight, 10) || 0,
-    })),
-    questions: form.questions.map((q, i) => ({
-      id: q.id || `q${i + 1}`,
-      title: q.title,
-      description: q.description,
-      difficulty: q.difficulty,
-      estimatedTime: q.estimatedTime,
-      weight: parseInt(q.weight, 10) || 0,
-    })),
-  };
-}
+import { addMock } from '../../../../api';
 
 /**
  * CreateMockConfig � thin wrapper that renders MockConfigForm in create mode.
@@ -43,10 +7,13 @@ function formToMock(form) {
  * Status is derived (not set manually).
  */
 export function CreateMockConfig({ onCreated }) {
-  const handlePublish = (form) => {
-    const mock = addMock(formToMock(form));
-    console.log('[CreateMock] created:', mock);
-    onCreated?.(mock.id);
+  const handlePublish = async (form) => {
+    try {
+      const mock = await addMock(form);
+      onCreated?.(mock.id);
+    } catch (error) {
+      window.alert(error.message || 'Unable to create mock.');
+    }
   };
 
   return <MockConfigForm mode="create" onPublish={handlePublish} />;

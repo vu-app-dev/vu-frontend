@@ -36,6 +36,7 @@ export const MockIntro = memo(function MockIntro({ mockId, onStart }) {
   const [camera, setCamera] = useState(CHECK.idle);
   const [mic, setMic] = useState(CHECK.idle);
   const [screen, setScreen] = useState(CHECK.idle);
+  const canSkipDeviceCheck = import.meta.env.DEV;
 
   /* ─ Camera ─ */
   const checkCamera = useCallback(async () => {
@@ -73,7 +74,9 @@ export const MockIntro = memo(function MockIntro({ mockId, onStart }) {
     }
   }, []);
 
-  const allGranted = camera === CHECK.granted && mic === CHECK.granted && screen === CHECK.granted;
+  const allGranted =
+    canSkipDeviceCheck ||
+    (camera === CHECK.granted && mic === CHECK.granted && screen === CHECK.granted);
 
   if (!mock) return null;
 
@@ -193,6 +196,6 @@ export const MockIntro = memo(function MockIntro({ mockId, onStart }) {
 });
 
 MockIntro.propTypes = {
-  mockId: PropTypes.number.isRequired,
+  mockId: PropTypes.string.isRequired,
   onStart: PropTypes.func.isRequired,
 };

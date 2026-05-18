@@ -105,6 +105,13 @@
   gap: var(--gap-md);
 }
 
+.create-job__hint {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--status-error-text);
+}
+
 /* -- Mock list -- */
 .create-job__mock-list {
   display: flex;
@@ -347,6 +354,64 @@
 }
 
 /* -- Status preview -- */
+.create-job__schedule-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gap-sm);
+}
+
+.create-job__schedule-option {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  min-height: 5.5rem;
+  padding: var(--padding-md);
+  border: var(--border-sm) solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-card);
+  color: var(--text-secondary);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.create-job__schedule-option:hover {
+  border-color: var(--border-default);
+  background-color: var(--bg-subcard);
+}
+
+.create-job__schedule-option--selected {
+  border-color: var(--brand-default);
+  background-color: var(--white-a5);
+}
+
+.create-job__schedule-option--active.create-job__schedule-option--selected,
+.create-job__schedule-option--active:hover {
+  border-color: var(--status-success-bg);
+  background-color: var(--status-success-bg);
+}
+
+.create-job__schedule-option--scheduled.create-job__schedule-option--selected,
+.create-job__schedule-option--scheduled:hover {
+  border-color: var(--status-warning-bg);
+  background-color: var(--status-warning-bg);
+}
+
+.create-job__schedule-option-title {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+}
+
+.create-job__schedule-option-desc {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--text-subtle);
+  line-height: 1.5;
+}
+
 .create-job__status-preview {
   display: flex;
   flex-direction: column;
@@ -686,7 +751,8 @@
 
   .create-job__row--2,
   .create-job__row--3,
-  .create-job__review-row {
+  .create-job__review-row,
+  .create-job__schedule-options {
     grid-template-columns: 1fr;
   }
 

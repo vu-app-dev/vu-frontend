@@ -36,6 +36,9 @@ export const QuestionCard = memo(function QuestionCard({
   onRemove,
   onDone,
   onChange,
+  errors,
+  markTouched,
+  questionId,
   defaultExpanded = false,
   className = '',
 }) {
@@ -228,6 +231,9 @@ export const QuestionCard = memo(function QuestionCard({
                 onChange={handleTitleChange}
                 variant="oncard"
                 required
+                onBlur={() => markTouched?.(`question:${questionId}:title`)}
+                error={Boolean(errors?.title)}
+                hint={errors?.title || 'Minimum 3 characters'}
               />
 
               <Textarea
@@ -238,6 +244,9 @@ export const QuestionCard = memo(function QuestionCard({
                 rows={5}
                 variant="oncard"
                 required
+                onBlur={() => markTouched?.(`question:${questionId}:description`)}
+                error={Boolean(errors?.description)}
+                hint={errors?.description || 'Minimum 10 characters'}
               />
 
               <div className="question-card__row">
@@ -249,6 +258,9 @@ export const QuestionCard = memo(function QuestionCard({
                   onChange={handleDifficultyChange}
                   variant="oncard"
                   required
+                  onBlur={() => markTouched?.(`question:${questionId}:difficulty`)}
+                  error={Boolean(errors?.difficulty)}
+                  hint={errors?.difficulty || 'Required'}
                 />
                 <DropdownInput
                   label="Estimated Time"
@@ -258,6 +270,9 @@ export const QuestionCard = memo(function QuestionCard({
                   onChange={handleEstimatedTimeChange}
                   variant="oncard"
                   required
+                  onBlur={() => markTouched?.(`question:${questionId}:estimatedTime`)}
+                  error={Boolean(errors?.estimatedTime)}
+                  hint={errors?.estimatedTime || 'Required'}
                 />
               </div>
 
@@ -293,6 +308,14 @@ QuestionCard.propTypes = {
   onRemove: PropTypes.func,
   onDone: PropTypes.func,
   onChange: PropTypes.func,
+  errors: PropTypes.shape({
+    title: PropTypes.string,
+    description: PropTypes.string,
+    difficulty: PropTypes.string,
+    estimatedTime: PropTypes.string,
+  }),
+  markTouched: PropTypes.func,
+  questionId: PropTypes.string,
   defaultExpanded: PropTypes.bool,
   className: PropTypes.string,
 };

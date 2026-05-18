@@ -236,6 +236,38 @@
   color: var(--text-primary);
 }
 
+.job-landing__notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gap-sm);
+  padding: var(--padding-md) var(--padding-lg);
+  border: var(--border-sm) solid var(--status-warning-border);
+  border-radius: var(--radius-md);
+  background: var(--status-warning-bg);
+  color: var(--status-warning-text);
+}
+
+.job-landing__notice svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.job-landing__notice div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.job-landing__notice strong {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+}
+
+.job-landing__notice span {
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
 /* CTA */
 .job-landing__cta {
   align-self: flex-end;

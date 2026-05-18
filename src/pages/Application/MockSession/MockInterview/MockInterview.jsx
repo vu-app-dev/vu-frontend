@@ -44,6 +44,7 @@ const PANEL = { camera: 'camera', code: 'code', screen: 'screen' };
 const MOCK_REQUIREMENTS = {
   Technical: { camera: true, mic: true, code: true, screen: true },
   Behavioral: { camera: true, mic: true, code: false, screen: false },
+  Coding: { camera: true, mic: true, code: true, screen: true },
   Design: { camera: true, mic: true, code: false, screen: true },
   Analytical: { camera: true, mic: true, code: true, screen: false },
 };
@@ -585,6 +586,6 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
 });
 
 MockInterview.propTypes = {
-  mockId: PropTypes.number.isRequired,
+  mockId: PropTypes.string.isRequired,
   onComplete: PropTypes.func.isRequired,
 };

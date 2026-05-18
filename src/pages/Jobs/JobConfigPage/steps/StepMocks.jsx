@@ -20,7 +20,9 @@ export function StepMocks({
   onDragStart,
   onDragOver,
   onDragEnd,
-  isLive,
+  isLocked = false,
+  validationErrors = {},
+  showError = false,
 }) {
   const addedIds = useMemo(() => new Set(mocks.map((m) => m.id)), [mocks]);
 
@@ -31,7 +33,7 @@ export function StepMocks({
       (m) =>
         m.name.toLowerCase().includes(q) ||
         m.type.toLowerCase().includes(q) ||
-        m.skills.some((s) => s.toLowerCase().includes(q))
+        (m.technologies || []).some((s) => s.toLowerCase().includes(q))
     );
   }, [librarySearch]);
 
@@ -56,6 +58,10 @@ export function StepMocks({
         Mock Interviews
       </SectionTitle>
 
+      {showError && (validationErrors.mocks || validationErrors.mockWeights) && (
+        <p className="create-job__hint">{validationErrors.mocks || validationErrors.mockWeights}</p>
+      )}
+
       {mocks.length > 0 && (
         <div className="create-job__mock-list">
           {mocks.map((mock, index) => (
@@ -64,11 +70,12 @@ export function StepMocks({
               className={[
                 'create-job__mock-item',
                 dragIndex === index ? 'create-job__mock-item--dragging' : '',
+                isLocked ? 'create-job__mock-item--locked' : '',
               ].join(' ')}
-              draggable
-              onDragStart={() => onDragStart(index)}
-              onDragOver={(e) => onDragOver(e, index)}
-              onDragEnd={onDragEnd}
+              draggable={!isLocked}
+              onDragStart={() => !isLocked && onDragStart(index)}
+              onDragOver={(e) => !isLocked && onDragOver(e, index)}
+              onDragEnd={() => !isLocked && onDragEnd()}
             >
               <span className="create-job__mock-drag" aria-label="Drag to reorder">
                 <GripVertical size={16} />
@@ -82,9 +89,9 @@ export function StepMocks({
                   <span>&middot;</span>
                   <span>{mock.duration}</span>
                 </span>
-                {mock.skills?.length > 0 && (
+                {Array.isArray(mock.technologies) && mock.technologies.length > 0 && (
                   <div className="create-job__mock-skills">
-                    {mock.skills.map((s) => (
+                    {mock.technologies.map((s) => (
                       <span key={s} className="create-job__mock-skill-tag">
                         {s}
                       </span>
@@ -99,16 +106,17 @@ export function StepMocks({
                   value={String(mock.weight)}
                   onChange={(e) => updateWeight(mock.id, e.target.value)}
                   placeholder="%"
+                  disabled={isLocked}
                 />
               </div>
               <button
                 type="button"
                 className="create-job__mock-remove"
                 onClick={() => removeMock(mock.id)}
-                disabled={isLive}
+                disabled={isLocked}
                 title={
-                  isLive
-                    ? 'Cannot remove mocks from a live job with candidates'
+                  isLocked
+                    ? 'Mock setup is locked for active jobs'
                     : `Remove ${mock.name}`
                 }
                 aria-label={`Remove ${mock.name}`}
@@ -121,11 +129,10 @@ export function StepMocks({
       )}
 
       {/* Live-mode guardrail warning */}
-      {isLive && mocks.length > 0 && (
+      {isLocked && mocks.length > 0 && (
         <div className="create-job__guardrail">
           <AlertTriangle size={14} />
-          Weight changes will affect scoring fairness for existing candidates. Mock removals are
-          disabled.
+          Mock setup is locked while the job is active. Scheduling can still be edited.
         </div>
       )}
 
@@ -158,6 +165,7 @@ export function StepMocks({
           variant="dashed"
           iconLeft={<Plus size={16} />}
           onClick={() => setShowLibrary((o) => !o)}
+          disabled={isLocked}
         >
           Add Mock from Library
         </Button>
@@ -172,6 +180,7 @@ export function StepMocks({
               placeholder="Search mocks..."
               value={librarySearch}
               onChange={(e) => setLibrarySearch(e.target.value)}
+              disabled={isLocked}
             />
           </div>
           <div className="create-job__mock-library-list">
@@ -183,7 +192,7 @@ export function StepMocks({
                   type="button"
                   className={`create-job__mock-library-option ${isAdded ? 'create-job__mock-library-option--added' : ''}`}
                   onClick={() => !isAdded && addMock(mock)}
-                  disabled={isAdded}
+                  disabled={isAdded || isLocked}
                 >
                   <span>{mock.name}</span>
                   <span className="create-job__mock-library-detail">

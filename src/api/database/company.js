@@ -17,7 +17,6 @@ export const ROLES = {
       'edit_mocks',
       'review_candidates',
       'change_candidate_status',
-      'manage_roles',
       'accept_members',
       'edit_company',
       'remove_members',
@@ -590,13 +589,6 @@ export function getMemberById(id) {
 
 export function getJoinRequestById(id) {
   return JOIN_REQUESTS.find((r) => r.id === id) ?? null;
-}
-
-export function updateMember(id, patch) {
-  const idx = TEAM_MEMBERS.findIndex((m) => m.id === id);
-  if (idx === -1) return null;
-  TEAM_MEMBERS[idx] = { ...TEAM_MEMBERS[idx], ...patch };
-  return TEAM_MEMBERS[idx];
 }
 
 export function removeMember(id) {

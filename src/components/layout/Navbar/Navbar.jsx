@@ -1,20 +1,14 @@
-import { useState, useRef, useEffect, useCallback, memo } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
 import PropTypes from 'prop-types';
 import { Bell, UserCircle2, Building2, LogOut, User, Menu, Moon, Sun } from 'lucide-react';
 import { Breadcrumb } from '../../ui/Breadcrumb';
 import { NotificationDropdown } from './NotificationDropdown';
 import { getActiveTheme, THEMES, toggleTheme as toggleAppTheme } from '../../../utils';
+import { canCurrentUser, useBackendData } from '../../../api';
 import './Navbar.css';
 
 const EMPTY_BREADCRUMBS = [];
 
-/* ── Avatar menu items — stable module-level constant ── */
-const AVATAR_MENU = [
-  { icon: User, label: 'My Profile', page: 'profile' },
-  { icon: Building2, label: 'Company Settings', page: 'company-settings' },
-];
-
-/* ── Helper: initials from name ── */
 function getInitials(name = '') {
   return name
     .split(' ')
@@ -86,8 +80,29 @@ const Navbar = memo(function Navbar({
   const handleThemeToggle = useCallback(() => {
     setTheme((currentTheme) => toggleAppTheme(currentTheme));
     setIsAvatarOpen(false);
+    setIsNotificationOpen(false);
   }, []);
 
+  const backend = useBackendData();
+
+  const avatarMenu = useMemo(() => {
+    void backend.dataVersion;
+    const items = [{ icon: User, label: 'My Profile', page: 'profile' }];
+    if (canCurrentUser('edit_company')) {
+      items.push({ icon: Building2, label: 'Company Settings', page: 'company-settings' });
+    }
+    return items;
+  }, [backend.dataVersion]);
+
+  const handleLogout = useCallback(async () => {
+    setIsAvatarOpen(false);
+
+    try {
+      await backend.logout();
+    } catch {
+      // ignore errors during logout
+    }
+  }, [backend]);
   const isLightTheme = theme === THEMES.light;
 
   return (
@@ -139,6 +154,16 @@ const Navbar = memo(function Navbar({
           />
         </div>
 
+        <button
+          type="button"
+          className="navbar__theme-button"
+          onClick={handleThemeToggle}
+          aria-label={isLightTheme ? 'Switch to dark mode' : 'Switch to light mode'}
+          title={isLightTheme ? 'Switch to dark mode' : 'Switch to light mode'}
+        >
+          {isLightTheme ? <Moon size={18} /> : <Sun size={18} />}
+        </button>
+
         {/* Avatar */}
         <div ref={avatarRef} className="navbar__avatar-wrapper">
           <button
@@ -173,7 +198,7 @@ const Navbar = memo(function Navbar({
               <div className="navbar__avatar-divider" />
 
               {/* Menu items */}
-              {AVATAR_MENU.map(({ icon: Icon, label, page }) => (
+              {avatarMenu.map(({ icon: Icon, label, page }) => (
                 <button
                   key={page}
                   type="button"
@@ -186,16 +211,6 @@ const Navbar = memo(function Navbar({
                 </button>
               ))}
 
-              <button
-                type="button"
-                className="navbar__avatar-item navbar__avatar-item--theme"
-                role="menuitem"
-                onClick={handleThemeToggle}
-              >
-                {isLightTheme ? <Moon size={14} /> : <Sun size={14} />}
-                <span>{isLightTheme ? 'Switch to Dark Mode' : 'Switch to Light Mode'}</span>
-              </button>
-
               <div className="navbar__avatar-divider" />
 
               {/* Logout */}
@@ -203,7 +218,7 @@ const Navbar = memo(function Navbar({
                 type="button"
                 className="navbar__avatar-item navbar__avatar-item--danger"
                 role="menuitem"
-                onClick={() => setIsAvatarOpen(false)}
+                onClick={handleLogout}
               >
                 <LogOut size={14} />
                 <span>Logout</span>

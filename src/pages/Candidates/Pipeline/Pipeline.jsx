@@ -7,14 +7,30 @@ import { Badge } from '../../../components/ui/Badge';
 import { Pagination } from '../../../components/ui/Pagination';
 import { FilterOverlay } from '../../../components/ui/FilterOverlay';
 import { QuickInfoCard, InfoCard } from '../../../components/ui/Cards';
+import { EmptyState } from '../../../components/ui/EmptyState';
 import { RadarChart, RadialBarChart, AreaChart, BarChart } from '../../../components/ui/Charts';
 import { SectionTitle } from '../../../components/ui/SectionTitle';
-import { CANDIDATES, toSlug } from '../../../api';
-import { ArrowRight, Users, CheckCircle, Award, Clock } from 'lucide-react';
+import {
+  CANDIDATES,
+  JOBS,
+  canCurrentUser,
+  toSlug,
+  updateCandidateStatus,
+  useBackendData,
+} from '../../../api';
+import {
+  ArrowRight,
+  Users,
+  CheckCircle,
+  Award,
+  Clock,
+  Check,
+  ListFilter,
+  X,
+  Eye,
+} from 'lucide-react';
 import { useResponsiveItemsPerPage } from '../../../hooks';
 import './Pipeline.css';
-
-const MOCK_CANDIDATES = CANDIDATES;
 
 const TABLE_COLUMNS = [
   { key: 'name', label: 'Name', sortable: true, fr: 1.2 },
@@ -41,119 +57,222 @@ const PAGINATION_HEIGHT = 56;
 // Shortcuts configuration
 const SHORTCUTS_CONFIG = {
   filterLabel: 'Filters',
-  secondaryAction: {
-    label: '5 Active jobs',
-    icon: ArrowRight,
-  },
 };
 
 // Overlay filter definitions
-const UNIQUE_JOBS = [...new Set(CANDIDATES.map((c) => c.job))].sort();
 const STATUS_OPTIONS = ['Shortlist', 'Pending', 'Accepted', 'Rejected'];
-const OVERLAY_FILTERS = [
+const BASE_OVERLAY_FILTERS = [
   { key: 'status', label: 'Status', type: 'multiselect', options: STATUS_OPTIONS },
-  { key: 'job', label: 'Job', type: 'multiselect', options: UNIQUE_JOBS },
   { key: 'score', label: 'Score', type: 'range', minLabel: 'Min', maxLabel: 'Max' },
   { key: 'flaggedOnly', label: 'Anti-cheat', type: 'toggle', toggleLabel: 'Show flagged only' },
 ];
-const INITIAL_OVERLAY = { status: [], job: [], score: { min: '', max: '' }, flaggedOnly: false };
+const INITIAL_OVERLAY = { status: [], job: '', score: { min: '', max: '' }, flaggedOnly: false };
 
-// Overview data
-const OVERVIEW_STATS = {
-  totalCandidates: 37,
-  completedMocks: 420,
-  averageScore: 78,
-  pending: 264,
-};
-
-const PERFORMANCE_METRICS = [
-  { label: 'Communication', value: 82 },
-  { label: 'Problem Solving', value: 74 },
-  { label: 'Technical Skills', value: 91 },
-  { label: 'Time Management', value: 68 },
-  { label: 'Critical Thinking', value: 79 },
+const PERFORMANCE_METRIC_KEYS = [
+  { key: 'communication', label: 'Communication' },
+  { key: 'problemSolving', label: 'Problem Solving' },
+  { key: 'technical', label: 'Technical Skills' },
+  { key: 'confidence', label: 'Confidence' },
+  { key: 'clarityOfExplanation', label: 'Explanation Clarity' },
 ];
 
-const CANDIDATE_SCORE_DATA = [
-  { label: 'Excellent (90-100)', value: 145 },
-  { label: 'High (70-89)', value: 77 },
-  { label: 'Moderate (50-69)', value: 44 },
-  { label: 'Low (0-49)', value: 31 },
-];
+function average(values) {
+  const numbers = values.map(Number).filter((value) => Number.isFinite(value));
+  if (!numbers.length) return 0;
+  return Math.round(numbers.reduce((sum, value) => sum + value, 0) / numbers.length);
+}
 
-const APPLICATION_TREND_DATA = [
-  { week: 'Week 1', applications: 24, mocks: 18 },
-  { week: 'Week 2', applications: 31, mocks: 22 },
-  { week: 'Week 3', applications: 28, mocks: 26 },
-  { week: 'Week 4', applications: 42, mocks: 35 },
-  { week: 'Week 5', applications: 38, mocks: 30 },
-  { week: 'Week 6', applications: 55, mocks: 47 },
-  { week: 'Week 7', applications: 49, mocks: 41 },
-  { week: 'Week 8', applications: 63, mocks: 52 },
-];
+function buildCandidateScoreData(candidates) {
+  const buckets = [
+    { label: 'Excellent (90-100)', value: 0 },
+    { label: 'High (70-89)', value: 0 },
+    { label: 'Moderate (50-69)', value: 0 },
+    { label: 'Low (0-49)', value: 0 },
+  ];
 
-const SCORE_BY_ROLE_DATA = [
-  { label: 'Frontend', value: 78 },
-  { label: 'Backend', value: 85 },
-  { label: 'UI/UX', value: 72 },
-  { label: 'Data Analyst', value: 69 },
-  { label: 'DevOps', value: 81 },
-];
+  candidates.forEach((candidate) => {
+    const score = Number(candidate.score || 0);
+    if (score >= 90) buckets[0].value += 1;
+    else if (score >= 70) buckets[1].value += 1;
+    else if (score >= 50) buckets[2].value += 1;
+    else buckets[3].value += 1;
+  });
 
-const AI_INSIGHTS = [
-  {
-    title: 'Skill Gap Alert',
-    description:
-      'Candidates applying for Backend roles show low scores in System Design (avg 54%). Consider adding targeted questions or skill-based mocks.',
-  },
-  {
-    title: 'Performance Forecast',
-    description:
-      'Based on current trends, UI/UX Designer candidates are expected to improve average scores by +8% next month.',
-  },
-  {
-    title: 'Quality Trend',
-    description:
-      'Average candidate quality dropped by 6% this week due to high fail rates in Python mocks.',
-  },
-];
+  return buckets;
+}
 
-const JOB_PERFORMANCE_DATA = [
-  { job: 'Frontend Developer', avgScore: 78.2, accepted: 5, rejected: 3, pending: 12, total: 40 },
-  { job: 'Backend Engineer', avgScore: 87, accepted: 8, rejected: 2, pending: 7, total: 92 },
-  { job: 'UI/UX Designer', avgScore: 78, accepted: 25, rejected: 4, pending: 54, total: 45 },
-  { job: 'Data Analyst', avgScore: 76, accepted: 57, rejected: 45, pending: 89, total: 12 },
-];
+function buildApplicationTrendData(candidates) {
+  const buckets = new Map();
+
+  candidates.forEach((candidate) => {
+    const date = new Date(candidate.createdAt || candidate.raw?.createdAt || candidate.date);
+    const key = Number.isNaN(date.getTime())
+      ? candidate.date || 'Unknown'
+      : date.toISOString().slice(0, 10);
+    const label = Number.isNaN(date.getTime())
+      ? key
+      : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const bucket = buckets.get(key) || { key, week: label, applications: 0, mocks: 0 };
+
+    bucket.applications += 1;
+    bucket.mocks += candidate.questions?.length || 0;
+    buckets.set(key, bucket);
+  });
+
+  return [...buckets.values()].sort((a, b) => String(a.key).localeCompare(String(b.key))).slice(-8);
+}
+
+function buildScoreByRoleData(candidates) {
+  const groups = new Map();
+
+  candidates.forEach((candidate) => {
+    const role = candidate.job || 'Unassigned job';
+    const scores = groups.get(role) || [];
+    scores.push(candidate.score || 0);
+    groups.set(role, scores);
+  });
+
+  return [...groups.entries()]
+    .map(([label, scores]) => ({ label, value: average(scores) }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 6);
+}
+
+function buildPerformanceMetrics(candidates) {
+  return PERFORMANCE_METRIC_KEYS.map((metric) => ({
+    label: metric.label,
+    value: average(candidates.map((candidate) => candidate.performance?.[metric.key])),
+  }));
+}
+
+function buildInsights(candidates, jobs) {
+  const flaggedCount = candidates.filter((candidate) => candidate.antiCheat !== 'clean').length;
+  const applicationsByJob = new Map();
+  candidates.forEach((candidate) => {
+    const key = candidate.jobId || candidate.job;
+    applicationsByJob.set(key, (applicationsByJob.get(key) || 0) + 1);
+  });
+  const topJob = [...jobs]
+    .map((job) => ({
+      ...job,
+      filteredTotal: applicationsByJob.get(job.id) || applicationsByJob.get(job.title) || 0,
+    }))
+    .sort((a, b) => b.filteredTotal - a.filteredTotal)[0];
+  const averageScore = average(candidates.map((candidate) => candidate.score));
+
+  return [
+    {
+      title: 'Candidate Volume',
+      description: topJob
+        ? `${topJob.title} has ${topJob.filteredTotal || 0} candidate application(s).`
+        : 'No candidate applications have been loaded yet.',
+    },
+    {
+      title: 'Assessment Quality',
+      description: `${averageScore}% is the current average candidate score across loaded applications.`,
+    },
+    {
+      title: 'Integrity Signals',
+      description: `${flaggedCount} candidate(s) currently have anti-cheat signals above clean.`,
+    },
+  ];
+}
+
+function buildJobPerformanceData(jobs, candidates, useJobTotalsFallback = false) {
+  return jobs.map((job) => {
+    const jobCandidates = candidates.filter(
+      (candidate) => candidate.jobId === job.id || candidate.job === job.title
+    );
+    const accepted = jobCandidates.filter((candidate) => candidate.status === 'accepted').length;
+    const rejected = jobCandidates.filter((candidate) => candidate.status === 'rejected').length;
+    const shortlisted = jobCandidates.filter((candidate) =>
+      ['shortlist', 'shortlisted'].includes(candidate.status)
+    ).length;
+
+    if (!jobCandidates.length && useJobTotalsFallback) {
+      return {
+        job: job.title,
+        avgScore: job.avgScore || 0,
+        accepted: job.accepted || 0,
+        rejected: job.rejected || 0,
+        shortlisted: job.shortlisted || 0,
+        total: job.totalApplied || 0,
+      };
+    }
+
+    return {
+      job: job.title,
+      avgScore: average(jobCandidates.map((candidate) => candidate.score)),
+      accepted,
+      rejected,
+      shortlisted,
+      total: jobCandidates.length,
+    };
+  });
+}
 
 const JOB_PERFORMANCE_COLUMNS = [
   { key: 'job', label: 'Job', sortable: true },
   { key: 'avgScore', label: 'Avg Score', sortable: true },
   { key: 'accepted', label: 'Accepted', sortable: true },
   { key: 'rejected', label: 'Rejected', sortable: true },
-  { key: 'pending', label: 'Pending', sortable: true },
+  { key: 'shortlisted', label: 'Shortlisted', sortable: true },
   { key: 'total', label: 'Total', sortable: true },
 ];
 
-const GRID_TEMPLATE = `${TABLE_COLUMNS.map((col) => `${col.fr || 1}fr`).join(' ')} 2rem`;
+const GRID_TEMPLATE = `${TABLE_COLUMNS.map((col) => `minmax(0, ${col.fr || 1}fr)`).join(' ')} 2rem`;
 const JOB_PERF_GRID = JOB_PERFORMANCE_COLUMNS.map((col) =>
   col.key === 'job' ? '2fr' : '1fr'
 ).join(' ');
 
 const SELECTED_CANDIDATE_STORAGE_KEY = 'pipeline:lastSelectedCandidateId';
 
+const VIEW_OPTION = { id: 'view', label: 'View Details', icon: Eye, variant: 'default' };
+
+function getCandidateMenuOptions(candidate, canChangeCandidateStatus = true) {
+  if (!canChangeCandidateStatus) return [VIEW_OPTION];
+  if (['accepted', 'rejected'].includes(candidate.status)) return [VIEW_OPTION];
+  const options =
+    candidate.status === 'shortlist' || candidate.status === 'shortlisted'
+      ? [
+          VIEW_OPTION,
+          { id: 'accept', label: 'Accept', icon: Check, variant: 'success' },
+          { id: 'reject', label: 'Reject', icon: X, variant: 'danger' },
+        ]
+      : [
+          VIEW_OPTION,
+          {
+            id: 'shortlist',
+            label: 'Shortlist',
+            icon: ListFilter,
+            variant: 'info',
+            separator: true,
+          },
+          { id: 'accept', label: 'Accept', icon: Check, variant: 'success' },
+          { id: 'reject', label: 'Reject', icon: X, variant: 'danger' },
+        ];
+  return options;
+}
+
 function getStoredSelectedCandidateId() {
   if (typeof window === 'undefined') return null;
   const raw = window.sessionStorage.getItem(SELECTED_CANDIDATE_STORAGE_KEY);
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  return raw || null;
+}
+
+function overlayFromSearch(search) {
+  const params = new URLSearchParams(search);
+  const jobId = params.get('jobId');
+  return jobId ? { ...INITIAL_OVERLAY, job: jobId } : INITIAL_OVERLAY;
 }
 
 export const Pipeline = memo(function Pipeline() {
+  const { dataVersion, isLoading } = useBackendData();
   const navigate = useNavigate();
   const location = useLocation();
   const initialSelectedId = useMemo(() => {
     const selectedFromState = location.state?.selectedCandidateId;
-    if (Number.isFinite(selectedFromState) && selectedFromState > 0) {
+    if (selectedFromState) {
       return selectedFromState;
     }
     return getStoredSelectedCandidateId();
@@ -169,12 +288,91 @@ export const Pipeline = memo(function Pipeline() {
   const [lastSelectedId, setLastSelectedId] = useState(() => initialSelectedId);
   const [searchValue, setSearchValue] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [overlayFilters, setOverlayFilters] = useState(INITIAL_OVERLAY);
+  const initialOverlayFilters = useMemo(
+    () => overlayFromSearch(location.search),
+    [location.search]
+  );
+  const [overlayFilters, setOverlayFilters] = useState(initialOverlayFilters);
+
+  const overlayFilterDefs = useMemo(() => {
+    void dataVersion;
+    const uniqueJobs = JOBS.map((job) => ({ value: job.id, label: job.title })).sort((a, b) =>
+      a.label.localeCompare(b.label)
+    );
+    return [
+      BASE_OVERLAY_FILTERS[0],
+      { key: 'job', label: 'Job', type: 'select', options: uniqueJobs },
+      ...BASE_OVERLAY_FILTERS.slice(1),
+    ];
+  }, [dataVersion]);
+  const canChangeCandidateStatus = useMemo(() => {
+    void dataVersion;
+    return canCurrentUser('change_candidate_status');
+  }, [dataVersion]);
+
+  const filteredCandidates = useMemo(() => {
+    void dataVersion;
+    const q = searchValue.trim() ? searchValue.toLowerCase() : null;
+    const { status, job, score, flaggedOnly } = overlayFilters;
+    const scoreMin = score.min !== '' ? Number(score.min) : null;
+    const scoreMax = score.max !== '' ? Number(score.max) : null;
+
+    return CANDIDATES.filter((c) => {
+      if (q && !c.name.toLowerCase().includes(q) && !c.job.toLowerCase().includes(q)) return false;
+      if (status.length && !status.map((s) => s.toLowerCase()).includes(c.status)) return false;
+      if (job && c.jobId !== job) return false;
+      if (scoreMin !== null && c.score < scoreMin) return false;
+      if (scoreMax !== null && c.score > scoreMax) return false;
+      if (flaggedOnly && c.antiCheat !== 'flagged') return false;
+      return true;
+    });
+  }, [searchValue, overlayFilters, dataVersion]);
+
+  const overviewData = useMemo(() => {
+    void dataVersion;
+    const candidates = filteredCandidates;
+    const jobs = [...JOBS];
+    const filtersApplied = Boolean(
+      searchValue.trim() ||
+      overlayFilters.status.length ||
+      overlayFilters.job ||
+      overlayFilters.score.min ||
+      overlayFilters.score.max ||
+      overlayFilters.flaggedOnly
+    );
+    const filteredJobIds = new Set(candidates.map((candidate) => candidate.jobId).filter(Boolean));
+    const visibleJobs = overlayFilters.job
+      ? jobs.filter((job) => job.id === overlayFilters.job)
+      : filtersApplied
+        ? jobs.filter((job) => filteredJobIds.has(job.id))
+        : jobs;
+
+    return {
+      activeJobsCount: visibleJobs.filter((job) => job.status === 'active').length,
+      stats: {
+        totalCandidates: candidates.length,
+        answeredQuestions: candidates.reduce(
+          (total, candidate) => total + (candidate.questions?.length || 0),
+          0
+        ),
+        averageScore: average(candidates.map((candidate) => candidate.score)),
+        shortlisted: candidates.filter((candidate) =>
+          ['shortlist', 'shortlisted'].includes(candidate.status)
+        ).length,
+      },
+      applicationTrend: buildApplicationTrendData(candidates),
+      performanceMetrics: buildPerformanceMetrics(candidates),
+      scoreByRole: buildScoreByRoleData(candidates),
+      scoreDistribution: buildCandidateScoreData(candidates),
+      insights: buildInsights(candidates, visibleJobs),
+      jobPerformance: buildJobPerformanceData(visibleJobs, candidates, !filtersApplied),
+    };
+  }, [filteredCandidates, overlayFilters, searchValue, dataVersion]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (overlayFilters.status.length) count++;
-    if (overlayFilters.job.length) count++;
+    if (overlayFilters.job) count++;
     if (overlayFilters.score.min || overlayFilters.score.max) count++;
     if (overlayFilters.flaggedOnly) count++;
     return count;
@@ -221,26 +419,34 @@ export const Pipeline = memo(function Pipeline() {
     [navigate]
   );
 
+  const handleCandidateAction = useCallback(
+    async (candidate, action) => {
+      if (action === 'view') {
+        handleCandidateSelect(candidate);
+        return;
+      }
+      if (
+        ['accept', 'reject'].includes(action) &&
+        !window.confirm('This decision is permanent and cannot be changed. Continue?')
+      ) {
+        return;
+      }
+      try {
+        await updateCandidateStatus(candidate.id, action);
+      } catch (error) {
+        window.alert(error.message || 'Unable to update candidate.');
+      }
+    },
+    [handleCandidateSelect]
+  );
+
   const handleTabChange = useCallback((tab) => {
     setActiveTab(tab);
     if (tab === 'overview') setOverviewKey((k) => k + 1);
   }, []);
 
   const sortedCandidates = useMemo(() => {
-    const q = searchValue.trim() ? searchValue.toLowerCase() : null;
-    const { status, job, score, flaggedOnly } = overlayFilters;
-    const scoreMin = score.min !== '' ? Number(score.min) : null;
-    const scoreMax = score.max !== '' ? Number(score.max) : null;
-
-    let list = MOCK_CANDIDATES.filter((c) => {
-      if (q && !c.name.toLowerCase().includes(q) && !c.job.toLowerCase().includes(q)) return false;
-      if (status.length && !status.map((s) => s.toLowerCase()).includes(c.status)) return false;
-      if (job.length && !job.includes(c.job)) return false;
-      if (scoreMin !== null && c.score < scoreMin) return false;
-      if (scoreMax !== null && c.score > scoreMax) return false;
-      if (flaggedOnly && c.antiCheat !== 'flagged') return false;
-      return true;
-    });
+    const list = [...filteredCandidates];
 
     return list.sort((a, b) => {
       if (!sortColumn || !sortDirection) return 0;
@@ -250,7 +456,7 @@ export const Pipeline = memo(function Pipeline() {
       if (typeof aVal === 'number') return (aVal - bVal) * modifier;
       return String(aVal).localeCompare(String(bVal)) * modifier;
     });
-  }, [sortColumn, sortDirection, searchValue, overlayFilters]);
+  }, [sortColumn, sortDirection, filteredCandidates]);
 
   // Responsive items per page calculation
   const { tableRef, itemsPerPage } = useResponsiveItemsPerPage(
@@ -260,10 +466,6 @@ export const Pipeline = memo(function Pipeline() {
 
   const totalPages = Math.max(1, Math.ceil(sortedCandidates.length / itemsPerPage));
   const safePage = Math.min(currentPage, totalPages);
-
-  if (currentPage > totalPages && totalPages > 0) {
-    setCurrentPage(1);
-  }
 
   const paginatedCandidates = useMemo(() => {
     const startIndex = (safePage - 1) * itemsPerPage;
@@ -281,16 +483,16 @@ export const Pipeline = memo(function Pipeline() {
   }, []);
 
   const sortedJobPerformance = useMemo(() => {
-    if (!overviewSortColumn || !overviewSortDirection) return JOB_PERFORMANCE_DATA;
+    if (!overviewSortColumn || !overviewSortDirection) return overviewData.jobPerformance;
 
-    return [...JOB_PERFORMANCE_DATA].sort((a, b) => {
+    return [...overviewData.jobPerformance].sort((a, b) => {
       const aVal = a[overviewSortColumn];
       const bVal = b[overviewSortColumn];
       const modifier = overviewSortDirection === 'asc' ? 1 : -1;
       if (typeof aVal === 'number') return (aVal - bVal) * modifier;
       return String(aVal).localeCompare(String(bVal)) * modifier;
     });
-  }, [overviewSortColumn, overviewSortDirection]);
+  }, [overviewSortColumn, overviewSortDirection, overviewData.jobPerformance]);
 
   const columnsWithSortState = useMemo(
     () =>
@@ -325,6 +527,7 @@ export const Pipeline = memo(function Pipeline() {
     ],
     [activeTab, handleTabChange]
   );
+  const isInitialLoading = isLoading && dataVersion === 0;
 
   return (
     <div className={`pipeline-page${activeTab === 'overview' ? ' pipeline-page--overview' : ''}`}>
@@ -334,7 +537,7 @@ export const Pipeline = memo(function Pipeline() {
           activeFilterCount
             ? [
                 overlayFilters.status.length && 'Status',
-                overlayFilters.job.length && 'Job',
+                overlayFilters.job && 'Job',
                 (overlayFilters.score.min || overlayFilters.score.max) && 'Score',
                 overlayFilters.flaggedOnly && 'Anti-cheat',
               ]
@@ -347,7 +550,8 @@ export const Pipeline = memo(function Pipeline() {
         onSearchChange={handleSearchChange}
         searchPlaceholder="Search candidates..."
         secondaryAction={{
-          ...SHORTCUTS_CONFIG.secondaryAction,
+          label: `${overviewData.activeJobsCount} Active jobs`,
+          icon: ArrowRight,
           onClick: () => navigate('/jobs?status=Active'),
         }}
       />
@@ -367,78 +571,91 @@ export const Pipeline = memo(function Pipeline() {
               />
 
               <div className="pipeline-page__rows">
-                {paginatedCandidates.map((candidate) => (
-                  <TableRow
-                    className="pipeline-page__row"
-                    key={candidate.id}
-                    showMenu
-                    selected={candidate.id === lastSelectedId}
-                    onMouseDown={() => setLastSelectedId(candidate.id)}
-                    onMenuClick={() => {
-                      setLastSelectedId(candidate.id);
-                      setOpenMenuId(openMenuId === candidate.id ? null : candidate.id);
-                    }}
-                    onMenuSelect={(action) => {
-                      if (action === 'View Details') {
-                        handleCandidateSelect(candidate);
-                      } else {
-                        console.log(`Action ${action} for`, candidate.name);
-                      }
-                      setOpenMenuId(null);
-                    }}
-                    menuOpen={openMenuId === candidate.id}
-                    onMenuClose={() => setOpenMenuId(null)}
-                    onClick={() => handleCandidateSelect(candidate)}
-                    gridTemplateColumns={GRID_TEMPLATE}
-                  >
-                    <TableCell
-                      color="tertiary"
-                      icon={
-                        <span className="pipeline-page__avatar">
-                          {candidate.name
-                            .split(' ')
-                            .map((n) => n[0])
-                            .join('')}
-                        </span>
-                      }
+                {paginatedCandidates.length > 0 ? (
+                  paginatedCandidates.map((candidate) => (
+                    <TableRow
+                      className="pipeline-page__row"
+                      key={candidate.id}
+                      showMenu
+                      selected={candidate.id === lastSelectedId}
+                      onMouseDown={() => setLastSelectedId(candidate.id)}
+                      onMenuClick={() => {
+                        setLastSelectedId(candidate.id);
+                        setOpenMenuId(openMenuId === candidate.id ? null : candidate.id);
+                      }}
+                      onMenuSelect={(action) => {
+                        handleCandidateAction(candidate, action);
+                        setOpenMenuId(null);
+                      }}
+                      menuOptions={getCandidateMenuOptions(candidate, canChangeCandidateStatus)}
+                      menuOpen={openMenuId === candidate.id}
+                      onMenuClose={() => setOpenMenuId(null)}
+                      onClick={() => handleCandidateSelect(candidate)}
+                      gridTemplateColumns={GRID_TEMPLATE}
                     >
-                      {candidate.name}
-                    </TableCell>
-                    <TableCell color="secondary">{candidate.job}</TableCell>
-                    <TableCell className="pipeline-page__score-cell">
-                      <span className="pipeline-page__score">
-                        <span className="pipeline-page__score-bar">
-                          <span
-                            className="pipeline-page__score-fill"
-                            style={{
-                              width: `${candidate.score}%`,
-                              backgroundColor: getScoreColor(candidate.score),
-                            }}
-                          />
+                      <TableCell
+                        color="tertiary"
+                        icon={
+                          <span className="pipeline-page__avatar">
+                            {candidate.name
+                              .split(' ')
+                              .map((n) => n[0])
+                              .join('')}
+                          </span>
+                        }
+                      >
+                        {candidate.name}
+                      </TableCell>
+                      <TableCell color="secondary">{candidate.job}</TableCell>
+                      <TableCell className="pipeline-page__score-cell">
+                        <span className="pipeline-page__score">
+                          <span className="pipeline-page__score-bar">
+                            <span
+                              className="pipeline-page__score-fill"
+                              style={{
+                                width: `${candidate.score}%`,
+                                backgroundColor: getScoreColor(candidate.score),
+                              }}
+                            />
+                          </span>
+                          <span className="pipeline-page__score-value">{candidate.score}</span>
                         </span>
-                        <span className="pipeline-page__score-value">{candidate.score}</span>
-                      </span>
-                    </TableCell>
-                    <TableCell color="tertiary">{candidate.date}</TableCell>
-                    <TableCell>
-                      <Badge type="cheatingFlag" variant={candidate.antiCheat} iconLeft outline />
-                    </TableCell>
-                    <TableCell>
-                      <Badge type="candidateState" variant={candidate.status} />
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell color="tertiary">{candidate.date}</TableCell>
+                      <TableCell>
+                        <Badge type="cheatingFlag" variant={candidate.antiCheat} iconLeft outline />
+                      </TableCell>
+                      <TableCell>
+                        <Badge type="candidateState" variant={candidate.status} />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : !isInitialLoading ? (
+                  <div className="pipeline-page__empty">
+                    <EmptyState
+                      icon={<Users size={24} />}
+                      title={CANDIDATES.length ? 'No matching candidates' : 'No candidates yet'}
+                      description={
+                        CANDIDATES.length
+                          ? 'Adjust the search or filters to show more candidates.'
+                          : 'Candidate applications will appear here once people apply to active jobs.'
+                      }
+                    />
+                  </div>
+                ) : null}
               </div>
 
-              <div className="pipeline-page__pagination">
-                <Pagination
-                  currentPage={safePage}
-                  totalPages={totalPages}
-                  totalItems={sortedCandidates.length}
-                  itemsPerPage={itemsPerPage}
-                  onPageChange={setCurrentPage}
-                />
-              </div>
+              {sortedCandidates.length > 0 && (
+                <div className="pipeline-page__pagination">
+                  <Pagination
+                    currentPage={safePage}
+                    totalPages={totalPages}
+                    totalItems={sortedCandidates.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -447,26 +664,26 @@ export const Pipeline = memo(function Pipeline() {
               <div className="overview__quick-stats">
                 <QuickInfoCard
                   icon={<Users />}
-                  number={OVERVIEW_STATS.totalCandidates}
+                  number={overviewData.stats.totalCandidates}
                   title="Total Candidates"
                   animated={true}
                 />
                 <QuickInfoCard
                   icon={<CheckCircle />}
-                  number={OVERVIEW_STATS.completedMocks}
-                  title="Completed Mocks"
+                  number={overviewData.stats.answeredQuestions}
+                  title="Answered Questions"
                   animated={true}
                 />
                 <QuickInfoCard
                   icon={<Award />}
-                  number={OVERVIEW_STATS.averageScore}
+                  number={overviewData.stats.averageScore}
                   title="Average Score"
                   animated={true}
                 />
                 <QuickInfoCard
                   icon={<Clock />}
-                  number={OVERVIEW_STATS.pending}
-                  title="Pending"
+                  number={overviewData.stats.shortlisted}
+                  title="Shortlisted"
                   animated={true}
                 />
               </div>
@@ -476,28 +693,28 @@ export const Pipeline = memo(function Pipeline() {
                 <div className="overview__charts">
                   <AreaChart
                     title="Application & Mock Trend"
-                    data={APPLICATION_TREND_DATA}
+                    data={overviewData.applicationTrend}
                     xKey="week"
                     dataKeys={[
                       { key: 'applications', label: 'Applications', color: '#e64f28' },
-                      { key: 'mocks', label: 'Completed Mocks', color: '#0057b5' },
+                      { key: 'mocks', label: 'Answered Questions', color: '#0057b5' },
                     ]}
                     animated={true}
                   />
                   <RadarChart
                     title="Avg. Performance Metrics"
-                    stats={PERFORMANCE_METRICS}
+                    stats={overviewData.performanceMetrics}
                     animated={true}
                   />
                   <BarChart
                     title="Avg. Score by Role"
-                    data={SCORE_BY_ROLE_DATA}
+                    data={overviewData.scoreByRole}
                     dataKeys={[{ key: 'value', label: 'Avg Score' }]}
                     animated={true}
                   />
                   <RadialBarChart
                     title="Candidate Score Distribution"
-                    data={CANDIDATE_SCORE_DATA}
+                    data={overviewData.scoreDistribution}
                     animated={true}
                   />
                 </div>
@@ -506,9 +723,9 @@ export const Pipeline = memo(function Pipeline() {
               <div className="overview__insights">
                 <SectionTitle>AI Insights</SectionTitle>
                 <div className="overview__insights-grid">
-                  {AI_INSIGHTS.map((insight, index) => (
+                  {overviewData.insights.map((insight) => (
                     <InfoCard
-                      key={index}
+                      key={insight.title}
                       title={insight.title}
                       description={insight.description}
                       animated={true}
@@ -547,7 +764,7 @@ export const Pipeline = memo(function Pipeline() {
                           {job.rejected}
                         </TableCell>
                         <TableCell color="tertiary" className="overview__table-cell--value">
-                          {job.pending}
+                          {job.shortlisted}
                         </TableCell>
                         <TableCell color="tertiary" className="overview__table-cell--value">
                           {job.total}
@@ -565,7 +782,7 @@ export const Pipeline = memo(function Pipeline() {
       <FilterOverlay
         isOpen={isFilterOpen}
         onClose={() => setIsFilterOpen(false)}
-        filters={OVERLAY_FILTERS}
+        filters={overlayFilterDefs}
         values={overlayFilters}
         onApply={(v) => {
           setOverlayFilters(v);

@@ -1,113 +1,85 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { BarChart, RadarChart } from '../../../../components/ui/Charts';
 import { SectionTitle } from '../../../../components/ui/SectionTitle';
 import { InfoCard, ActionCard, QuestionCard } from '../../../../components/ui/Cards';
 import './FullFeedback.css';
 
-const SKILL_DATA = [
-  { label: 'Communication', value: 88 },
-  { label: 'Problem Solving', value: 76 },
-  { label: 'Technical Skills', value: 92 },
-  { label: 'System Design', value: 64 },
-  { label: 'Code Quality', value: 81 },
+const PERFORMANCE_FIELDS = [
+  ['communication', 'Communication'],
+  ['problemSolving', 'Problem Solving'],
+  ['technical', 'Technical Skills'],
+  ['confidence', 'Confidence'],
+  ['clarityOfExplanation', 'Clarity'],
+  ['structuredThinking', 'Structured Thinking'],
+  ['askingClarifications', 'Clarifications'],
 ];
 
-const SKILL_DISTRIBUTION = [
-  { label: 'Communication', value: 88 },
-  { label: 'Problem Solving', value: 76 },
-  { label: 'Technical', value: 92 },
-  { label: 'Design', value: 64 },
-  { label: 'Leadership', value: 70 },
-];
+export const FullFeedback = memo(function FullFeedback({ candidate }) {
+  const performanceStats = useMemo(() => {
+    const performance = candidate.performance || {};
+    return PERFORMANCE_FIELDS.map(([key, label]) => ({
+      label,
+      value: Number(performance[key] || 0),
+    })).filter((item) => item.value > 0);
+  }, [candidate.performance]);
 
-const AI_INSIGHTS = [
-  {
-    id: 1,
-    title: 'Strong Technical Foundation',
-    description:
-      'Candidate demonstrates deep understanding of data structures and algorithms with clean implementations.',
-  },
-  {
-    id: 2,
-    title: 'Effective Communicator',
-    description:
-      'Clearly articulates thought process and trade-offs during problem-solving sessions.',
-  },
-  {
-    id: 3,
-    title: 'Scalability Awareness',
-    description:
-      'Consistently considers edge cases, performance bottlenecks, and production-level constraints.',
-  },
-];
+  const insights = useMemo(() => {
+    const fromQuestions = (candidate.questions || [])
+      .filter((question) => question.aiFeedback)
+      .slice(0, 3)
+      .map((question, index) => ({
+        id: question.id || index,
+        title: question.question || `Question ${index + 1}`,
+        description: question.aiFeedback,
+      }));
 
-const CHEATING_DETECTION = {
-  title: 'Cheating Detection',
-  status: 'clean',
-  description:
-    'Nothing detected. Excellent structured approach with clear consideration of scalability and trade-offs.',
-};
+    if (fromQuestions.length) return fromQuestions;
+    if (candidate.analysis?.summary) {
+      return [{ id: 'summary', title: 'CV Summary', description: candidate.analysis.summary }];
+    }
+    return [];
+  }, [candidate]);
 
-const QUESTIONS = [
-  {
-    id: 1,
-    number: 1,
-    title: 'Two Sum Problem',
-    description:
-      'Given an array of integers and a target, return indices of two numbers that add up to the target.',
-    difficulty: 'easy',
-    time: '8 min',
-    score: 95,
-    answer:
-      'Used a hash map approach with O(n) time complexity. Iterated through the array once, storing complements as keys. Handled edge cases for duplicate values and negative numbers correctly.',
-  },
-  {
-    id: 2,
-    number: 2,
-    title: 'LRU Cache Design',
-    description:
-      'Design and implement a Least Recently Used cache with O(1) get and put operations.',
-    difficulty: 'medium',
-    time: '15 min',
-    score: 82,
-    answer:
-      'Implemented using a doubly linked list combined with a hash map. The linked list maintains access order while the map provides constant-time lookups. Discussed thread-safety considerations.',
-  },
-  {
-    id: 3,
-    number: 3,
-    title: 'System Design: URL Shortener',
-    description:
-      'Design a URL shortening service like bit.ly that can handle millions of requests per day.',
-    difficulty: 'hard',
-    time: '22 min',
-    score: 71,
-    answer:
-      'Proposed a base-62 encoding scheme with a distributed counter for ID generation. Covered database sharding strategy, caching layer with Redis, and rate limiting. Could improve on analytics pipeline design.',
-  },
-];
+  const questions = useMemo(
+    () =>
+      (candidate.questions || []).map((question, index) => ({
+        id: question.id || index,
+        number: index + 1,
+        title: question.question || `Question ${index + 1}`,
+        description: question.aiFeedback || '',
+        difficulty: 'medium',
+        time: `${question.durationInMinutes || 0} min`,
+        score: question.score || 0,
+        answer: question.answer || '',
+      })),
+    [candidate.questions]
+  );
 
-export const FullFeedback = memo(function FullFeedback() {
   return (
     <div className="full-feedback">
-      {/* Charts Section */}
       <div className="full-feedback__charts">
         <BarChart
-          title="Skill Distribution"
-          data={SKILL_DATA}
+          title="Performance Scores"
+          data={performanceStats}
           dataKeys={[{ key: 'value', label: 'Score' }]}
           animated
         />
-        <RadarChart title="Score Breakdown" stats={SKILL_DISTRIBUTION} animated />
+        <RadarChart title="Score Breakdown" stats={performanceStats} animated />
       </div>
 
-      {/* AI Insights Section */}
       <div className="full-feedback__section">
         <SectionTitle>AI Insights</SectionTitle>
         <div className="full-feedback__insights">
           <div className="full-feedback__insights-row">
-            {AI_INSIGHTS.map((insight) => (
+            {insights.length === 0 && (
+              <InfoCard
+                title="No feedback returned"
+                description="The backend did not include candidate question feedback."
+                animated
+              />
+            )}
+            {insights.map((insight) => (
               <InfoCard
                 key={insight.id}
                 title={insight.title}
@@ -117,32 +89,42 @@ export const FullFeedback = memo(function FullFeedback() {
             ))}
           </div>
           <ActionCard
-            title={CHEATING_DETECTION.title}
+            title="Cheating Detection"
             showBadge
             badgeType="cheatingFlag"
-            badgeVariant={CHEATING_DETECTION.status}
-            badgeIcon={true}
-            content={CHEATING_DETECTION.description}
+            badgeVariant={candidate.antiCheat}
+            badgeIcon
+            content={
+              candidate.performance?.cheat
+                ? `Backend result: ${candidate.performance.cheat}`
+                : 'No cheat analysis returned.'
+            }
             animated
           />
         </div>
       </div>
 
-      {/* Question-by-Question Review */}
       <div className="full-feedback__section">
         <SectionTitle>Question-by-Question Review</SectionTitle>
         <div className="full-feedback__questions">
-          {QUESTIONS.map((q) => (
+          {questions.length === 0 && (
+            <InfoCard
+              title="No questions returned"
+              description="Candidate detail does not include question relations yet."
+              animated
+            />
+          )}
+          {questions.map((question) => (
             <QuestionCard
-              key={q.id}
-              questionNumber={q.number}
+              key={question.id}
+              questionNumber={question.number}
               variant="review"
-              title={q.title}
-              description={q.description}
-              difficulty={q.difficulty}
-              estimatedTime={q.time}
-              score={q.score}
-              answer={q.answer}
+              title={question.title}
+              description={question.description}
+              difficulty={question.difficulty}
+              estimatedTime={question.time}
+              score={question.score}
+              answer={question.answer}
             />
           ))}
         </div>
@@ -152,5 +134,6 @@ export const FullFeedback = memo(function FullFeedback() {
 });
 
 FullFeedback.propTypes = {
-  candidate: PropTypes.object,
+  candidate: PropTypes.object.isRequired,
 };
+

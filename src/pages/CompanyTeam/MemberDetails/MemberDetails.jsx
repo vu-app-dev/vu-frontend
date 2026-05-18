@@ -19,7 +19,6 @@ import { SectionTitle } from '../../../components/ui/SectionTitle';
 import {
   getMemberById,
   getMemberActivities,
-  updateMember,
   removeMember,
   acceptJoinRequest,
   declineJoinRequest,
@@ -41,10 +40,7 @@ export const MemberDetails = memo(function MemberDetails({
   onAccepted,
   onDeclined,
 }) {
-  const [refreshKey, setRefreshKey] = useState(0);
   const [assignRole, setAssignRole] = useState('viewer');
-  // refreshKey forces re-read from mutable data layer after writes (remove when API integration lands)
-  void refreshKey;
 
   const member = memberId ? getMemberById(memberId) : null;
   const isCurrentUser = memberId === CURRENT_USER_ID;
@@ -55,30 +51,21 @@ export const MemberDetails = memo(function MemberDetails({
     [member, memberId]
   );
 
-  const handleRoleChange = useCallback(
-    (newRole) => {
-      if (isCurrentUser && member?.role === 'owner') return;
-      updateMember(memberId, { role: newRole });
-      setRefreshKey((k) => k + 1);
-    },
-    [memberId, isCurrentUser, member?.role]
-  );
-
-  const handleRemove = useCallback(() => {
+  const handleRemove = useCallback(async () => {
     if (isCurrentUser) return;
-    const removed = removeMember(memberId);
+    const removed = await removeMember(memberId);
     if (removed) onRemoved?.();
   }, [memberId, isCurrentUser, onRemoved]);
 
-  const handleAcceptRequest = useCallback(() => {
+  const handleAcceptRequest = useCallback(async () => {
     if (!request) return;
-    const newMember = acceptJoinRequest(request.id, assignRole);
+    const newMember = await acceptJoinRequest(request.id, assignRole);
     if (newMember) onAccepted?.(newMember.id);
   }, [request, assignRole, onAccepted]);
 
-  const handleDeclineRequest = useCallback(() => {
+  const handleDeclineRequest = useCallback(async () => {
     if (!request) return;
-    declineJoinRequest(request.id);
+    await declineJoinRequest(request.id);
     onDeclined?.();
   }, [request, onDeclined]);
 
@@ -325,20 +312,6 @@ export const MemberDetails = memo(function MemberDetails({
           <div className="member-details__card">
             <SectionTitle variant="inline">Actions</SectionTitle>
             <div className="member-details__action-list">
-              {/* Role change */}
-              <div className="member-details__role-section">
-                <span className="member-details__label">Role</span>
-                {isCurrentUser && member.role === 'owner' ? (
-                  <Badge type="role" variant="owner" />
-                ) : (
-                  <RoleBadge
-                    value={member.role}
-                    onChange={handleRoleChange}
-                    disabled={isCurrentUser && member.role === 'owner'}
-                  />
-                )}
-              </div>
-
               {/* Remove member */}
               {!isCurrentUser && (
                 <Button
@@ -353,7 +326,7 @@ export const MemberDetails = memo(function MemberDetails({
 
               {isCurrentUser && (
                 <p className="member-details__self-note">
-                  This is your account. You cannot remove yourself or downgrade from Owner.
+                  This is your account. You cannot remove yourself.
                 </p>
               )}
             </div>
@@ -455,19 +428,6 @@ export const MemberDetails = memo(function MemberDetails({
           <div className="member-details__card">
             <SectionTitle variant="inline">Actions</SectionTitle>
             <div className="member-details__action-list">
-              <div className="member-details__role-section">
-                <span className="member-details__label">Role</span>
-                {isCurrentUser && member.role === 'owner' ? (
-                  <Badge type="role" variant="owner" />
-                ) : (
-                  <RoleBadge
-                    value={member.role}
-                    onChange={handleRoleChange}
-                    disabled={isCurrentUser && member.role === 'owner'}
-                  />
-                )}
-              </div>
-
               {!isCurrentUser && (
                 <Button
                   variant="danger"
@@ -481,7 +441,7 @@ export const MemberDetails = memo(function MemberDetails({
 
               {isCurrentUser && (
                 <p className="member-details__self-note">
-                  This is your account. You cannot remove yourself or downgrade from Owner.
+                  This is your account. You cannot remove yourself.
                 </p>
               )}
             </div>
@@ -595,9 +555,9 @@ export const MemberDetails = memo(function MemberDetails({
 });
 
 MemberDetails.propTypes = {
-  memberId: PropTypes.number,
+  memberId: PropTypes.string,
   request: PropTypes.shape({
-    id: PropTypes.number.isRequired,
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
     name: PropTypes.string.isRequired,
     email: PropTypes.string.isRequired,
     department: PropTypes.string,

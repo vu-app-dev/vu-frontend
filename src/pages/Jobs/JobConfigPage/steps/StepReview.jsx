@@ -8,27 +8,28 @@ import {
   EMAIL_TRIGGERS,
 } from '../../../../api';
 
-export function StepReview({ form, totalWeight, totalDuration, statusPreview, enabledEmailCount }) {
+export function StepReview({ form, totalWeight, totalDuration, enabledEmailCount }) {
   const deptLabel =
-    DEPARTMENT_OPTIONS.find((o) => o.value === form.department)?.label || form.department || '—';
+    DEPARTMENT_OPTIONS.find((o) => o.value === form.department)?.label || form.department || '-';
   const typeLabel =
-    JOB_TYPE_OPTIONS.find((o) => o.value === form.jobType)?.label || form.jobType || '—';
+    JOB_TYPE_OPTIONS.find((o) => o.value === form.jobType)?.label || form.jobType || '-';
   const seniorityLabel =
-    SENIORITY_OPTIONS.find((o) => o.value === form.seniority)?.label || form.seniority || '—';
+    SENIORITY_OPTIONS.find((o) => o.value === form.seniority)?.label || form.seniority || '-';
   const locLabel =
     LOCATION_TYPE_OPTIONS.find((o) => o.value === form.locationType)?.label ||
     form.locationType ||
-    '—';
+    '-';
+  const scheduleMode = form.scheduleMode || 'active';
+  const scheduleLabel = { active: 'Active', scheduled: 'Scheduled' }[scheduleMode] || 'Active';
 
   return (
     <>
-      {/* Job Info */}
       <section className="create-job__section">
         <SectionTitle variant="inline">Job Information</SectionTitle>
         <div className="create-job__review-row">
           <div className="create-job__review-group">
             <span className="create-job__review-label">Job Title</span>
-            <span className="create-job__review-value">{form.title || '—'}</span>
+            <span className="create-job__review-value">{form.title || '-'}</span>
           </div>
           <div className="create-job__review-group">
             <span className="create-job__review-label">Department</span>
@@ -50,15 +51,15 @@ export function StepReview({ form, totalWeight, totalDuration, statusPreview, en
             <span className="create-job__review-label">Location</span>
             <span className="create-job__review-value">
               {locLabel}
-              {form.location ? ` — ${form.location}` : ''}
+              {form.location ? ` - ${form.location}` : ''}
             </span>
           </div>
         </div>
-        {form.skills.length > 0 && (
+        {form.technologies.length > 0 && (
           <div className="create-job__review-group">
-            <span className="create-job__review-label">Skills</span>
+            <span className="create-job__review-label">Technologies</span>
             <div className="create-job__review-tags">
-              {form.skills.map((s) => (
+              {form.technologies.map((s) => (
                 <span key={s} className="create-job__review-tag">
                   {s}
                 </span>
@@ -74,7 +75,6 @@ export function StepReview({ form, totalWeight, totalDuration, statusPreview, en
         )}
       </section>
 
-      {/* Scoring Formula */}
       {form.mocks.length > 0 && (
         <section className="create-job__section">
           <SectionTitle variant="inline">Scoring Formula</SectionTitle>
@@ -97,7 +97,6 @@ export function StepReview({ form, totalWeight, totalDuration, statusPreview, en
         </section>
       )}
 
-      {/* Pipeline */}
       <section className="create-job__section">
         <SectionTitle variant="inline">Estimated Hiring Pipeline</SectionTitle>
         <div className="create-job__pipeline">
@@ -116,36 +115,28 @@ export function StepReview({ form, totalWeight, totalDuration, statusPreview, en
         </div>
       </section>
 
-      {/* Scheduling & Emails */}
       <section className="create-job__section">
         <SectionTitle variant="inline">Scheduling & Emails</SectionTitle>
         <div className="create-job__review-row">
           <div className="create-job__review-group">
-            <span className="create-job__review-label">Start Date</span>
-            <span className="create-job__review-value">{form.startDate || 'Immediately'}</span>
+            <span className="create-job__review-label">Availability</span>
+            <span className="create-job__review-value">{scheduleLabel}</span>
           </div>
           <div className="create-job__review-group">
             <span className="create-job__review-label">End Date</span>
-            <span className="create-job__review-value">{form.endDate || 'No end date'}</span>
+            <span className="create-job__review-value">{form.endDate || '-'}</span>
           </div>
         </div>
         <div className="create-job__review-row">
+          {scheduleMode === 'scheduled' && (
+            <div className="create-job__review-group">
+              <span className="create-job__review-label">Open Date</span>
+              <span className="create-job__review-value">{form.startDate || '-'}</span>
+            </div>
+          )}
           <div className="create-job__review-group">
             <span className="create-job__review-label">Max Candidates</span>
             <span className="create-job__review-value">{form.maxCandidates || 'Unlimited'}</span>
-          </div>
-          <div className="create-job__review-group">
-            <span className="create-job__review-label">Status</span>
-            <div>
-              {statusPreview.map((line, i) => (
-                <div key={i} className="create-job__status-row">
-                  <span
-                    className={`create-job__status-dot create-job__status-dot--${line.color}`}
-                  />
-                  <span>{line.text}</span>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
         <div className="create-job__review-group">

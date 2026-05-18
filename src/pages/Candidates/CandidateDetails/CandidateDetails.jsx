@@ -1,49 +1,37 @@
 import { useState, useMemo, useCallback, useRef, useEffect, memo } from 'react';
 import PropTypes from 'prop-types';
 import { Briefcase, MapPin, Calendar, Check, List, X } from 'lucide-react';
-import { EntityCard } from '../../../components/ui/Cards';
+import { EntityCard, ActionCard } from '../../../components/ui/Cards';
+import { Button } from '../../../components/ui/Button';
 import { Tabs } from '../../../components/ui/Tabs';
 import { SectionTitle } from '../../../components/ui/SectionTitle';
-import { ActionCard } from '../../../components/ui/Cards';
 import { FullFeedback } from './FullFeedback';
 import { MockReplay } from './MockReplay';
 import { CVAnalysis } from './CVAnalysis';
+import { canCurrentUser, updateCandidateStatus, useBackendData } from '../../../api';
 import './CandidateDetails.css';
 
-const COMPLETED_MOCKS = [
-  {
-    id: 1,
-    title: 'Technical Coding Challenge',
-    subtitle: 'Hard • Technical • 60min',
-    score: 95,
-  },
-  {
-    id: 2,
-    title: 'System Design Interview',
-    subtitle: 'Medium \u2022 Architecture \u2022 45min',
-    score: 77,
-  },
-  {
-    id: 3,
-    title: 'Behavioral Assessment',
-    subtitle: 'Easy \u2022 Soft Skills \u2022 30min',
-    score: 88,
-  },
-];
-
 const DECISION_ACTIONS = [
-  { id: 'accept', label: 'Accept', icon: Check, className: 'candidate-details__decision--accept' },
+  {
+    id: 'accept',
+    label: 'Accepted',
+    icon: Check,
+    className: 'candidate-details__decision--accept',
+  },
   {
     id: 'shortlist',
     label: 'Shortlist',
     icon: List,
     className: 'candidate-details__decision--shortlist',
   },
-  { id: 'reject', label: 'Reject', icon: X, className: 'candidate-details__decision--reject' },
+  { id: 'reject', label: 'Rejected', icon: X, className: 'candidate-details__decision--reject' },
 ];
 
 export const CandidateDetails = memo(function CandidateDetails({ candidate }) {
+  const { dataVersion } = useBackendData();
+  void dataVersion;
   const [activeTab, setActiveTab] = useState('feedback');
+  const [pendingDecision, setPendingDecision] = useState(null);
   const [isCompactLayout, setIsCompactLayout] = useState(
     () => window.matchMedia && window.matchMedia('(max-width: 1023px)').matches
   );
@@ -52,8 +40,6 @@ export const CandidateDetails = memo(function CandidateDetails({ candidate }) {
   useEffect(() => {
     const media = window.matchMedia('(max-width: 1023px)');
     const updateLayoutMode = (event) => setIsCompactLayout(event.matches);
-
-    setIsCompactLayout(media.matches);
 
     if (media.addEventListener) {
       media.addEventListener('change', updateLayoutMode);
@@ -67,6 +53,17 @@ export const CandidateDetails = memo(function CandidateDetails({ candidate }) {
   const handleTabChange = useCallback((tab) => {
     setActiveTab(tab);
   }, []);
+
+  const completedMocks = useMemo(
+    () =>
+      (candidate.questions || []).map((question, index) => ({
+        id: question.id || index + 1,
+        title: question.question || question.title || `Question ${index + 1}`,
+        subtitle: `${question.durationInMinutes || question.estimatedTimeInMinutes || 0} min`,
+        score: question.score || 0,
+      })),
+    [candidate]
+  );
 
   const tabs = useMemo(() => {
     const baseTabs = [
@@ -99,10 +96,59 @@ export const CandidateDetails = memo(function CandidateDetails({ candidate }) {
     ];
   }, [activeTab, handleTabChange, isCompactLayout]);
 
-  const handleDecision = useCallback((action) => {
-    // TODO: wire to candidate state update
-    void action;
-  }, []);
+  const handleDecision = useCallback(
+    async (action) => {
+      if (['accepted', 'rejected'].includes(candidate.status)) {
+        window.alert('This candidate already has a final decision.');
+        return;
+      }
+
+      try {
+        await updateCandidateStatus(candidate.id, action);
+      } catch (error) {
+        window.alert(error.message || 'Unable to update candidate.');
+      }
+    },
+    [candidate.id, candidate.status]
+  );
+
+  const requestDecision = useCallback(
+    (action) => {
+      if (action === 'accept' || action === 'reject') {
+        setPendingDecision(action);
+        return;
+      }
+
+      void handleDecision(action);
+    },
+    [handleDecision]
+  );
+
+  const confirmDecision = useCallback(async () => {
+    if (!pendingDecision) return;
+    const action = pendingDecision;
+    setPendingDecision(null);
+    await handleDecision(action);
+  }, [handleDecision, pendingDecision]);
+
+  const canChangeCandidateStatus = useMemo(() => {
+    void dataVersion;
+    return canCurrentUser('change_candidate_status');
+  }, [dataVersion]);
+
+  const visibleDecisionActions = useMemo(() => {
+    if (!canChangeCandidateStatus) return [];
+    if (['accepted', 'rejected'].includes(candidate.status)) return [];
+    if (candidate.status === 'shortlist' || candidate.status === 'shortlisted') {
+      return DECISION_ACTIONS.filter((action) => action.id !== 'shortlist');
+    }
+    return DECISION_ACTIONS;
+  }, [canChangeCandidateStatus, candidate.status]);
+
+  const pendingDecisionAction = useMemo(
+    () => DECISION_ACTIONS.find((action) => action.id === pendingDecision),
+    [pendingDecision]
+  );
 
   const decisionSection = (
     <div
@@ -116,18 +162,65 @@ export const CandidateDetails = memo(function CandidateDetails({ candidate }) {
     >
       <SectionTitle>Select Decision</SectionTitle>
       <div className="candidate-details__decisions">
-        {DECISION_ACTIONS.map((action) => (
+        {visibleDecisionActions.length === 0 && (
+          <p className="candidate-details__empty-text">
+            {canChangeCandidateStatus
+              ? 'Final decision selected.'
+              : 'Decision actions are read-only for your role.'}
+          </p>
+        )}
+        {visibleDecisionActions.map((action) => (
           <button
             key={action.id}
             className={['candidate-details__decision-btn', action.className]
               .filter(Boolean)
               .join(' ')}
-            onClick={() => handleDecision(action.id)}
+            onClick={() => requestDecision(action.id)}
           >
             <action.icon size={18} className="candidate-details__decision-icon" />
             <span>{action.label}</span>
           </button>
         ))}
+      </div>
+    </div>
+  );
+
+  const applicationInfoSection = (
+    <div
+      className={[
+        'candidate-details__sidebar-section',
+        'candidate-details__sidebar-section--info',
+        isCompactLayout && 'candidate-details__sidebar-section--compact',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
+      <SectionTitle>Application Info</SectionTitle>
+      <div className="candidate-details__info-list">
+        <div className="candidate-details__info-row">
+          <span>Phone</span>
+          <strong>{candidate.phone || 'Not provided'}</strong>
+        </div>
+        <div className="candidate-details__info-row">
+          <span>LinkedIn</span>
+          {candidate.linkedin ? (
+            <a href={candidate.linkedin} target="_blank" rel="noreferrer">
+              Open profile
+            </a>
+          ) : (
+            <strong>Not provided</strong>
+          )}
+        </div>
+        <div className="candidate-details__info-row">
+          <span>Resume</span>
+          {candidate.cvUrl ? (
+            <a href={candidate.cvUrl} target="_blank" rel="noreferrer">
+              {candidate.resumeName || 'Open resume'}
+            </a>
+          ) : (
+            <strong>{candidate.resumeName || 'Not provided'}</strong>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -144,7 +237,10 @@ export const CandidateDetails = memo(function CandidateDetails({ candidate }) {
     >
       <SectionTitle>Completed Mocks</SectionTitle>
       <div className="candidate-details__mocks">
-        {COMPLETED_MOCKS.map((mock) => (
+        {completedMocks.length === 0 && (
+          <p className="candidate-details__empty-text">No completed mock data returned.</p>
+        )}
+        {completedMocks.map((mock) => (
           <ActionCard
             key={mock.id}
             title={mock.title}
@@ -161,17 +257,20 @@ export const CandidateDetails = memo(function CandidateDetails({ candidate }) {
 
   return (
     <div className="candidate-details">
-      {/* Left Section */}
       <div className="candidate-details__main">
         <EntityCard
           userName={candidate.name}
-          userEmail={`${candidate.name.toLowerCase().replace(/\s+/g, '.')}@email.com`}
+          userEmail={candidate.email}
           showBadge
           badgeType="candidateState"
           badgeVariant={candidate.status}
           score={candidate.score}
           colLeft={{ icon: Briefcase, title: candidate.job, subtitle: 'Applied Job' }}
-          colMid={{ icon: MapPin, title: 'Cairo, Egypt', subtitle: 'Location' }}
+          colMid={{
+            icon: MapPin,
+            title: candidate.location || 'Not provided',
+            subtitle: 'Location',
+          }}
           colRight={{ icon: Calendar, title: candidate.date, subtitle: 'Applied Date' }}
           animated={false}
         />
@@ -183,6 +282,7 @@ export const CandidateDetails = memo(function CandidateDetails({ candidate }) {
             {activeTab === 'actions' && isCompactLayout && (
               <div className="candidate-details__actions-tab-content">
                 {decisionSection}
+                {applicationInfoSection}
                 {completedMocksSection}
               </div>
             )}
@@ -193,23 +293,61 @@ export const CandidateDetails = memo(function CandidateDetails({ candidate }) {
         </div>
       </div>
 
-      {/* Right Section */}
       <aside className="candidate-details__sidebar">
         {decisionSection}
+        {applicationInfoSection}
         {completedMocksSection}
       </aside>
+
+      {pendingDecisionAction && (
+        <div className="candidate-details__modal-backdrop" role="presentation">
+          <div
+            className="candidate-details__modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="candidate-decision-title"
+          >
+            <h3 id="candidate-decision-title" className="candidate-details__modal-title">
+              Confirm {pendingDecisionAction.label}
+            </h3>
+            <p className="candidate-details__modal-copy">
+              This decision is permanent. Once you mark this candidate as{' '}
+              {pendingDecisionAction.label.toLowerCase()}, it cannot be changed back.
+            </p>
+            <div className="candidate-details__modal-actions">
+              <Button variant="ghost" size="sm" onClick={() => setPendingDecision(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant={pendingDecision === 'reject' ? 'danger' : 'primary'}
+                size="sm"
+                onClick={confirmDecision}
+              >
+                Confirm
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
 
 CandidateDetails.propTypes = {
   candidate: PropTypes.shape({
-    id: PropTypes.number.isRequired,
+    id: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired,
+    email: PropTypes.string,
+    phone: PropTypes.string,
+    location: PropTypes.string,
+    linkedin: PropTypes.string,
+    resumeName: PropTypes.string,
+    cvUrl: PropTypes.string,
     job: PropTypes.string.isRequired,
     score: PropTypes.number.isRequired,
     date: PropTypes.string.isRequired,
     antiCheat: PropTypes.string.isRequired,
     status: PropTypes.string.isRequired,
+    questions: PropTypes.array,
   }).isRequired,
 };

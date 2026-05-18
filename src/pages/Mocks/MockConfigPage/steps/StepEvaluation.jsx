@@ -7,14 +7,18 @@ import { QuestionCard } from '../../../../components/ui/Cards';
 export function StepEvaluation({
   form,
   isActive,
-  addCriterion,
-  removeCriterion,
-  updateCriterion,
+  addTopic,
+  removeTopic,
+  updateTopic,
   addQuestion,
   removeQuestion,
   updateQuestion,
   updateQuestionWeight,
   totalWeight,
+  validationErrors,
+  markTouched,
+  touched = {},
+  attemptedErrors = {},
 }) {
   const weightClass =
     totalWeight === 100
@@ -23,71 +27,87 @@ export function StepEvaluation({
         ? 'create-mock__weight-value--over'
         : '';
 
-  const totalItems = form.criteria.length + form.questions.length;
+  const totalItems = form.topics.length + form.questions.length;
 
   return (
     <>
       <section className="create-mock__section">
         <SectionTitle
           variant="inline"
-          description="All criteria and questions share a single 100% weight pool. Weights auto-redistribute when items are added."
+          description="All topics and questions share a single 100% weight pool. Weights auto-redistribute when items are added."
         >
           Evaluation Structure
         </SectionTitle>
 
         {totalItems > 0 && (
           <div className="create-mock__weight-bar">
-            <span className="create-mock__weight-label">Total Weight (Criteria + Questions)</span>
+            <span className="create-mock__weight-label">Total Weight (Topics + Questions)</span>
             <span className={`create-mock__weight-value ${weightClass}`}>{totalWeight}%</span>
           </div>
         )}
+        {validationErrors?.totalWeight && (
+          <p className="create-mock__hint">{validationErrors.totalWeight}</p>
+        )}
+        {validationErrors?.items && <p className="create-mock__hint">{validationErrors.items}</p>}
       </section>
 
-      {/* Criteria section */}
+      {/* Topics section */}
       <section className="create-mock__section">
-        <SectionTitle variant="inline" description="Define scoring criteria with weights">
-          Scoring Criteria
+        <SectionTitle variant="inline" description="Define scoring topics with weights">
+          Scoring Topics
         </SectionTitle>
 
-        {form.criteria.length > 0 && (
+            {form.topics.length > 0 && (
           <div className="create-mock__criteria-list">
-            {form.criteria.map((criterion) => (
-              <div key={criterion.id} className="create-mock__criteria-item">
+            {form.topics.map((topic) => (
+              <div key={topic.id} className="create-mock__criteria-item">
                 <div className="create-mock__criteria-name">
                   <TextInput
                     showLabel={false}
-                    showHint={false}
                     placeholder="e.g. Problem Solving"
-                    value={criterion.name}
-                    onChange={(e) => updateCriterion(criterion.id, 'name', e.target.value)}
+                    value={topic.name}
+                    onChange={(e) => updateTopic(topic.id, 'name', e.target.value)}
+                    onBlur={() => markTouched?.(`topic:${topic.id}`)}
+                    error={
+                      Boolean(validationErrors?.topics?.[topic.id]) &&
+                      (Boolean(touched[`topic:${topic.id}`]) || Boolean(attemptedErrors[1]))
+                    }
+                    hint={
+                      Boolean(validationErrors?.topics?.[topic.id]) &&
+                      (Boolean(touched[`topic:${topic.id}`]) || Boolean(attemptedErrors[1]))
+                        ? validationErrors?.topics?.[topic.id]
+                        : ''
+                    }
+                    disabled={isActive}
                   />
                 </div>
                 <div className="create-mock__criteria-weight">
                   <TextInput
                     showLabel={false}
                     showHint={false}
-                    value={String(criterion.weight)}
-                    onChange={(e) => updateCriterion(criterion.id, 'weight', e.target.value)}
+                    value={String(topic.weight)}
+                    onChange={(e) => updateTopic(topic.id, 'weight', e.target.value)}
                     placeholder="%"
+                    disabled={isActive}
                   />
                 </div>
-                {!isActive && (
-                  <button
-                    type="button"
-                    className="create-mock__criteria-remove"
-                    onClick={() => removeCriterion(criterion.id)}
-                    aria-label={`Remove ${criterion.name}`}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="create-mock__criteria-remove"
+                  onClick={() => removeTopic(topic.id)}
+                  disabled={isActive}
+                  title={isActive ? 'Cannot remove topics from an active mock' : `Remove topic`}
+                  aria-label={`Remove ${topic.name}`}
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
             ))}
           </div>
         )}
 
-        <Button variant="dashed" iconLeft={<Plus size={16} />} onClick={addCriterion}>
-          Add Criterion
+        <Button variant="dashed" iconLeft={<Plus size={16} />} onClick={addTopic} disabled={isActive}>
+          Add Topic
         </Button>
       </section>
 
@@ -99,7 +119,7 @@ export function StepEvaluation({
 
         {form.questions.length > 0 && (
           <div className="create-mock__questions-list">
-            {form.questions.map((question, idx) => (
+                {form.questions.map((question, idx) => (
               <div key={question.id} className="create-mock__question-wrapper">
                 <QuestionCard
                   questionNumber={idx + 1}
@@ -111,6 +131,18 @@ export function StepEvaluation({
                   defaultExpanded={!question.title}
                   onChange={(data) => updateQuestion(question.id, data)}
                   onRemove={isActive ? undefined : () => removeQuestion(question.id)}
+                      questionId={question.id}
+                      errors={(() => {
+                        const qErr = validationErrors?.questions?.[question.id];
+                        if (!qErr) return null;
+                        const visible = {};
+                        if (attemptedErrors[1] || touched[`question:${question.id}:title`]) visible.title = qErr.title;
+                        if (attemptedErrors[1] || touched[`question:${question.id}:description`]) visible.description = qErr.description;
+                        if (attemptedErrors[1] || touched[`question:${question.id}:difficulty`]) visible.difficulty = qErr.difficulty;
+                        if (attemptedErrors[1] || touched[`question:${question.id}:estimatedTime`]) visible.estimatedTime = qErr.estimatedTime;
+                        return Object.keys(visible).length ? visible : null;
+                      })()}
+                      markTouched={markTouched}
                 />
                 <div className="create-mock__question-weight">
                   <span className="create-mock__question-weight-label">Weight</span>
@@ -121,6 +153,7 @@ export function StepEvaluation({
                       value={String(question.weight)}
                       onChange={(e) => updateQuestionWeight(question.id, e.target.value)}
                       placeholder="%"
+                      disabled={isActive}
                     />
                   </div>
                 </div>
@@ -129,7 +162,12 @@ export function StepEvaluation({
           </div>
         )}
 
-        <Button variant="dashed" iconLeft={<Plus size={16} />} onClick={addQuestion}>
+        <Button
+          variant="dashed"
+          iconLeft={<Plus size={16} />}
+          onClick={addQuestion}
+          disabled={isActive}
+        >
           Add Question
         </Button>
       </section>

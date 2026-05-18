@@ -27,6 +27,6 @@ export const MockSession = memo(function MockSession({ mockId, onComplete }) {
 });
 
 MockSession.propTypes = {
-  mockId: PropTypes.number.isRequired,
+  mockId: PropTypes.string.isRequired,
   onComplete: PropTypes.func.isRequired,
 };

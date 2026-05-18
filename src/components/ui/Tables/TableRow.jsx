@@ -16,6 +16,7 @@ export const TableRow = memo(function TableRow({
   gridTemplateColumns,
   menuOpen = false,
   onMenuClose,
+  menuOptions,
 }) {
   const isClickable = !!onClick;
   const menuBtnRef = useRef(null);
@@ -55,6 +56,7 @@ export const TableRow = memo(function TableRow({
             <MoreHorizontal size={16} />
           </button>
           <RowMenu
+            options={menuOptions}
             open={menuOpen}
             onClose={onMenuClose}
             onSelect={onMenuSelect}
@@ -78,4 +80,5 @@ TableRow.propTypes = {
   gridTemplateColumns: PropTypes.string,
   menuOpen: PropTypes.bool,
   onMenuClose: PropTypes.func,
+  menuOptions: PropTypes.array,
 };

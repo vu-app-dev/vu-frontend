@@ -11,20 +11,21 @@ import {
 import { redistributeWeightsPair } from '../../../utils';
 import './MockConfigForm.css';
 
-/* -------------------------------------------------
-   MockConfigForm  (3-step)
-   Step 0 ï¿½ Basic Info & Skills
-   Step 1 ï¿½ Evaluation (criteria + questions, shared 100% pool)
-   Step 2 ï¿½ Review & Publish / Save
+const MIN_TITLE_LENGTH = 3;
+const MIN_DESCRIPTION_LENGTH = 10;
 
-   Props:
-     mode         ï¿½ 'create' | 'edit'
-     initialData  ï¿½ pre-filled form (edit)
-     isActive     ï¿½ true when mock is used in active job (limits editing)
-     onPublish    ï¿½ (form) => void
-     onSaveDraft  ï¿½ (form) => void  (create only)
-     onSaveChanges ï¿½ (form) => void (edit only)
-   ------------------------------------------------- */
+function validateMockBasics(form) {
+  const errors = {};
+  if (form.title.trim().length < MIN_TITLE_LENGTH)
+    errors.title = `Mock name must be at least ${MIN_TITLE_LENGTH} characters.`;
+  if (!form.type) errors.type = 'Type is required.';
+  if (!form.difficulty) errors.difficulty = 'Difficulty is required.';
+  if (!form.durationMin) errors.durationMin = 'Estimated duration is required.';
+  if (form.description.trim().length < MIN_DESCRIPTION_LENGTH)
+    errors.description = `Description must be at least ${MIN_DESCRIPTION_LENGTH} characters.`;
+  if (!form.technologies.length) errors.technologies = 'Add at least one technology.';
+  return errors;
+}
 
 export const MockConfigForm = memo(function MockConfigForm({
   mode = 'create',
@@ -38,93 +39,99 @@ export const MockConfigForm = memo(function MockConfigForm({
 
   const [activeStep, setActiveStep] = useState(0);
   const [form, setForm] = useState(initialData ?? INITIAL_MOCK_FORM);
+  const [touched, setTouched] = useState({});
+  const [attemptedErrors, setAttemptedErrors] = useState({});
+  const markTouched = useCallback((field) => setTouched((p) => ({ ...p, [field]: true })), []);
   const pageScrollRef = useRef(null);
 
-  /** Track manually-edited weight ids (criteria + questions share one set) */
+  /** Track manually-edited weight ids (topics + questions share one set) */
   const manualWeightIds = useRef(new Set());
 
   /* -- Field helpers -- */
   const updateField = useCallback((field, value) => setForm((p) => ({ ...p, [field]: value })), []);
 
-  /* -- Skills -- */
-  const addSkill = useCallback((tag) => {
+  /* -- Technologies -- */
+  const addTechnology = useCallback((tag) => {
+    if (isActive) return;
     const n = tag.trim().charAt(0).toUpperCase() + tag.trim().slice(1);
     if (!n) return;
     setForm((p) =>
-      p.skills.some((s) => s.toLowerCase() === n.toLowerCase())
+      p.technologies.some((s) => s.toLowerCase() === n.toLowerCase())
         ? p
-        : { ...p, skills: [...p.skills, n] }
+        : { ...p, technologies: [...p.technologies, n] }
     );
-  }, []);
+  }, [isActive]);
 
-  const removeSkill = useCallback(
+  const removeTechnology = useCallback(
     (tag) => {
       if (isActive) return;
-      setForm((p) => ({ ...p, skills: p.skills.filter((s) => s !== tag) }));
+      setForm((p) => ({ ...p, technologies: p.technologies.filter((s) => s !== tag) }));
     },
     [isActive]
   );
 
   /* -- Shared weight redistribution -- */
-  const redistribute = useCallback((criteria, questions, targetId, targetWeight) => {
+  const redistribute = useCallback((topics, questions, targetId, targetWeight) => {
     const { listA, listB } = redistributeWeightsPair(
-      criteria,
+      topics,
       questions,
       manualWeightIds.current,
       targetId,
       targetWeight
     );
-    return { criteria: listA, questions: listB };
+    return { topics: listA, questions: listB };
   }, []);
 
-  /* -- Criteria -- */
-  const addCriterion = useCallback(() => {
+  /* -- Topics -- */
+  const addTopic = useCallback(() => {
+    if (isActive) return;
     manualWeightIds.current.clear();
     setForm((p) => {
-      const newCriteria = [...p.criteria, { id: `c${Date.now()}`, name: '', weight: 0 }];
-      const { criteria, questions } = redistribute(newCriteria, p.questions, null, 0);
-      return { ...p, criteria, questions };
+      const newTopics = [...p.topics, { id: `t${Date.now()}`, name: '', weight: 0 }];
+      const { topics, questions } = redistribute(newTopics, p.questions, null, 0);
+      return { ...p, topics, questions };
     });
-  }, [redistribute]);
+  }, [isActive, redistribute]);
 
-  const removeCriterion = useCallback(
+  const removeTopic = useCallback(
     (id) => {
       if (isActive) return;
       manualWeightIds.current.delete(id);
       setForm((p) => {
-        const newCriteria = p.criteria.filter((c) => c.id !== id);
-        if (!newCriteria.length && !p.questions.length)
-          return { ...p, criteria: [], questions: [] };
+        const newTopics = p.topics.filter((c) => c.id !== id);
+        if (!newTopics.length && !p.questions.length) return { ...p, topics: [], questions: [] };
 
-        const { criteria, questions } = redistribute(newCriteria, p.questions, null, 0);
-        return { ...p, criteria, questions };
+        const { topics, questions } = redistribute(newTopics, p.questions, null, 0);
+        return { ...p, topics, questions };
       });
     },
     [isActive, redistribute]
   );
 
-  const updateCriterion = useCallback(
+  const updateTopic = useCallback(
     (id, field, value) => {
+      if (isActive) return;
       if (field === 'weight') {
         const num = Math.max(0, Math.min(100, parseInt(value, 10) || 0));
         manualWeightIds.current.add(id);
         setForm((p) => {
-          const updated = p.criteria.map((c) => (c.id === id ? { ...c, weight: num } : c));
-          const { criteria, questions } = redistribute(updated, p.questions, id, num);
-          return { ...p, criteria, questions };
+          const updated = p.topics.map((c) => (c.id === id ? { ...c, weight: num } : c));
+          const { topics, questions } = redistribute(updated, p.questions, id, num);
+          return { ...p, topics, questions };
         });
       } else {
         setForm((p) => ({
           ...p,
-          criteria: p.criteria.map((c) => (c.id === id ? { ...c, [field]: value } : c)),
+          topics: p.topics.map((c) => (c.id === id ? { ...c, [field]: value } : c)),
         }));
       }
     },
-    [redistribute]
+    [isActive, redistribute]
   );
 
   /* -- Questions -- */
   const addQuestion = useCallback(() => {
+    if (isActive) return;
     manualWeightIds.current.clear();
     setForm((p) => {
       const newQuestions = [
@@ -138,10 +145,10 @@ export const MockConfigForm = memo(function MockConfigForm({
           weight: 0,
         },
       ];
-      const { criteria, questions } = redistribute(p.criteria, newQuestions, null, 0);
-      return { ...p, criteria, questions };
+      const { topics, questions } = redistribute(p.topics, newQuestions, null, 0);
+      return { ...p, topics, questions };
     });
-  }, [redistribute]);
+  }, [isActive, redistribute]);
 
   const removeQuestion = useCallback(
     (id) => {
@@ -149,75 +156,116 @@ export const MockConfigForm = memo(function MockConfigForm({
       manualWeightIds.current.delete(id);
       setForm((p) => {
         const newQuestions = p.questions.filter((q) => q.id !== id);
-        if (!newQuestions.length && !p.criteria.length)
-          return { ...p, criteria: [], questions: [] };
+        if (!newQuestions.length && !p.topics.length) return { ...p, topics: [], questions: [] };
 
-        const { criteria, questions } = redistribute(p.criteria, newQuestions, null, 0);
-        return { ...p, criteria, questions };
+        const { topics, questions } = redistribute(p.topics, newQuestions, null, 0);
+        return { ...p, topics, questions };
       });
     },
     [isActive, redistribute]
   );
 
-  const updateQuestion = useCallback((id, data) => {
-    setForm((p) => ({
-      ...p,
-      questions: p.questions.map((q) => (q.id === id ? { ...q, ...data } : q)),
-    }));
-  }, []);
+  const updateQuestion = useCallback(
+    (id, data) => {
+      if (isActive) return;
+      setForm((p) => ({
+        ...p,
+        questions: p.questions.map((q) => (q.id === id ? { ...q, ...data } : q)),
+      }));
+    },
+    [isActive]
+  );
 
   const updateQuestionWeight = useCallback(
     (id, weight) => {
+      if (isActive) return;
       const num = Math.max(0, Math.min(100, parseInt(weight, 10) || 0));
       manualWeightIds.current.add(id);
       setForm((p) => {
         const updated = p.questions.map((q) => (q.id === id ? { ...q, weight: num } : q));
-        const { criteria, questions } = redistribute(p.criteria, updated, id, num);
-        return { ...p, criteria, questions };
+        const { topics, questions } = redistribute(p.topics, updated, id, num);
+        return { ...p, topics, questions };
       });
     },
-    [redistribute]
+    [isActive, redistribute]
   );
 
   /* -- Derived values -- */
   const totalWeight = useMemo(
     () =>
-      form.criteria.reduce((s, c) => s + (parseInt(c.weight, 10) || 0), 0) +
+      form.topics.reduce((s, c) => s + (parseInt(c.weight, 10) || 0), 0) +
       form.questions.reduce((s, q) => s + (parseInt(q.weight, 10) || 0), 0),
-    [form.criteria, form.questions]
+    [form.topics, form.questions]
   );
 
-  const totalItems = form.criteria.length + form.questions.length;
+  const totalItems = form.topics.length + form.questions.length;
+
+  const basicErrors = useMemo(() => validateMockBasics(form), [form]);
+
+  const evaluationErrors = useMemo(() => {
+    const topicErrors = {};
+    for (const topic of form.topics) {
+      const name = String(topic.name || '').trim();
+      if (!name) topicErrors[topic.id] = 'Topic name is required.';
+      else if (name.length < 3) topicErrors[topic.id] = 'Topic name must be at least 3 characters.';
+    }
+
+    const questionErrors = {};
+    for (const question of form.questions) {
+      const next = {};
+      if (String(question.title || '').trim().length < 3)
+        next.title = 'Question title must be at least 3 characters.';
+      if (String(question.description || '').trim().length < 10)
+        next.description = 'Question description must be at least 10 characters.';
+      if (!question.difficulty) next.difficulty = 'Question difficulty is required.';
+      if (!question.estimatedTime) next.estimatedTime = 'Estimated time is required.';
+      if (Object.keys(next).length) questionErrors[question.id] = next;
+    }
+
+    return {
+      items: totalItems > 0 ? '' : 'Add at least one topic or question.',
+      totalWeight: totalWeight === 100 ? '' : 'Total weight must equal 100%.',
+      topics: topicErrors,
+      questions: questionErrors,
+    };
+  }, [form.questions, form.topics, totalItems, totalWeight]);
+
+  const hasEvaluationFieldErrors =
+    Object.keys(evaluationErrors.topics).length > 0 ||
+    Object.keys(evaluationErrors.questions).length > 0;
 
   const stepValidity = useMemo(
     () => ({
-      0: !!(
-        form.title.trim() &&
-        form.type &&
-        form.difficulty &&
-        form.durationMin &&
-        form.skills.length > 0
-      ),
-      1: totalItems > 0 && totalWeight === 100,
-      2: true,
+      0: Object.keys(basicErrors).length === 0,
+      1: totalItems > 0 && totalWeight === 100 && !hasEvaluationFieldErrors,
+      2:
+        Object.keys(basicErrors).length === 0 &&
+        totalItems > 0 &&
+        totalWeight === 100 &&
+        !hasEvaluationFieldErrors,
     }),
-    [
-      form.title,
-      form.type,
-      form.difficulty,
-      form.durationMin,
-      form.skills.length,
-      totalItems,
-      totalWeight,
-    ]
+    [basicErrors, hasEvaluationFieldErrors, totalItems, totalWeight]
   );
 
-  const canNext = stepValidity[activeStep];
+  // const canNext = stepValidity[activeStep];
   const goNext = useCallback(
     () => setActiveStep((s) => Math.min(s + 1, STEPS.length - 1)),
     [STEPS.length]
   );
+  const handleNext = useCallback(() => {
+    if (stepValidity[activeStep]) goNext();
+    else setAttemptedErrors((p) => ({ ...p, [activeStep]: true }));
+  }, [activeStep, goNext, stepValidity]);
   const goBack = useCallback(() => setActiveStep((s) => Math.max(s - 1, 0)), []);
+  const showFieldError = useCallback(
+    (field) => {
+      // basic top-level fields
+      if (basicErrors && basicErrors[field])
+        return Boolean(touched[field]) || Boolean(attemptedErrors[activeStep]);
+      return false;
+    },
+    [basicErrors, touched, attemptedErrors, activeStep]
+  );
 
   useEffect(() => {
     pageScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -231,9 +279,12 @@ export const MockConfigForm = memo(function MockConfigForm({
           <StepBasicInfoSkills
             form={form}
             updateField={updateField}
-            addSkill={addSkill}
-            removeSkill={removeSkill}
+            addTechnology={addTechnology}
+            removeTechnology={removeTechnology}
             isActive={isActive}
+            validationErrors={basicErrors}
+            markTouched={markTouched}
+            showFieldError={showFieldError}
           />
         );
       case 1:
@@ -241,14 +292,18 @@ export const MockConfigForm = memo(function MockConfigForm({
           <StepEvaluation
             form={form}
             isActive={isActive}
-            addCriterion={addCriterion}
-            removeCriterion={removeCriterion}
-            updateCriterion={updateCriterion}
+            addTopic={addTopic}
+            removeTopic={removeTopic}
+            updateTopic={updateTopic}
             addQuestion={addQuestion}
             removeQuestion={removeQuestion}
             updateQuestion={updateQuestion}
             updateQuestionWeight={updateQuestionWeight}
             totalWeight={totalWeight}
+            validationErrors={evaluationErrors}
+            markTouched={markTouched}
+            touched={touched}
+            attemptedErrors={attemptedErrors}
           />
         );
       case 2:
@@ -305,12 +360,7 @@ export const MockConfigForm = memo(function MockConfigForm({
           </div>
           <div className="create-mock__footer-right">
             {activeStep < STEPS.length - 1 ? (
-              <Button
-                variant="primary"
-                iconRight={<ArrowRight size={16} />}
-                onClick={goNext}
-                disabled={!canNext}
-              >
+              <Button variant="primary" iconRight={<ArrowRight size={16} />} onClick={handleNext}>
                 Continue
               </Button>
             ) : isEdit ? (
@@ -318,6 +368,7 @@ export const MockConfigForm = memo(function MockConfigForm({
                 variant="primary"
                 iconLeft={<CheckCircle size={16} />}
                 onClick={() => onSaveChanges?.(form)}
+                disabled={!stepValidity[2]}
               >
                 Save Changes
               </Button>
@@ -327,6 +378,7 @@ export const MockConfigForm = memo(function MockConfigForm({
                   variant="primary"
                   iconLeft={<Rocket size={16} />}
                   onClick={() => onPublish?.(form)}
+                  disabled={!stepValidity[2]}
                 >
                   Create Mock
                 </Button>

@@ -26,7 +26,12 @@ const HEADER_HEIGHT = 45;
 const PAGINATION_HEIGHT = 85;
 
 /* ── Component ── */
-export const Overview = memo(function Overview({ onEditCompany, onViewMember }) {
+export const Overview = memo(function Overview({
+  onEditCompany,
+  onViewMember,
+  canEditCompany = true,
+  canViewTeamMembers = true,
+}) {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchValue, setSearchValue] = useState('');
   const [sortKey, setSortKey] = useState(null);
@@ -90,6 +95,7 @@ export const Overview = memo(function Overview({ onEditCompany, onViewMember }) 
   );
 
   const joinedCount = TEAM_MEMBERS.length;
+  const teamCountTitle = canViewTeamMembers ? String(joinedCount) : 'Restricted';
 
   return (
     <div className="company-overview">
@@ -100,12 +106,12 @@ export const Overview = memo(function Overview({ onEditCompany, onViewMember }) 
           userName={COMPANY.name}
           userEmail={COMPANY.industry}
           className="company-overview__org-card"
-          showButton
+          showButton={canEditCompany}
           buttonText="Edit Company"
           onButtonClick={onEditCompany}
           colLeft={{ icon: Globe, title: COMPANY.website, subtitle: 'Website' }}
           colMid={{ icon: Building2, title: COMPANY.size, subtitle: 'Company Size' }}
-          colRight={{ icon: Users, title: String(joinedCount), subtitle: 'Team Members' }}
+          colRight={{ icon: Users, title: teamCountTitle, subtitle: 'Team Members' }}
           tags={[`Created ${COMPANY.createdDate}`]}
           tagsLimit={3}
           animated={false}
@@ -113,74 +119,76 @@ export const Overview = memo(function Overview({ onEditCompany, onViewMember }) 
       </div>
 
       {/* ── Team Members Table — pipeline-style ── */}
-      <section className="company-overview__section">
-        <div className="company-overview__section-header">
-          <SectionTitle variant="inline">Team Members</SectionTitle>
-          <div className="company-overview__search">
-            <Search size={14} className="company-overview__search-icon" />
-            <input
-              type="text"
-              className="company-overview__search-input"
-              placeholder="Search members..."
-              value={searchValue}
-              onChange={handleSearch}
-            />
+      {canViewTeamMembers && (
+        <section className="company-overview__section">
+          <div className="company-overview__section-header">
+            <SectionTitle variant="inline">Team Members</SectionTitle>
+            <div className="company-overview__search">
+              <Search size={14} className="company-overview__search-icon" />
+              <input
+                type="text"
+                className="company-overview__search-input"
+                placeholder="Search members..."
+                value={searchValue}
+                onChange={handleSearch}
+              />
+            </div>
           </div>
-        </div>
 
-        {/* Table container — flex col, grows to fill card */}
-        <div className="company-overview__table" ref={tableRef}>
-          <TableHeader
-            columns={columnsWithSort}
-            gridTemplateColumns={GRID_TEMPLATE}
-            onSort={handleSort}
-          />
+          {/* Table container — flex col, grows to fill card */}
+          <div className="company-overview__table" ref={tableRef}>
+            <TableHeader
+              columns={columnsWithSort}
+              gridTemplateColumns={GRID_TEMPLATE}
+              onSort={handleSort}
+            />
 
-          <div className="company-overview__rows">
-            {paginatedMembers.map((member) => {
-              const isSelf = member.id === CURRENT_USER_ID;
-              return (
-                <TableRow
-                  key={member.id}
-                  gridTemplateColumns={GRID_TEMPLATE}
-                  onClick={() => onViewMember?.(member.id)}
-                >
-                  <TableCell
-                    color="accent"
-                    icon={
-                      <span className="company-overview__avatar">
-                        {member.name
-                          .split(' ')
-                          .map((n) => n[0])
-                          .join('')}
-                      </span>
-                    }
+            <div className="company-overview__rows">
+              {paginatedMembers.map((member) => {
+                const isSelf = member.id === CURRENT_USER_ID;
+                return (
+                  <TableRow
+                    key={member.id}
+                    gridTemplateColumns={GRID_TEMPLATE}
+                    onClick={() => onViewMember?.(member.id)}
                   >
-                    {member.name}
-                    {isSelf && <span className="company-overview__you-tag">You</span>}
-                  </TableCell>
-                  <TableCell color="tertiary">{member.email}</TableCell>
-                  <TableCell color="secondary">{member.department}</TableCell>
-                  <TableCell>
-                    <Badge type="role" variant={member.role} />
-                  </TableCell>
-                  <TableCell color="tertiary">{member.lastActivity}</TableCell>
-                </TableRow>
-              );
-            })}
-          </div>
+                    <TableCell
+                      color="accent"
+                      icon={
+                        <span className="company-overview__avatar">
+                          {member.name
+                            .split(' ')
+                            .map((n) => n[0])
+                            .join('')}
+                        </span>
+                      }
+                    >
+                      {member.name}
+                      {isSelf && <span className="company-overview__you-tag">You</span>}
+                    </TableCell>
+                    <TableCell color="tertiary">{member.email}</TableCell>
+                    <TableCell color="secondary">{member.department}</TableCell>
+                    <TableCell>
+                      <Badge type="role" variant={member.role} />
+                    </TableCell>
+                    <TableCell color="tertiary">{member.lastActivity}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </div>
 
-          <div className="company-overview__pagination">
-            <Pagination
-              currentPage={safePage}
-              totalPages={totalPages}
-              totalItems={filteredMembers.length}
-              itemsPerPage={itemsPerPage}
-              onPageChange={setCurrentPage}
-            />
+            <div className="company-overview__pagination">
+              <Pagination
+                currentPage={safePage}
+                totalPages={totalPages}
+                totalItems={filteredMembers.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+              />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
     </div>
   );
 });
@@ -188,4 +196,6 @@ export const Overview = memo(function Overview({ onEditCompany, onViewMember }) 
 Overview.propTypes = {
   onEditCompany: PropTypes.func,
   onViewMember: PropTypes.func,
+  canEditCompany: PropTypes.bool,
+  canViewTeamMembers: PropTypes.bool,
 };

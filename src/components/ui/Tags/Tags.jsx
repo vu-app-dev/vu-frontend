@@ -31,9 +31,9 @@ export const Tags = memo(function Tags({
   const isEditable = variant === 'editable';
 
   const handleRemoveTag = useCallback(
-    (index, e) => {
+    (tag, index, e) => {
       e.stopPropagation();
-      onRemove?.(index);
+      onRemove?.(tag, index);
     },
     [onRemove]
   );
@@ -71,25 +71,29 @@ export const Tags = memo(function Tags({
       {showTitle && title && <h3 className="tags__title">{title}</h3>}
 
       <div className="tags__container">
-        {tags.map((tag, index) => (
+        {tags.map((tag, index) => {
+          const label =
+            typeof tag === 'string' ? tag : String(tag?.name || tag?.label || tag || '');
+          return (
           <div
-            key={index}
+            key={`${label}-${index}`}
             className={['tags__tag', isVisible && 'tags__tag--visible'].filter(Boolean).join(' ')}
             style={{ '--tag-index': index }}
           >
-            <span className="tags__tag-text">{tag}</span>
+            <span className="tags__tag-text">{label}</span>
             {isEditable && (
               <button
                 type="button"
                 className="tags__tag-remove"
-                onClick={(e) => handleRemoveTag(index, e)}
-                aria-label={`Remove ${tag}`}
+                onClick={(e) => handleRemoveTag(label, index, e)}
+                aria-label={`Remove ${label}`}
               >
                 <X size={14} />
               </button>
             )}
           </div>
-        ))}
+        );
+        })}
 
         {isEditable &&
           (isAdding ? (

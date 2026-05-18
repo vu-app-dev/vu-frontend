@@ -27,7 +27,8 @@
   z-index: 2300;
 }
 
-.navbar__notification-button {
+.navbar__notification-button,
+.navbar__theme-button {
   position: relative;
   display: flex;
   align-items: center;
@@ -44,7 +45,8 @@
     color var(--transition-fast);
 }
 
-.navbar__notification-button:hover {
+.navbar__notification-button:hover,
+.navbar__theme-button:hover {
   background: var(--white-a5);
   color: var(--text-secondary);
 }
@@ -52,6 +54,10 @@
 .navbar__notification-button--active {
   background: var(--white-a10);
   color: var(--text-primary);
+}
+
+.navbar__theme-button {
+  color: var(--brand-default);
 }
 
 .navbar__notification-badge {
@@ -228,14 +234,6 @@
 .navbar__avatar-item:hover {
   background: var(--white-a5);
   color: var(--text-primary);
-}
-
-.navbar__avatar-item--theme svg {
-  color: var(--brand-default);
-}
-
-.navbar__avatar-item--theme:hover {
-  background: var(--brand-subtle);
 }
 
 .navbar__avatar-item--danger {

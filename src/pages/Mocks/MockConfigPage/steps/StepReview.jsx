@@ -48,12 +48,12 @@ export function StepReview({ form, totalWeight }) {
         )}
       </section>
 
-      {/* Skills */}
-      {form.skills.length > 0 && (
+      {/* Technologies */}
+      {form.technologies.length > 0 && (
         <section className="create-mock__section">
-          <SectionTitle variant="inline">Skills Covered</SectionTitle>
+          <SectionTitle variant="inline">Technologies Covered</SectionTitle>
           <div className="create-mock__review-tags">
-            {form.skills.map((s) => (
+            {form.technologies.map((s) => (
               <span key={s} className="create-mock__review-tag">
                 {s}
               </span>
@@ -66,11 +66,11 @@ export function StepReview({ form, totalWeight }) {
       <section className="create-mock__section">
         <SectionTitle variant="inline">Evaluation Structure</SectionTitle>
 
-        {form.criteria.length > 0 && (
+        {form.topics.length > 0 && (
           <>
-            <span className="create-mock__review-sublabel">Criteria</span>
+            <span className="create-mock__review-sublabel">Topics</span>
             <div className="create-mock__scoring">
-              {form.criteria.map((c) => (
+              {form.topics.map((c) => (
                 <div key={c.id} className="create-mock__scoring-row">
                   <span className="create-mock__scoring-name">{c.name || '(unnamed)'}</span>
                   <span className="create-mock__scoring-weight">{c.weight}%</span>
@@ -107,12 +107,12 @@ export function StepReview({ form, totalWeight }) {
         <SectionTitle variant="inline">Summary</SectionTitle>
         <div className="create-mock__pipeline">
           <div className="create-mock__pipeline-item">
-            <span className="create-mock__pipeline-number">{form.skills.length}</span>
-            <span className="create-mock__pipeline-label">Skills</span>
+            <span className="create-mock__pipeline-number">{form.technologies.length}</span>
+            <span className="create-mock__pipeline-label">Technologies</span>
           </div>
           <div className="create-mock__pipeline-item">
-            <span className="create-mock__pipeline-number">{form.criteria.length}</span>
-            <span className="create-mock__pipeline-label">Criteria</span>
+            <span className="create-mock__pipeline-number">{form.topics.length}</span>
+            <span className="create-mock__pipeline-label">Topics</span>
           </div>
           <div className="create-mock__pipeline-item">
             <span className="create-mock__pipeline-number">{form.questions.length}</span>

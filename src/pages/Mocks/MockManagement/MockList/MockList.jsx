@@ -1,21 +1,55 @@
 import { useState, useMemo, useCallback, memo } from 'react';
 import PropTypes from 'prop-types';
-import { Pencil, Eye, Plus, Copy, Clock, Trash2, Briefcase, Zap } from 'lucide-react';
+import {
+  Pencil,
+  Eye,
+  Plus,
+  Clock,
+  Trash2,
+  Briefcase,
+  Zap,
+  PlayCircle,
+  FileText,
+} from 'lucide-react';
 import { Shortcuts } from '../../../../components/layout/Shortcuts';
 import { EntityCard } from '../../../../components/ui/Cards';
 import { Pagination } from '../../../../components/ui/Pagination';
 import { FilterOverlay } from '../../../../components/ui/FilterOverlay';
-import { MOCKS, getUsedInJobsCount, getMockStatus } from '../../../../api';
+import { Button } from '../../../../components/ui/Button';
+import { EmptyState } from '../../../../components/ui/EmptyState';
+import {
+  DIFFICULTY_OPTIONS,
+  MOCKS,
+  MOCK_TYPE_OPTIONS,
+  getJobsUsingMock,
+  getUsedInJobsCount,
+  getMockStatus,
+  useBackendData,
+} from '../../../../api';
 import './MockList.css';
 
 /* Menu options */
 
-const CARD_MENU_OPTIONS = [
-  { id: 'view', label: 'View Details', icon: Eye, variant: 'default' },
-  { id: 'edit', label: 'Edit Mock', icon: Pencil, variant: 'default' },
-  { id: 'duplicate', label: 'Duplicate Mock', icon: Copy, variant: 'default', separator: true },
-  { id: 'delete', label: 'Delete', icon: Trash2, variant: 'danger', separator: true },
-];
+function getMockMenuOptions(mock, canEditMock) {
+  const options = [{ id: 'view', label: 'View Details', icon: Eye, variant: 'default' }];
+
+  if (canEditMock && mock.firstJobId) {
+    options.push({ id: 'test', label: 'Test Mock', icon: PlayCircle, variant: 'default' });
+  }
+
+  if (canEditMock && mock.computedStatus !== 'active') {
+    options.push({ id: 'edit', label: 'Edit Mock', icon: Pencil, variant: 'default' });
+    options.push({
+      id: 'delete',
+      label: 'Delete',
+      icon: Trash2,
+      variant: 'danger',
+      separator: true,
+    });
+  }
+
+  return options;
+}
 
 /* Difficulty badge display */
 
@@ -23,9 +57,13 @@ const DIFFICULTY_META = { Easy: 'Easy', Medium: 'Medium', Hard: 'Hard' };
 
 /* Filter configs */
 
-const STATUS_FILTERS = ['All', 'Active', 'Inactive'];
-const TYPE_FILTERS = ['All', 'Technical', 'Behavioral', 'Analytical', 'Design'];
-const SORT_OPTIONS = ['Recently Created', 'Avg Score', 'Total Sessions', 'Used in Jobs'];
+const SORT_OPTIONS = [
+  { value: 'createdAt-desc', label: 'Newest first' },
+  { value: 'createdAt-asc', label: 'Oldest first' },
+  { value: 'title-asc', label: 'Title A-Z' },
+  { value: 'title-desc', label: 'Title Z-A' },
+];
+const DEFAULT_SORT = 'createdAt-desc';
 
 const ITEMS_PER_PAGE = 6;
 
@@ -35,47 +73,68 @@ const SHORTCUTS_CONFIG = {
   filterLabel: 'Filters',
 };
 
+function createdAtTime(item) {
+  const date = new Date(item.raw?.createdAt || item.createdAt || 0);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
 /* Overlay filter definitions */
 
-const DIFFICULTY_FILTERS = ['Easy', 'Medium', 'Hard'];
 const OVERLAY_FILTERS = [
-  {
-    key: 'statusQuick',
-    label: 'Status',
-    type: 'select',
-    options: STATUS_FILTERS.filter((v) => v !== 'All').map((v) => ({ value: v, label: v })),
-  },
   {
     key: 'typeQuick',
     label: 'Type',
     type: 'select',
-    options: TYPE_FILTERS.filter((v) => v !== 'All').map((v) => ({ value: v, label: v })),
+    options: MOCK_TYPE_OPTIONS,
+  },
+  {
+    key: 'difficultyQuick',
+    label: 'Difficulty',
+    type: 'select',
+    options: DIFFICULTY_OPTIONS,
   },
   {
     key: 'sortQuick',
     label: 'Sort by',
     type: 'select',
-    options: SORT_OPTIONS.map((v) => ({ value: v, label: v })),
+    options: SORT_OPTIONS,
   },
-  { key: 'difficulty', label: 'Difficulty', type: 'multiselect', options: DIFFICULTY_FILTERS },
-  { key: 'score', label: 'Avg Score', type: 'range', minLabel: 'Min', maxLabel: 'Max' },
-  { key: 'sessions', label: 'Total Sessions', type: 'range', minLabel: 'Min', maxLabel: 'Max' },
+  {
+    key: 'enableFollowUpQuestions',
+    label: 'Follow-up Questions',
+    type: 'toggle',
+    toggleLabel: 'Enabled only',
+  },
+  {
+    key: 'enableRecordReplay',
+    label: 'Record Replay',
+    type: 'toggle',
+    toggleLabel: 'Enabled only',
+  },
 ];
 const INITIAL_OVERLAY = {
-  statusQuick: '',
   typeQuick: '',
-  sortQuick: 'Recently Created',
-  difficulty: [],
-  score: { min: '', max: '' },
-  sessions: { min: '', max: '' },
+  difficultyQuick: '',
+  sortQuick: DEFAULT_SORT,
+  enableFollowUpQuestions: false,
+  enableRecordReplay: false,
 };
 
 /* Component */
 
-export const MockList = memo(function MockList({ onViewMock, onEditMock, onCreateMock }) {
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [typeFilter, setTypeFilter] = useState('All');
-  const [sortBy, setSortBy] = useState('Recently Created');
+export const MockList = memo(function MockList({
+  onViewMock,
+  onEditMock,
+  onCreateMock,
+  onTestMock,
+  onDeleteMock,
+  canCreateMock = true,
+  canEditMock = true,
+}) {
+  const { dataVersion, isLoading } = useBackendData();
+  const [typeFilter, setTypeFilter] = useState('');
+  const [difficultyFilter, setDifficultyFilter] = useState('');
+  const [sortBy, setSortBy] = useState(DEFAULT_SORT);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchValue, setSearchValue] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -83,12 +142,11 @@ export const MockList = memo(function MockList({ onViewMock, onEditMock, onCreat
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
-    if (overlayFilters.statusQuick) count++;
     if (overlayFilters.typeQuick) count++;
-    if (overlayFilters.sortQuick && overlayFilters.sortQuick !== 'Recently Created') count++;
-    if (overlayFilters.difficulty.length) count++;
-    if (overlayFilters.score.min || overlayFilters.score.max) count++;
-    if (overlayFilters.sessions.min || overlayFilters.sessions.max) count++;
+    if (overlayFilters.difficultyQuick) count++;
+    if (overlayFilters.sortQuick && overlayFilters.sortQuick !== DEFAULT_SORT) count++;
+    if (overlayFilters.enableFollowUpQuestions) count++;
+    if (overlayFilters.enableRecordReplay) count++;
     return count;
   }, [overlayFilters]);
 
@@ -98,63 +156,57 @@ export const MockList = memo(function MockList({ onViewMock, onEditMock, onCreat
   }, []);
 
   /* Enrich mocks with computed status and usedInJobs */
-  const enrichedMocks = useMemo(
-    () =>
-      MOCKS.map((m) => ({
+  const enrichedMocks = useMemo(() => {
+    void dataVersion;
+    return MOCKS.map((m) => {
+      const jobsUsing = getJobsUsingMock(m.title);
+      return {
         ...m,
         computedStatus: getMockStatus(m.id),
         usedInJobs: getUsedInJobsCount(m.title),
-      })),
-    []
-  );
+        firstJobId: jobsUsing[0]?.id || '',
+        technologies: Array.isArray(m.technologies) ? m.technologies : [],
+      };
+    });
+  }, [dataVersion]);
 
   const filteredMocks = useMemo(() => {
-    const statusLower = statusFilter !== 'All' ? statusFilter.toLowerCase() : null;
-    const typeLower = typeFilter !== 'All' ? typeFilter.toLowerCase() : null;
+    const typeValue = typeFilter || null;
+    const difficultyValue = difficultyFilter || null;
     const q = searchValue.trim() ? searchValue.toLowerCase() : null;
 
     let mocks = enrichedMocks.filter((m) => {
-      if (statusLower && m.computedStatus !== statusLower) return false;
-      if (typeLower && m.type.toLowerCase() !== typeLower) return false;
+      if (typeValue && m.typeValue !== typeValue) return false;
+      if (difficultyValue && m.difficultyValue !== difficultyValue) return false;
       if (
         q &&
         !m.title.toLowerCase().includes(q) &&
-        !m.type.toLowerCase().includes(q) &&
-        !m.skills.some((s) => s.toLowerCase().includes(q))
+        !m.description.toLowerCase().includes(q) &&
+        !m.technologies.some((s) => s.toLowerCase().includes(q))
       )
         return false;
-      if (overlayFilters.difficulty.length && !overlayFilters.difficulty.includes(m.difficulty))
-        return false;
-      const scoreMin = overlayFilters.score.min !== '' ? Number(overlayFilters.score.min) : null;
-      const scoreMax = overlayFilters.score.max !== '' ? Number(overlayFilters.score.max) : null;
-      if (scoreMin !== null && m.avgScore < scoreMin) return false;
-      if (scoreMax !== null && m.avgScore > scoreMax) return false;
-      const sessMin =
-        overlayFilters.sessions.min !== '' ? Number(overlayFilters.sessions.min) : null;
-      const sessMax =
-        overlayFilters.sessions.max !== '' ? Number(overlayFilters.sessions.max) : null;
-      if (sessMin !== null && m.totalSessions < sessMin) return false;
-      if (sessMax !== null && m.totalSessions > sessMax) return false;
+      if (overlayFilters.enableFollowUpQuestions && !m.enableFollowUpQuestions) return false;
+      if (overlayFilters.enableRecordReplay && !m.enableRecordReplay) return false;
       return true;
     });
 
     switch (sortBy) {
-      case 'Avg Score':
-        mocks.sort((a, b) => b.avgScore - a.avgScore);
+      case 'createdAt-asc':
+        mocks.sort((a, b) => createdAtTime(a) - createdAtTime(b));
         break;
-      case 'Total Sessions':
-        mocks.sort((a, b) => b.totalSessions - a.totalSessions);
+      case 'title-asc':
+        mocks.sort((a, b) => a.title.localeCompare(b.title));
         break;
-      case 'Used in Jobs':
-        mocks.sort((a, b) => b.usedInJobs - a.usedInJobs);
+      case 'title-desc':
+        mocks.sort((a, b) => b.title.localeCompare(a.title));
         break;
       default:
-        mocks.sort((a, b) => b.id - a.id);
+        mocks.sort((a, b) => createdAtTime(b) - createdAtTime(a));
         break;
     }
 
     return mocks;
-  }, [statusFilter, typeFilter, sortBy, searchValue, enrichedMocks, overlayFilters]);
+  }, [typeFilter, difficultyFilter, sortBy, searchValue, enrichedMocks, overlayFilters]);
 
   const totalPages = Math.max(1, Math.ceil(filteredMocks.length / ITEMS_PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
@@ -165,23 +217,28 @@ export const MockList = memo(function MockList({ onViewMock, onEditMock, onCreat
   }, [filteredMocks, safePage]);
 
   const handleMenuSelect = useCallback(
-    (mockId, action) => {
-      if (action === 'view') onViewMock?.(mockId);
-      else if (action === 'edit') onEditMock?.(mockId);
+    (mock, action) => {
+      if (action === 'view') onViewMock?.(mock.id);
+      else if (action === 'edit') onEditMock?.(mock.id);
+      else if (action === 'test') onTestMock?.(mock);
+      else if (action === 'delete') onDeleteMock?.(mock);
     },
-    [onViewMock, onEditMock]
+    [onViewMock, onEditMock, onTestMock, onDeleteMock]
   );
+  const isInitialLoading = isLoading && dataVersion === 0;
 
   const shortcutsConfig = useMemo(
     () => ({
       ...SHORTCUTS_CONFIG,
-      primaryAction: {
-        label: 'Create mock',
-        icon: Plus,
-        onClick: () => onCreateMock?.(),
-      },
+      primaryAction: canCreateMock
+        ? {
+            label: 'Create mock',
+            icon: Plus,
+            onClick: () => onCreateMock?.(),
+          }
+        : undefined,
     }),
-    [onCreateMock]
+    [canCreateMock, onCreateMock]
   );
 
   return (
@@ -198,53 +255,74 @@ export const MockList = memo(function MockList({ onViewMock, onEditMock, onCreat
 
       <div className="mock-list__content">
         <div className="mock-list__cards">
-          {paginatedMocks.map((mock) => (
-            <EntityCard
-              key={mock.id}
-              className="mock-list__card"
-              userName={mock.title}
-              userEmail={`${mock.type} \u00B7 ${DIFFICULTY_META[mock.difficulty] || mock.difficulty}`}
-              showAvatar={false}
-              showBadge
-              badgeType="jobStatus"
-              badgeVariant={mock.computedStatus}
-              showMenu
-              menuOptions={CARD_MENU_OPTIONS}
-              onMenuSelect={(action) => handleMenuSelect(mock.id, action)}
-              onClick={() => onViewMock?.(mock.id)}
-              score={mock.avgScore}
-              scoreLabel="Avg Score"
-              colLeft={{
-                icon: Zap,
-                title: String(mock.skills.length),
-                subtitle: 'Skills',
-              }}
-              colMid={{
-                icon: Briefcase,
-                title: String(mock.usedInJobs),
-                subtitle: 'Used in Jobs',
-              }}
-              colRight={{
-                icon: Clock,
-                title: mock.duration,
-                subtitle: 'Duration',
-              }}
-              tags={mock.skills}
-              tagsLimit={3}
-              animated
+          {paginatedMocks.length > 0 ? (
+            paginatedMocks.map((mock) => (
+              <EntityCard
+                key={mock.id}
+                className="mock-list__card"
+                userName={mock.title}
+                userEmail={`${mock.type} \u00B7 ${DIFFICULTY_META[mock.difficulty] || mock.difficulty}`}
+                showAvatar={false}
+                showBadge
+                badgeType="jobStatus"
+                badgeVariant={mock.computedStatus}
+                showMenu
+                menuOptions={getMockMenuOptions(mock, canEditMock)}
+                onMenuSelect={(action) => handleMenuSelect(mock, action)}
+                onClick={() => onViewMock?.(mock.id)}
+                score={mock.avgScore}
+                scoreLabel="Avg Score"
+                colLeft={{
+                  icon: Zap,
+                  title: String(mock.technologies.length),
+                  subtitle: 'Technologies',
+                }}
+                colMid={{
+                  icon: Briefcase,
+                  title: String(mock.usedInJobs),
+                  subtitle: 'Used in Jobs',
+                }}
+                colRight={{
+                  icon: Clock,
+                  title: mock.duration,
+                  subtitle: 'Duration',
+                }}
+                tags={mock.technologies}
+                tagsLimit={3}
+                animated
+              />
+            ))
+          ) : !isInitialLoading ? (
+            <EmptyState
+              icon={<FileText size={24} />}
+              title={enrichedMocks.length ? 'No matching mocks' : 'No mocks yet'}
+              description={
+                enrichedMocks.length
+                  ? 'Adjust the search or supported backend filters to see more mocks.'
+                  : 'Create a mock interview before publishing your first job.'
+              }
+              action={
+                canCreateMock ? (
+                  <Button variant="primary" iconRight={<Plus size={16} />} onClick={onCreateMock}>
+                    Create Mock
+                  </Button>
+                ) : undefined
+              }
             />
-          ))}
+          ) : null}
         </div>
 
-        <div className="mock-list__pagination">
-          <Pagination
-            currentPage={safePage}
-            totalPages={totalPages}
-            totalItems={filteredMocks.length}
-            itemsPerPage={ITEMS_PER_PAGE}
-            onPageChange={setCurrentPage}
-          />
-        </div>
+        {filteredMocks.length > 0 && (
+          <div className="mock-list__pagination">
+            <Pagination
+              currentPage={safePage}
+              totalPages={totalPages}
+              totalItems={filteredMocks.length}
+              itemsPerPage={ITEMS_PER_PAGE}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        )}
       </div>
 
       <FilterOverlay
@@ -254,9 +332,9 @@ export const MockList = memo(function MockList({ onViewMock, onEditMock, onCreat
         values={overlayFilters}
         onApply={(v) => {
           setOverlayFilters(v);
-          setStatusFilter(v.statusQuick || 'All');
-          setTypeFilter(v.typeQuick || 'All');
-          setSortBy(v.sortQuick || 'Recently Created');
+          setTypeFilter(v.typeQuick || '');
+          setDifficultyFilter(v.difficultyQuick || '');
+          setSortBy(v.sortQuick || DEFAULT_SORT);
           setCurrentPage(1);
         }}
       />
@@ -268,4 +346,8 @@ MockList.propTypes = {
   onViewMock: PropTypes.func,
   onEditMock: PropTypes.func,
   onCreateMock: PropTypes.func,
+  onTestMock: PropTypes.func,
+  onDeleteMock: PropTypes.func,
+  canCreateMock: PropTypes.bool,
+  canEditMock: PropTypes.bool,
 };

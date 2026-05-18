@@ -57,6 +57,11 @@
 .input-field__input:disabled {
   cursor: not-allowed;
 }
+.input-field__input[type='number']::-webkit-inner-spin-button,
+.input-field__input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
 
 .input-field__icon {
   display: flex;

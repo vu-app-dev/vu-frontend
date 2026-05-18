@@ -161,6 +161,38 @@
   gap: var(--gap-lg);
 }
 
+.candidate-details__info-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+}
+
+.candidate-details__info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-md);
+  padding: var(--padding-sm) var(--padding-md);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  font-size: var(--text-sm);
+}
+
+.candidate-details__info-row span {
+  color: var(--text-tertiary);
+}
+
+.candidate-details__info-row strong,
+.candidate-details__info-row a {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-weight: var(--font-medium);
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ActionCard compact overrides for sidebar */
 
 .candidate-details__mocks .action-card {
@@ -188,6 +220,51 @@
 
 .candidate-details__mocks .action-card__description-title {
   font-size: var(--text-xs);
+}
+
+.candidate-details__modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--padding-lg);
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.candidate-details__modal {
+  width: min(100%, 26rem);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+  padding: var(--padding-xl);
+  border: var(--border-sm) solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.candidate-details__modal-title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.candidate-details__modal-copy {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--text-tertiary);
+}
+
+.candidate-details__modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--gap-sm);
+  margin-top: var(--gap-sm);
 }
 
 .candidate-details__actions-tab-content {

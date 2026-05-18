@@ -3,7 +3,17 @@ import { TextInput, DropdownInput, Textarea } from '../../../../components/ui/In
 import { Tags } from '../../../../components/ui/Tags';
 import { JOB_TYPE_OPTIONS, SENIORITY_OPTIONS, LOCATION_TYPE_OPTIONS } from '../../../../api';
 
-export function StepJobInfo({ form, updateField, departmentOptions, addSkill, removeSkill }) {
+export function StepJobInfo({
+  form,
+  updateField,
+  departmentOptions,
+  addTechnology,
+  removeTechnology,
+  validationErrors = {},
+  markTouched,
+  showFieldError,
+  disabled = false,
+}) {
   return (
     <>
       <section className="create-job__section">
@@ -16,6 +26,10 @@ export function StepJobInfo({ form, updateField, departmentOptions, addSkill, re
           required
           value={form.title}
           onChange={(e) => updateField('title', e.target.value)}
+          onBlur={() => markTouched?.('title')}
+          error={Boolean(showFieldError?.('title'))}
+          hint={showFieldError?.('title') ? validationErrors.title : ''}
+          disabled={disabled}
         />
         <div className="create-job__row create-job__row--3">
           <DropdownInput
@@ -25,6 +39,9 @@ export function StepJobInfo({ form, updateField, departmentOptions, addSkill, re
             options={departmentOptions}
             value={form.department}
             onChange={(v) => updateField('department', v)}
+            onBlur={() => markTouched?.('department')}
+            error={Boolean(showFieldError?.('department'))}
+            disabled={disabled}
           />
           <DropdownInput
             label="Job Type"
@@ -33,6 +50,9 @@ export function StepJobInfo({ form, updateField, departmentOptions, addSkill, re
             options={JOB_TYPE_OPTIONS}
             value={form.jobType}
             onChange={(v) => updateField('jobType', v)}
+            onBlur={() => markTouched?.('jobType')}
+            error={Boolean(showFieldError?.('jobType'))}
+            disabled={disabled}
           />
           <DropdownInput
             label="Seniority Level"
@@ -41,24 +61,29 @@ export function StepJobInfo({ form, updateField, departmentOptions, addSkill, re
             options={SENIORITY_OPTIONS}
             value={form.seniority}
             onChange={(v) => updateField('seniority', v)}
+            onBlur={() => markTouched?.('seniority')}
+            error={Boolean(showFieldError?.('seniority'))}
+            disabled={disabled}
           />
         </div>
       </section>
 
       <section className="create-job__section">
-        <SectionTitle
-          variant="inline"
-          description="Add the skills and technologies candidates should have"
-        >
-          Skills & Requirements
+        <SectionTitle variant="inline" description="Add technologies candidates should have">
+          Technologies
         </SectionTitle>
         <Tags
-          tags={form.skills}
-          variant="editable"
+          tags={form.technologies}
+          variant={disabled ? 'readonly' : 'editable'}
           showTitle={false}
-          onAdd={addSkill}
-          onRemove={removeSkill}
+          onAdd={addTechnology}
+          onRemove={removeTechnology}
         />
+        {(showFieldError?.('technologies') || form.technologies.length === 0) && (
+          <p className="create-job__hint">
+            {showFieldError?.('technologies') ? validationErrors.technologies : ''}
+          </p>
+        )}
       </section>
 
       <section className="create-job__section">
@@ -77,6 +102,10 @@ export function StepJobInfo({ form, updateField, departmentOptions, addSkill, re
           showCounter
           value={form.description}
           onChange={(e) => updateField('description', e.target.value)}
+          onBlur={() => markTouched?.('description')}
+          error={Boolean(showFieldError?.('description'))}
+          hint={showFieldError?.('description') ? validationErrors.description : ''}
+          disabled={disabled}
         />
       </section>
 
@@ -91,12 +120,14 @@ export function StepJobInfo({ form, updateField, departmentOptions, addSkill, re
             options={LOCATION_TYPE_OPTIONS}
             value={form.locationType}
             onChange={(v) => updateField('locationType', v)}
+            disabled={disabled}
           />
           <TextInput
             label="City / Country"
             placeholder="e.g. San Francisco, CA"
             value={form.location}
             onChange={(e) => updateField('location', e.target.value)}
+            disabled={disabled}
           />
         </div>
       </section>

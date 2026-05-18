@@ -1,9 +1,8 @@
-import { memo, useState, useMemo, useCallback } from 'react';
+import { memo, useState, useCallback, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { CheckCircle2, XCircle, Link2, Copy, Check } from 'lucide-react';
 import { EntityCard } from '../../../components/ui/Cards';
 import { Button } from '../../../components/ui/Button';
-import { Badge } from '../../../components/ui/Badge';
 import { RoleBadge } from '../../../components/ui/Badge';
 import { SectionTitle } from '../../../components/ui/SectionTitle';
 import {
@@ -11,33 +10,47 @@ import {
   acceptJoinRequest,
   declineJoinRequest,
   generateInviteLink,
+  useBackendData,
 } from '../../../api';
 import './AddMembers.css';
 
 const ICON_SM = 14;
 
 export const AddMembers = memo(function AddMembers({ onViewMember, onViewRequest }) {
+  const { dataVersion, refreshData } = useBackendData();
   const [refreshKey, setRefreshKey] = useState(0);
   const [assignRoles, setAssignRoles] = useState({});
   const [inviteLink, setInviteLink] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const pendingRequests = useMemo(
-    () => JOIN_REQUESTS.filter((r) => r.status === 'pending'),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [refreshKey]
-  );
+  useEffect(() => {
+    const refreshRequests = () => {
+      void refreshData();
+    };
 
-  const processedRequests = useMemo(
-    () => JOIN_REQUESTS.filter((r) => r.status !== 'pending'),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [refreshKey]
-  );
+    refreshRequests();
+    const refreshTimer = window.setInterval(refreshRequests, 15000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refreshRequests();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.clearInterval(refreshTimer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [refreshData]);
+
+  void dataVersion;
+  void refreshKey;
+
+  const pendingRequests = JOIN_REQUESTS.filter((r) => r.status === 'pending');
+  const processedRequests = JOIN_REQUESTS.filter((r) => r.status !== 'pending');
 
   const handleAccept = useCallback(
-    (id) => {
+    async (id) => {
       const role = assignRoles[id] || 'viewer';
-      const newMember = acceptJoinRequest(id, role);
+      const newMember = await acceptJoinRequest(id, role);
       setRefreshKey((k) => k + 1);
       if (newMember && onViewMember) {
         onViewMember(newMember.id);
@@ -46,8 +59,8 @@ export const AddMembers = memo(function AddMembers({ onViewMember, onViewRequest
     [assignRoles, onViewMember]
   );
 
-  const handleDecline = useCallback((id) => {
-    declineJoinRequest(id);
+  const handleDecline = useCallback(async (id) => {
+    await declineJoinRequest(id);
     setRefreshKey((k) => k + 1);
   }, []);
 

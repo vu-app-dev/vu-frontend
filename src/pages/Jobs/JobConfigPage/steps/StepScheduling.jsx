@@ -3,8 +3,31 @@ import { TextInput } from '../../../../components/ui/Input';
 import { Toggle } from '../../../../components/ui/Toggle';
 import { EMAIL_TRIGGERS } from '../../../../api';
 
-export function StepScheduling({ form, updateField, updateEmail, statusPreview }) {
+const SCHEDULE_OPTIONS = [
+  { value: 'active', label: 'Active', description: 'Open now and close on an end date.' },
+  { value: 'scheduled', label: 'Scheduled', description: 'Open later between two dates.' },
+];
+
+export function StepScheduling({
+  form,
+  updateField,
+  updateEmail,
+  statusPreview,
+  validationErrors = {},
+  markTouched,
+  showFieldError,
+  isActiveEdit = false,
+}) {
   const today = new Date().toISOString().split('T')[0];
+  const scheduleMode = isActiveEdit ? 'active' : form.scheduleMode || 'active';
+  const scheduleOptions = isActiveEdit ? SCHEDULE_OPTIONS.slice(0, 1) : SCHEDULE_OPTIONS;
+
+  const handleScheduleMode = (mode) => {
+    if (isActiveEdit) return;
+    updateField('scheduleMode', mode);
+    if (mode === 'active') updateField('startDate', '');
+  };
+
   const handleStartDate = (v) => {
     updateField('startDate', v);
     if (form.endDate && v > form.endDate) updateField('endDate', '');
@@ -29,6 +52,7 @@ export function StepScheduling({ form, updateField, updateEmail, statusPreview }
               <Toggle
                 checked={form.emails[t.id]}
                 onChange={(checked) => updateEmail(t.id, checked)}
+                disabled={isActiveEdit}
               />
             </div>
           ))}
@@ -38,27 +62,69 @@ export function StepScheduling({ form, updateField, updateEmail, statusPreview }
       <section className="create-job__section">
         <SectionTitle
           variant="inline"
-          description="Set the application window and candidate limits"
+          description={
+            isActiveEdit
+              ? 'Active jobs stay active. You can only extend the end date.'
+              : 'Choose whether this job opens now or later'
+          }
         >
           Scheduling
         </SectionTitle>
-        <div className="create-job__row create-job__row--3">
-          <TextInput
-            label="Start Date"
-            type="date"
-            min={today}
-            value={form.startDate}
-            onChange={(e) => handleStartDate(e.target.value)}
-            hint="Leave blank to start immediately"
-          />
+        <div className="create-job__schedule-options" role="radiogroup" aria-label="Job schedule">
+          {scheduleOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className={[
+                'create-job__schedule-option',
+                `create-job__schedule-option--${option.value}`,
+                scheduleMode === option.value && 'create-job__schedule-option--selected',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              onClick={() => handleScheduleMode(option.value)}
+              disabled={isActiveEdit}
+              role="radio"
+              aria-checked={scheduleMode === option.value}
+            >
+              <span className="create-job__schedule-option-title">{option.label}</span>
+              <span className="create-job__schedule-option-desc">{option.description}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="create-job__row create-job__row--2">
+          {scheduleMode === 'scheduled' && (
+            <TextInput
+              label="Open Date"
+              type="date"
+              min={today}
+              value={form.startDate}
+              onChange={(e) => handleStartDate(e.target.value)}
+              onBlur={() => markTouched?.('startDate')}
+              hint={showFieldError?.('startDate') ? validationErrors.startDate : 'Required'}
+              error={Boolean(showFieldError?.('startDate'))}
+            />
+          )}
           <TextInput
             label="End Date"
             type="date"
-            min={form.startDate || today}
+            min={
+              isActiveEdit
+                ? form.endDate || today
+                : scheduleMode === 'scheduled'
+                  ? form.startDate || today
+                  : today
+            }
             value={form.endDate}
             onChange={(e) => updateField('endDate', e.target.value)}
-            hint="Leave blank for no end date"
+            onBlur={() => markTouched?.('endDate')}
+            hint={showFieldError?.('endDate') ? validationErrors.endDate : 'Required'}
+            error={Boolean(showFieldError?.('endDate'))}
           />
+        </div>
+
+        <div className="create-job__row create-job__row--2">
           <TextInput
             label="Max Candidates"
             type="number"
@@ -67,6 +133,7 @@ export function StepScheduling({ form, updateField, updateEmail, statusPreview }
             value={form.maxCandidates}
             onChange={(e) => updateField('maxCandidates', e.target.value)}
             hint="Limit applications accepted"
+            disabled={isActiveEdit}
           />
         </div>
         <div className="create-job__status-preview">

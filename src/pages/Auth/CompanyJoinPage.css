@@ -1,0 +1,25 @@
+.company-join__panel {
+  width: min(100%, 640px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-lg);
+}
+
+.company-join__phone-input .input-field__input {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.company-join__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-sm);
+}
+
+.company-join__actions button {
+  flex: 1;
+}
+
+.company-join__done {
+  text-align: center;
+}

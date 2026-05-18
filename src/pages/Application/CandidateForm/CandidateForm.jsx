@@ -23,6 +23,7 @@ const INITIAL_FORM = {
 export const CandidateForm = memo(function CandidateForm({ onSubmit, onBack }) {
   const [form, setForm] = useState(INITIAL_FORM);
   const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
   const handleChange = useCallback((field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -58,15 +59,22 @@ export const CandidateForm = memo(function CandidateForm({ onSubmit, onBack }) {
   }, [form]);
 
   const handleSubmit = useCallback(
-    (e) => {
+    async (e) => {
       e.preventDefault();
       const errs = validate();
       if (Object.keys(errs).length > 0) {
         setErrors(errs);
         return;
       }
-      saveCandidateInfo(form);
-      onSubmit();
+      setSubmitting(true);
+      try {
+        await saveCandidateInfo(form);
+        onSubmit();
+      } catch (error) {
+        setErrors({ submit: error.message || 'Unable to submit application.' });
+      } finally {
+        setSubmitting(false);
+      }
     },
     [form, validate, onSubmit]
   );
@@ -165,11 +173,12 @@ export const CandidateForm = memo(function CandidateForm({ onSubmit, onBack }) {
           <FileInput
             label="Resume / CV"
             required
-            accept=".pdf,.doc,.docx"
+            accept=".pdf,image/jpeg,image/png,image/webp"
             error={!!errors.resume}
-            hint={errors.resume || 'PDF, DOC, DOCX (max 10MB)'}
+            hint={errors.resume || 'PDF or image (max 10MB)'}
             onChange={handleFileChange}
           />
+          {errors.submit && <p className="candidate-form__error">{errors.submit}</p>}
 
           {/* Actions */}
           <div className="candidate-form__actions">
@@ -182,8 +191,14 @@ export const CandidateForm = memo(function CandidateForm({ onSubmit, onBack }) {
             >
               Back
             </Button>
-            <Button variant="primary" size="sm" iconRight={<ArrowRight size={16} />} type="submit">
-              Continue to Overview
+            <Button
+              variant="primary"
+              size="sm"
+              iconRight={<ArrowRight size={16} />}
+              type="submit"
+              disabled={submitting}
+            >
+              {submitting ? 'Submitting...' : 'Continue to Overview'}
             </Button>
           </div>
         </form>

@@ -24,10 +24,18 @@ export const JobLanding = memo(function JobLanding({ onApply }) {
   if (!APPLICATION) return null;
 
   const { job, company } = APPLICATION;
+  const isScheduled = job.status === 'scheduled';
+  const isClosed = job.status === 'closed';
+  const canApply = job.status === 'active';
   const totalMinutes = job.totalDuration;
   const hours = Math.floor(totalMinutes / 60);
   const mins = totalMinutes % 60;
   const durationLabel = hours > 0 ? `${hours}h ${mins}m` : `${mins} min`;
+  const availabilityLabel = isScheduled
+    ? `Scheduled - opens ${job.startDate || 'soon'}`
+    : isClosed
+      ? 'Closed'
+      : `Active - closes ${job.deadline}`;
 
   return (
     <div className="job-landing">
@@ -40,8 +48,8 @@ export const JobLanding = memo(function JobLanding({ onApply }) {
             userEmail={`${company.name} · ${job.location} · ${job.jobType} · ${job.locationType}`}
             showBadge
             badgeType="jobStatus"
-            badgeVariant="active"
-            caption={`Deadline: ${job.deadline}`}
+            badgeVariant={job.status || 'active'}
+            caption={availabilityLabel}
             colLeft={{ icon: Briefcase, title: job.department, subtitle: 'Department' }}
             colMid={{ icon: GraduationCap, title: job.seniority, subtitle: 'Seniority' }}
             colRight={{ icon: Clock, title: durationLabel, subtitle: 'Total Duration' }}
@@ -69,8 +77,12 @@ export const JobLanding = memo(function JobLanding({ onApply }) {
             <div className="job-landing__quick-info-item">
               <Calendar size={16} />
               <div>
-                <span className="job-landing__quick-info-label">Deadline</span>
-                <span className="job-landing__quick-info-value">{job.deadline}</span>
+                <span className="job-landing__quick-info-label">
+                  {isScheduled ? 'Opens' : 'Deadline'}
+                </span>
+                <span className="job-landing__quick-info-value">
+                  {isScheduled ? job.startDate : job.deadline}
+                </span>
               </div>
             </div>
             <div className="job-landing__quick-info-item">
@@ -98,14 +110,18 @@ export const JobLanding = memo(function JobLanding({ onApply }) {
               <Globe size={16} />
               <div>
                 <span className="job-landing__quick-info-label">Website</span>
-                <a
-                  href={company.website}
-                  className="job-landing__quick-info-link"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {company.website.replace('https://', '')}
-                </a>
+                {company.website ? (
+                  <a
+                    href={company.website}
+                    className="job-landing__quick-info-link"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {company.website.replace('https://', '')}
+                  </a>
+                ) : (
+                  <span className="job-landing__quick-info-value">Not provided</span>
+                )}
               </div>
             </div>
           </div>
@@ -129,7 +145,7 @@ export const JobLanding = memo(function JobLanding({ onApply }) {
                         ? 'active'
                         : mock.difficulty === 'Medium'
                           ? 'scheduled'
-                          : 'draft'
+                          : 'closed'
                     }
                   >
                     {mock.difficulty}
@@ -156,14 +172,29 @@ export const JobLanding = memo(function JobLanding({ onApply }) {
       </section>
 
       {/* ── Apply CTA ── */}
+      {!canApply && (
+        <section className="job-landing__notice">
+          <Calendar size={16} />
+          <div>
+            <strong>{isScheduled ? 'This job is scheduled' : 'This job is closed'}</strong>
+            <span>
+              {isScheduled
+                ? `Applications open on ${job.startDate || 'the scheduled open date'}.`
+                : 'Applications are no longer being accepted.'}
+            </span>
+          </div>
+        </section>
+      )}
+
       <Button
         variant="primary"
         size="lg"
         className="job-landing__cta"
         iconRight={<ArrowRight size={16} />}
         onClick={onApply}
+        disabled={!canApply}
       >
-        Apply Now
+        {canApply ? 'Apply Now' : isScheduled ? 'Applications Not Open Yet' : 'Applications Closed'}
       </Button>
     </div>
   );
