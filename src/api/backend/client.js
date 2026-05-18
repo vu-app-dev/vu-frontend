@@ -2,9 +2,16 @@
 
 import { getStoredToken } from './storage';
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
-export const API_PUBLIC_ORIGIN =
-  import.meta.env.VITE_PUBLIC_API_ORIGIN || import.meta.env.VITE_BACKEND_URL || API_BASE_URL; // for public files
+function requireEnv(name) {
+  const value = import.meta.env[name];
+  if (!value) {
+    throw new Error(`${name} is required. Add it to your .env file before building the app.`);
+  }
+  return value;
+}
+
+export const API_BASE_URL = requireEnv('VITE_API_BASE_URL');
+export const API_PUBLIC_ORIGIN = import.meta.env.VITE_PUBLIC_API_ORIGIN || API_BASE_URL;
 
 export class ApiError extends Error {
   constructor(payload, response) {
