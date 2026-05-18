@@ -4,8 +4,15 @@ import { getStoredToken } from './storage';
 
 const DEPLOYED_API_ORIGIN = 'https://api.vuapp.dev';
 
-export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? DEPLOYED_API_ORIGIN : '/api');
+function getDefaultApiBaseUrl() {
+  if (!import.meta.env.PROD) return '/api';
+  if (typeof window !== 'undefined' && window.location.hostname.endsWith('vercel.app')) {
+    return '/api';
+  }
+  return DEPLOYED_API_ORIGIN;
+}
+
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || getDefaultApiBaseUrl();
 export const API_PUBLIC_ORIGIN =
   import.meta.env.VITE_PUBLIC_API_ORIGIN ||
   import.meta.env.VITE_BACKEND_URL ||
