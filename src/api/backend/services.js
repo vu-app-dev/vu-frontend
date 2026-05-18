@@ -1491,7 +1491,7 @@ export const localApi = backendApi;
 export const fakeApi = backendApi;
 export const fakeApiMeta = Object.freeze({
   mode: 'backend',
-  baseUrl: 'configured by VITE_API_BASE_URL or the Vite /api proxy',
+  baseUrl: 'configured by VITE_API_BASE_URL',
 });
 
 export {

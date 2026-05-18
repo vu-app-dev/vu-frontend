@@ -477,16 +477,14 @@ function DashboardLayout() {
   }
 
   if (isLoading && dataVersion === 0) {
-    return (
-      <BackendStateScreen title="Loading workspace" message="Connecting to the local backend." />
-    );
+    return <BackendStateScreen title="Loading workspace" message="Connecting to the backend." />;
   }
 
   if (status === 'error') {
     return (
       <BackendStateScreen
         title="Backend unavailable"
-        message={error?.message || 'The local backend did not return the expected data.'}
+        message={error?.message || 'The backend did not return the expected data.'}
         action={
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="button" onClick={refreshData}>

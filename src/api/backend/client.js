@@ -2,16 +2,28 @@
 
 import { getStoredToken } from './storage';
 
-function requireEnv(name) {
-  const value = import.meta.env[name];
+function requireAbsoluteEnv(name) {
+  const value = import.meta.env[name]?.trim();
   if (!value) {
     throw new Error(`${name} is required. Add it to your .env file before building the app.`);
+  }
+  if (!/^https?:\/\//i.test(value)) {
+    throw new Error(`${name} must be an absolute backend URL, for example https://api.vuapp.dev.`);
   }
   return value;
 }
 
-export const API_BASE_URL = requireEnv('VITE_API_BASE_URL');
-export const API_PUBLIC_ORIGIN = import.meta.env.VITE_PUBLIC_API_ORIGIN || API_BASE_URL;
+function optionalAbsoluteEnv(name, fallback) {
+  const value = import.meta.env[name]?.trim();
+  if (!value) return fallback;
+  if (!/^https?:\/\//i.test(value)) {
+    throw new Error(`${name} must be an absolute backend URL, for example https://api.vuapp.dev.`);
+  }
+  return value;
+}
+
+export const API_BASE_URL = requireAbsoluteEnv('VITE_API_BASE_URL');
+export const API_PUBLIC_ORIGIN = optionalAbsoluteEnv('VITE_PUBLIC_API_ORIGIN', API_BASE_URL);
 
 export class ApiError extends Error {
   constructor(payload, response) {
