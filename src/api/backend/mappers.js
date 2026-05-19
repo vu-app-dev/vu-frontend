@@ -328,7 +328,7 @@ export function mapBackendMock(mock) {
     avgScore: Math.round(Number(mock?.avgScore || 0)), // unimplemented in backend
     totalSessions: Math.round(Number(mock?.totalSessions || 0)), // unimplemented in backend
     passRate: Math.round(Number(mock?.passRate || 0)), // unimplemented in backend
-    enableFollowUpQuestions: Boolean(mock?.enableFollowUpQuestions),
+    enableFollowUpQuestions: mock?.enableFollowUpQuestions !== false,
     enableRecordReplay: Boolean(mock?.enableRecordReplay),
     createdDate: formatDate(mock?.createdAt), // unimplemented in backend
     updatedDate: formatDate(mock?.updatedAt), // unimplemented in backend
@@ -375,7 +375,7 @@ export function mapBackendJob(job, mockLookup = new Map()) {
   const departments = normalizeArray(job?.departments);
   const backendStatus = job?.status || JobStatusEnum.ACTIVE;
   const candidates = Array.isArray(job?.candidates)
-    ? job.candidates.map((candidate) => mapBackendCandidate(candidate))
+    ? job.candidates.map((candidate, index) => mapBackendCandidate(candidate, new Map(), index))
     : [];
   const mapped = {
     id,
@@ -470,16 +470,33 @@ export function mapBackendCandidateQuestion(question) {
   };
 }
 
-export function mapBackendCandidate(candidate, jobLookup = new Map()) {
-  const id = normalizeId(candidate?.id);
+export function mapBackendCandidate(candidate, jobLookup = new Map(), rowIndex = 0) {
+  const backendId = normalizeId(candidate?.id || candidate?._id || candidate?.candidateId);
+  const applicationId = normalizeId(
+    candidate?.applicationId ||
+      candidate?.jobApplicationId ||
+      candidate?.candidateApplicationId ||
+      candidate?.application?.id ||
+      candidate?.jobCandidate?.id ||
+      candidate?.candidateJob?.id
+  );
   const jobId = normalizeId(candidate?.jobId || candidate?.job?.id);
   const job = candidate?.job || jobLookup.get(jobId);
   const score = Number(candidate?.performance?.score ?? candidate?.analysis?.score ?? 0); // no backend yet
   const [firstName = '', ...lastNameParts] = String(candidate?.name || '')
     .trim()
     .split(/\s+/);
+  const createdKey = normalizeId(candidate?.createdAt || candidate?.submittedAt || '');
+  const id =
+    applicationId ||
+    [backendId, jobId, candidate?.email, createdKey || rowIndex]
+      .map((part) => normalizeId(part).trim())
+      .filter(Boolean)
+      .join(':');
   return {
     id,
+    backendId,
+    applicationId,
     name: candidate?.name || 'Unnamed candidate',
     firstName,
     lastName: lastNameParts.join(' '),

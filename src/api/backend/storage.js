@@ -1,6 +1,16 @@
 // save data in localStorage or sessionStorage, depending on the type of data
 
 const TOKEN_KEY = 'vu:backend:token';
+const AUTH_TOKEN_KEYS = [
+  TOKEN_KEY,
+  'token',
+  'accessToken',
+  'access_token',
+  'authToken',
+  'jwt',
+  'vu:token',
+  'vu:auth:token',
+];
 const CANDIDATE_INFO_KEY = 'vu:application:candidate';
 const LOCAL_JOIN_REQUESTS_KEY = 'vu:backend-missing:join-requests';
 const LOCAL_ENTITY_METADATA_KEY = 'vu:backend-missing:entity-metadata';
@@ -11,9 +21,18 @@ const EMPTY_ENTITY_METADATA = {
   candidates: {},
 };
 
+function getBrowserStorage(type = 'local') {
+  if (typeof window === 'undefined') return null;
+  try {
+    return type === 'session' ? window.sessionStorage : window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
 function readStorage(key, fallback = null, storage) {
-  if (typeof window === 'undefined') return fallback;
-  const targetStorage = storage || window.localStorage;
+  const targetStorage = storage || getBrowserStorage('local');
+  if (!targetStorage) return fallback;
 
   try {
     const raw = targetStorage.getItem(key);
@@ -24,8 +43,8 @@ function readStorage(key, fallback = null, storage) {
 }
 
 function writeStorage(key, value, storage) {
-  if (typeof window === 'undefined') return;
-  const targetStorage = storage || window.localStorage;
+  const targetStorage = storage || getBrowserStorage('local');
+  if (!targetStorage) return;
 
   if (value == null) {
     targetStorage.removeItem(key);
@@ -37,26 +56,45 @@ function writeStorage(key, value, storage) {
 
 // get the current stored token of the logged-in user
 export function getStoredToken() {
-  if (typeof window === 'undefined') return '';
-  return window.localStorage.getItem(TOKEN_KEY) || '';
+  const storage = getBrowserStorage('local');
+  if (!storage) return '';
+  try {
+    return storage.getItem(TOKEN_KEY) || '';
+  } catch {
+    return '';
+  }
 }
 
 export function setStoredToken(token) {
-  if (typeof window === 'undefined') return;
-  if (token) window.localStorage.setItem(TOKEN_KEY, token);
-  else window.localStorage.removeItem(TOKEN_KEY);
+  const storage = getBrowserStorage('local');
+  if (!storage) return;
+  try {
+    if (token) storage.setItem(TOKEN_KEY, token);
+    else clearStoredToken();
+  } catch {
+    // Ignore storage write failures; callers can continue unauthenticated.
+  }
 }
 
 export function clearStoredToken() {
-  setStoredToken('');
+  const storages = [getBrowserStorage('local'), getBrowserStorage('session')].filter(Boolean);
+  storages.forEach((storage) => {
+    AUTH_TOKEN_KEYS.forEach((key) => {
+      try {
+        storage.removeItem(key);
+      } catch {
+        // Ignore storage restrictions.
+      }
+    });
+  });
 }
 
 export function getStoredCandidateInfo() {
-  return readStorage(CANDIDATE_INFO_KEY, {}, window.sessionStorage);
+  return readStorage(CANDIDATE_INFO_KEY, {}, getBrowserStorage('session'));
 }
 
 export function setStoredCandidateInfo(candidateInfo) {
-  writeStorage(CANDIDATE_INFO_KEY, candidateInfo, window.sessionStorage);
+  writeStorage(CANDIDATE_INFO_KEY, candidateInfo, getBrowserStorage('session'));
 }
 
 export function getLocalJoinRequests() {

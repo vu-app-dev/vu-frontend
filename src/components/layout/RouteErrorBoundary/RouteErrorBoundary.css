@@ -1,0 +1,13 @@
+.route-error {
+  display: grid;
+  min-height: min(52vh, 28rem);
+  place-items: center;
+  padding: 1.5rem;
+}
+
+.route-error__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}

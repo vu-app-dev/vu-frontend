@@ -17,6 +17,10 @@ function getMode(width) {
   return 'desktop';
 }
 
+function getInitialMode() {
+  return typeof window === 'undefined' ? 'desktop' : getMode(window.innerWidth);
+}
+
 export const PageLayout = memo(function PageLayout({
   navItems = EMPTY_NAV,
   user,
@@ -26,10 +30,12 @@ export const PageLayout = memo(function PageLayout({
   className = '',
   onNavigate,
 }) {
-  const [mode, setMode] = useState(() => getMode(window.innerWidth));
+  const [mode, setMode] = useState(getInitialMode);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+
     const mql640 = window.matchMedia(`(max-width: ${BP_MOBILE - 1}px)`);
     const mql1024 = window.matchMedia(`(max-width: ${BP_TABLET - 1}px)`);
 

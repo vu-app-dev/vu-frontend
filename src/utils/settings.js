@@ -11,6 +11,8 @@ const DEFAULTS = {
 let listeners = [];
 
 export function loadSettings() {
+  if (typeof window === 'undefined') return { ...DEFAULTS };
+
   try {
     const raw = window.localStorage.getItem(SETTINGS_KEY);
     if (!raw) return { ...DEFAULTS };
@@ -25,12 +27,17 @@ export function loadSettings() {
 }
 
 export function saveSettings(next) {
+  if (typeof window === 'undefined') {
+    listeners.forEach((l) => l(next));
+    return;
+  }
+
   try {
     window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
-    listeners.forEach((l) => l(next));
   } catch {
-    // ignore
+    // Storage can be blocked in private browsing; keep the live UI in sync.
   }
+  listeners.forEach((l) => l(next));
 }
 
 export function subscribeSettings(cb) {

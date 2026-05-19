@@ -9,15 +9,12 @@ import {
   Outlet,
 } from 'react-router-dom';
 import { PageLayout } from './components/layout/PageLayout';
-import { Pipeline } from './pages/Candidates/Pipeline/Pipeline';
-import { JobList } from './pages/Jobs/JobManagement/JobList';
-import { MockList } from './pages/Mocks/MockManagement/MockList/MockList';
-import { Overview } from './pages/CompanyTeam/Overview/Overview';
+import { RouteErrorBoundary } from './components/layout/RouteErrorBoundary';
 import { Button } from './components/ui/Button';
 import { EmptyState } from './components/ui/EmptyState';
 import { getJoinRequestById } from './api';
 import { buildApplicationContext, getApplicationSharePath } from './api';
-import { getCandidateBySlug } from './api';
+import { getCandidateById, getCandidateBySlug } from './api';
 import {
   APPLICATION,
   CURRENT_USER_ID,
@@ -44,6 +41,18 @@ import {
 } from 'lucide-react';
 
 // ── Lazy-loaded pages (code-split at route level) ──
+const Pipeline = lazy(() =>
+  import('./pages/Candidates/Pipeline').then((m) => ({ default: m.Pipeline }))
+);
+const JobList = lazy(() =>
+  import('./pages/Jobs/JobManagement/JobList').then((m) => ({ default: m.JobList }))
+);
+const MockList = lazy(() =>
+  import('./pages/Mocks/MockManagement/MockList').then((m) => ({ default: m.MockList }))
+);
+const Overview = lazy(() =>
+  import('./pages/CompanyTeam/Overview').then((m) => ({ default: m.Overview }))
+);
 const CandidateDetails = lazy(() =>
   import('./pages/Candidates/CandidateDetails/CandidateDetails').then((m) => ({
     default: m.CandidateDetails,
@@ -111,12 +120,17 @@ const ComponentShowcase = lazy(() =>
 // ── Route → breadcrumb mapping ──
 function getRouteBreadcrumbs(pathname, navigate) {
   if (pathname === '/candidates') return [{ label: 'Candidates' }];
-  if (/^\/candidates\/[a-z0-9-]+$/.test(pathname)) {
-    const slug = pathname.split('/').pop();
-    const name = slug
-      .split('-')
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(' ');
+  if (/^\/candidates\/[^/]+$/.test(pathname)) {
+    const slug = decodeURIComponent(pathname.split('/').pop() || '');
+    const candidate = getCandidateBySlug(slug);
+    const readableSlug = slug.split('--')[0] || slug;
+    const name =
+      candidate?.name ||
+      readableSlug
+        .split('-')
+        .filter(Boolean)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
     return [{ label: 'Candidates', onClick: () => navigate('/candidates') }, { label: name }];
   }
 
@@ -175,6 +189,7 @@ function buildNavItems(pathname, navigate, can) {
   const firstJobPath = firstJob ? getApplyPath(firstJob.companyId, firstJob.id) : '/jobs';
   const jobSubItems = [
     {
+      id: 'jobs-list',
       label: 'Job Management',
       isActive: pathname.startsWith('/jobs') && pathname !== '/jobs/create',
       onClick: () => navigate('/jobs'),
@@ -182,6 +197,7 @@ function buildNavItems(pathname, navigate, can) {
   ];
   if (can('create_jobs')) {
     jobSubItems.push({
+      id: 'jobs-create',
       label: 'Create Job',
       isActive: pathname === '/jobs/create',
       onClick: () => navigate('/jobs/create'),
@@ -190,6 +206,7 @@ function buildNavItems(pathname, navigate, can) {
 
   const mockSubItems = [
     {
+      id: 'mocks-list',
       label: 'Mock Management',
       isActive: pathname.startsWith('/mocks') && pathname !== '/mocks/create',
       onClick: () => navigate('/mocks'),
@@ -197,6 +214,7 @@ function buildNavItems(pathname, navigate, can) {
   ];
   if (can('create_mocks')) {
     mockSubItems.push({
+      id: 'mocks-create',
       label: 'Create Mock',
       isActive: pathname === '/mocks/create',
       onClick: () => navigate('/mocks/create'),
@@ -205,6 +223,7 @@ function buildNavItems(pathname, navigate, can) {
 
   const companySubItems = [
     {
+      id: 'company-overview',
       label: 'Overview',
       isActive: pathname === '/company' || pathname.startsWith('/company/team'),
       onClick: () => navigate('/company'),
@@ -212,6 +231,7 @@ function buildNavItems(pathname, navigate, can) {
   ];
   if (can('accept_members')) {
     companySubItems.push({
+      id: 'company-members',
       label: 'Add Members',
       isActive: pathname.startsWith('/company/members') || pathname.startsWith('/company/requests'),
       onClick: () => navigate('/company/members'),
@@ -219,6 +239,7 @@ function buildNavItems(pathname, navigate, can) {
   }
   if (can('edit_company')) {
     companySubItems.push({
+      id: 'company-settings',
       label: 'Company Settings',
       isActive: pathname === '/company/settings',
       onClick: () => navigate('/company/settings'),
@@ -227,12 +248,14 @@ function buildNavItems(pathname, navigate, can) {
 
   return [
     {
+      id: 'candidates',
       icon: Users,
       label: 'Candidates',
       isActive: pathname.startsWith('/candidates'),
       onClick: () => navigate('/candidates'),
     },
     {
+      id: 'jobs',
       icon: Briefcase,
       label: 'Jobs',
       isActive: pathname.startsWith('/jobs'),
@@ -240,6 +263,7 @@ function buildNavItems(pathname, navigate, can) {
       onClick: () => navigate('/jobs'),
     },
     {
+      id: 'mocks',
       icon: FileText,
       label: 'Mocks',
       isActive: pathname.startsWith('/mocks'),
@@ -247,6 +271,7 @@ function buildNavItems(pathname, navigate, can) {
       onClick: () => navigate('/mocks'),
     },
     {
+      id: 'company',
       icon: Building2,
       label: 'Company',
       isActive: pathname.startsWith('/company'),
@@ -255,12 +280,14 @@ function buildNavItems(pathname, navigate, can) {
       separator: true,
     },
     {
+      id: 'profile',
       icon: UserCircle2,
       label: 'Profile',
       isActive: pathname === '/profile',
       onClick: () => navigate('/profile'),
     },
     {
+      id: 'settings',
       icon: Settings,
       label: 'Settings',
       isActive: pathname === '/settings',
@@ -268,6 +295,7 @@ function buildNavItems(pathname, navigate, can) {
       separator: true,
     },
     can('edit_jobs') && {
+      id: 'application',
       icon: ClipboardCheck,
       label: 'Application',
       isActive: pathname.startsWith('/apply'),
@@ -284,6 +312,13 @@ function getApplyPath(companyId, jobId, suffix = '') {
 
 function keepSearch(path, search = '') {
   return search ? `${path}${search}` : path;
+}
+
+function isCurrentRoute(to, location) {
+  if (typeof to !== 'string') return false;
+  const current = `${location.pathname}${location.search}${location.hash}`;
+  if (to === current) return true;
+  return !location.search && !location.hash && to === location.pathname;
 }
 
 function getCandidatesPath(jobId) {
@@ -433,11 +468,35 @@ function BackendStateScreen({ title, message, action }) {
   );
 }
 
+function RouteFallback() {
+  return (
+    <div
+      aria-live="polite"
+      style={{
+        display: 'grid',
+        minHeight: 180,
+        placeItems: 'center',
+        color: 'var(--text-tertiary)',
+        fontSize: 'var(--text-sm)',
+      }}
+    >
+      Loading...
+    </div>
+  );
+}
+
 function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated, isLoading, status, error, refreshData, logout, dataVersion } =
     useBackendData();
+  const navigateTo = useCallback(
+    (to, options) => {
+      if (isCurrentRoute(to, location)) return;
+      navigate(to, options);
+    },
+    [location, navigate]
+  );
 
   const currentMember = useMemo(() => {
     void dataVersion;
@@ -453,12 +512,15 @@ function DashboardLayout() {
     [currentMember]
   );
 
-  const breadcrumbs = getRouteBreadcrumbs(location.pathname, navigate);
+  const breadcrumbs = useMemo(() => {
+    void dataVersion;
+    return getRouteBreadcrumbs(location.pathname, navigateTo);
+  }, [location.pathname, navigateTo, dataVersion]);
 
   const navItems = useMemo(() => {
     void dataVersion;
-    return buildNavItems(location.pathname, navigate, canCurrentUser);
-  }, [location.pathname, navigate, dataVersion]);
+    return buildNavItems(location.pathname, navigateTo, canCurrentUser);
+  }, [location.pathname, navigateTo, dataVersion]);
 
   const handleNavigate = useCallback(
     (page) => {
@@ -467,9 +529,9 @@ function DashboardLayout() {
         settings: '/settings',
         'company-settings': '/company/settings',
       };
-      if (routes[page]) navigate(routes[page]);
+      if (routes[page]) navigateTo(routes[page]);
     },
-    [navigate]
+    [navigateTo]
   );
 
   if (!isAuthenticated) {
@@ -487,7 +549,7 @@ function DashboardLayout() {
         message={error?.message || 'The backend did not return the expected data.'}
         action={
           <div style={{ display: 'flex', gap: 8 }}>
-            <button type="button" onClick={refreshData}>
+            <button type="button" onClick={() => refreshData({ force: true })}>
               Retry
             </button>
             <button
@@ -498,7 +560,7 @@ function DashboardLayout() {
                 } catch {
                   // ignore logout errors and continue redirecting
                 }
-                navigate('/login');
+                navigateTo('/login');
               }}
             >
               Sign out
@@ -516,10 +578,20 @@ function DashboardLayout() {
       breadcrumbItems={breadcrumbs}
       onNavigate={handleNavigate}
     >
-      <Suspense fallback={null}>
-        <Outlet />
-      </Suspense>
+      <RouteErrorBoundary scope="Dashboard page" fallbackPath="/candidates">
+        <Suspense fallback={<RouteFallback />}>
+          <Outlet />
+        </Suspense>
+      </RouteErrorBoundary>
     </PageLayout>
+  );
+}
+
+function DashboardRouteLayout() {
+  return (
+    <RouteErrorBoundary scope="Dashboard" fallbackPath="/login">
+      <DashboardLayout />
+    </RouteErrorBoundary>
   );
 }
 
@@ -532,7 +604,12 @@ function CandidatesPage() {
 }
 function CandidateDetailsPage() {
   const { slug } = useParams();
-  const candidate = getCandidateBySlug(slug);
+  const location = useLocation();
+  const { dataVersion } = useBackendData();
+  void dataVersion;
+  const selectedCandidateId = location.state?.selectedCandidateId;
+  const candidate =
+    (selectedCandidateId ? getCandidateById(selectedCandidateId) : null) || getCandidateBySlug(slug);
   if (!candidate) return <Navigate to="/candidates" replace />;
   return <CandidateDetails candidate={candidate} />;
 }
@@ -829,40 +906,49 @@ function RequestDetailsPage() {
 // ══════════════════════════════════════════════════════════
 function ApplicationLayout() {
   const { companyId, jobId } = useParams();
-  const location = useLocation();
   const { dataVersion } = useBackendData();
   const buildKeyRef = useRef('');
-  const shareToken = useMemo(
-    () => new URLSearchParams(location.search).get('j') || '',
-    [location.search]
-  );
 
   const jobSignature = useMemo(() => {
     void dataVersion;
     const id = String(jobId || '');
     const job = JOBS.find((item) => String(item.id) === id);
-    if (!job) return `${companyId || ''}:${id}:missing:${shareToken}`;
+    if (!job) return `${companyId || ''}:${id}:missing`;
 
     const mocksSignature = (job.mocks || [])
       .map((mock) => `${mock.id}:${mock.weight}:${mock.durationMin}`)
       .join('|');
-    return `${companyId || job.companyId || ''}:${id}:${job.title}:${job.endDateInput}:${mocksSignature}:${shareToken}`;
-  }, [companyId, jobId, dataVersion, shareToken]);
+    return `${companyId || job.companyId || ''}:${id}:${job.title}:${job.endDateInput}:${mocksSignature}`;
+  }, [companyId, jobId, dataVersion]);
 
   useEffect(() => {
     if (buildKeyRef.current === jobSignature) return;
     buildKeyRef.current = jobSignature;
-    buildApplicationContext(jobId, { companyId, shareToken });
-  }, [companyId, jobId, jobSignature, shareToken]);
+    buildApplicationContext(jobId, { companyId });
+  }, [companyId, jobId, jobSignature]);
 
   return (
     <div className="application-shell">
       <div className="application-shell__main">
-        <Suspense fallback={null}>
-          <Outlet />
-        </Suspense>
+        <RouteErrorBoundary
+          scope="Application page"
+          fallbackPath={getApplyPath(companyId, jobId)}
+        >
+          <Suspense fallback={<RouteFallback />}>
+            <Outlet />
+          </Suspense>
+        </RouteErrorBoundary>
       </div>
     </div>
+  );
+}
+
+function ApplicationRouteLayout() {
+  const { companyId, jobId } = useParams();
+  return (
+    <RouteErrorBoundary scope="Application flow" fallbackPath={getApplyPath(companyId, jobId)}>
+      <ApplicationLayout />
+    </RouteErrorBoundary>
   );
 }
 
@@ -926,6 +1012,7 @@ function AppMockPage() {
   if (unavailable) return unavailable;
   return (
     <MockSession
+      key={mockId}
       mockId={mockId}
       onComplete={() =>
         navigate(keepSearch(getApplyPath(companyId, jobId, 'overview'), location.search))
@@ -936,7 +1023,14 @@ function AppMockPage() {
 
 function AppCompletePage() {
   const navigate = useNavigate();
-  return <SubmissionComplete onBackToJobs={() => navigate('/candidates')} />;
+  const { companyId, jobId } = useParams();
+  const { isAuthenticated } = useBackendData();
+  const publicApplicationPath = getApplyPath(companyId, jobId);
+  return (
+    <SubmissionComplete
+      onBackToJobs={() => navigate(isAuthenticated ? '/candidates' : publicApplicationPath)}
+    />
+  );
 }
 
 // ══════════════════════════════════════════════════════════
@@ -945,11 +1039,25 @@ function AppCompletePage() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/join/:companyId" element={<CompanyJoinPage />} />
+      <Route
+        path="/login"
+        element={
+          <RouteErrorBoundary scope="Login page" fallbackPath="/login">
+            <LoginPage />
+          </RouteErrorBoundary>
+        }
+      />
+      <Route
+        path="/join/:companyId"
+        element={
+          <RouteErrorBoundary scope="Join page" fallbackPath="/login">
+            <CompanyJoinPage />
+          </RouteErrorBoundary>
+        }
+      />
 
       {/* Dashboard pages (with sidebar + navbar) */}
-      <Route element={<DashboardLayout />}>
+      <Route element={<DashboardRouteLayout />}>
         <Route path="/candidates" element={<CandidatesPage />} />
         <Route path="/candidates/:slug" element={<CandidateDetailsPage />} />
         <Route path="/jobs" element={<JobListPage />} />
@@ -972,7 +1080,7 @@ export default function App() {
       </Route>
 
       {/* Application flow (candidate-facing, standalone) */}
-      <Route path="/apply/:companyId/:jobId" element={<ApplicationLayout />}>
+      <Route path="/apply/:companyId/:jobId" element={<ApplicationRouteLayout />}>
         <Route index element={<AppLandingPage />} />
         <Route path="form" element={<AppFormPage />} />
         <Route path="overview" element={<AppOverviewPage />} />
@@ -980,7 +1088,7 @@ export default function App() {
         <Route path="complete" element={<AppCompletePage />} />
       </Route>
 
-      <Route path="/apply/:jobId" element={<ApplicationLayout />}>
+      <Route path="/apply/:jobId" element={<ApplicationRouteLayout />}>
         <Route index element={<AppLandingPage />} />
         <Route path="form" element={<AppFormPage />} />
         <Route path="overview" element={<AppOverviewPage />} />

@@ -42,6 +42,12 @@ export function useResponsiveItemsPerPage(
 
     const el = tableRef.current;
     if (!el) return;
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', calculate);
+      return () => window.removeEventListener('resize', calculate);
+    }
+
     const observer = new ResizeObserver(calculate);
     observer.observe(el);
 

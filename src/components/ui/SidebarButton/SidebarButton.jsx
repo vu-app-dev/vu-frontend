@@ -43,7 +43,7 @@ export const SidebarButton = memo(function SidebarButton({
         <div className="sidebar-button__subitems">
           {subItems.map((subItem, index) => (
             <SidebarSubItem
-              key={index}
+              key={subItem.id || subItem.label || index}
               label={subItem.label}
               isActive={subItem.isActive}
               onClick={subItem.onClick}
@@ -76,6 +76,7 @@ SidebarButton.propTypes = {
   onClick: PropTypes.func,
   subItems: PropTypes.arrayOf(
     PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
       label: PropTypes.string.isRequired,
       isActive: PropTypes.bool,
       onClick: PropTypes.func,

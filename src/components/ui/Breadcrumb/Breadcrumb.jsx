@@ -14,8 +14,10 @@ export const Breadcrumb = memo(function Breadcrumb({ items = EMPTY_ITEMS, classN
       <ol className="breadcrumb__list">
         {items.map((item, index) => {
           const isLast = index === items.length - 1;
-          const isClickable = !isLast && (item.href || item.onClick);
-          const LabelTag = isClickable ? 'a' : 'span';
+          const isLink = !isLast && item.href;
+          const isButton = !isLast && !item.href && item.onClick;
+          const isClickable = isLink || isButton;
+          const LabelTag = isLink ? 'a' : isButton ? 'button' : 'span';
 
           return (
             <li
@@ -24,7 +26,8 @@ export const Breadcrumb = memo(function Breadcrumb({ items = EMPTY_ITEMS, classN
               style={{ '--item-index': index }}
             >
               <LabelTag
-                href={isClickable ? item.href : undefined}
+                href={isLink ? item.href : undefined}
+                type={isButton ? 'button' : undefined}
                 onClick={isClickable ? item.onClick : undefined}
                 className={`breadcrumb__label ${isClickable ? 'breadcrumb__link' : 'breadcrumb__text'}${isLast ? ' breadcrumb__text--current' : ''}`}
                 aria-current={isLast ? 'page' : undefined}

@@ -1,4 +1,4 @@
-import { memo, useState, useCallback } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Save, Upload, Building2, Globe, RotateCcw } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { SectionTitle } from '../../../components/ui/SectionTitle';
@@ -9,15 +9,16 @@ import './CompanySettings.css';
 const ICON_SM = 14;
 
 const SIZE_OPTIONS = [
-  '1–10 employees',
-  '11–50 employees',
-  '50–200 employees',
-  '200–500 employees',
-  '500–1000 employees',
+  '1-10 employees',
+  '11-50 employees',
+  '50-200 employees',
+  '200-500 employees',
+  '500-1000 employees',
   '1000+ employees',
 ];
 
 export const CompanySettings = memo(function CompanySettings() {
+  const savedTimerRef = useRef(null);
   const [form, setForm] = useState({
     name: COMPANY.name,
     industry: COMPANY.industry,
@@ -30,6 +31,13 @@ export const CompanySettings = memo(function CompanySettings() {
   });
   const [saved, setSaved] = useState(false);
 
+  useEffect(
+    () => () => {
+      if (savedTimerRef.current) window.clearTimeout(savedTimerRef.current);
+    },
+    []
+  );
+
   const handleChange = useCallback((field, value) => {
     setForm((f) => ({ ...f, [field]: value }));
     setSaved(false);
@@ -39,7 +47,11 @@ export const CompanySettings = memo(function CompanySettings() {
     try {
       await updateCompany(form);
       setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      if (savedTimerRef.current) window.clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = window.setTimeout(() => {
+        setSaved(false);
+        savedTimerRef.current = null;
+      }, 2000);
     } catch (error) {
       window.alert(error.message || 'Unable to update company.');
     }

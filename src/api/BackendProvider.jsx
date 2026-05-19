@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { clearStoredToken, getStoredToken } from './backend/storage';
 import { BackendContext } from './backend/context';
 import {
   COMPANY_ACCESS_UNAVAILABLE_CODE,
   COMPANY_APPROVAL_PENDING_CODE,
+  getDatastoreSnapshot,
   loadBackendData,
   login as loginRequest,
   logout as logoutRequest,
@@ -52,6 +53,8 @@ function getAuthNotice(error) {
   return null;
 }
 
+const WORKSPACE_REFRESH_DEDUPE_MS = 10000;
+
 export function BackendProvider({ children }) {
   const [token, setToken] = useState(() => getStoredToken());
   const [status, setStatus] = useState(token ? 'loading' : 'unauthenticated');
@@ -59,6 +62,13 @@ export function BackendProvider({ children }) {
   const [authNotice, setAuthNotice] = useState(null);
   const [dataVersion, setDataVersion] = useState(() => getStoreVersion());
   const navigate = useNavigate();
+  const navigateRef = useRef(navigate);
+  const refreshInFlightRef = useRef(null);
+  const lastRefreshAtRef = useRef(0);
+
+  useEffect(() => {
+    navigateRef.current = navigate;
+  }, [navigate]);
 
   useEffect(
     () =>
@@ -69,49 +79,82 @@ export function BackendProvider({ children }) {
   );
 
   const refreshData = useCallback(
-    async (options = {}) => {
-      const { throwOnError = false } = options;
+    (options = {}) => {
+      const { throwOnError = false, force = false } = options;
       const storedToken = getStoredToken();
       if (!storedToken) {
         setToken('');
         setStatus('unauthenticated');
-        return null;
+        return Promise.resolve(null);
       }
 
-      setStatus('loading');
-      setError(null);
+      if (!force && refreshInFlightRef.current) {
+        return refreshInFlightRef.current;
+      }
 
-      try {
-        const snapshot = await loadBackendData();
+      if (!force && Date.now() - lastRefreshAtRef.current < WORKSPACE_REFRESH_DEDUPE_MS) {
         setToken(storedToken);
-        setStatus('ready');
-        setAuthNotice(null);
-        return snapshot;
-      } catch (err) {
-        setError(err);
-        const notice = getAuthNotice(err);
-        if (isUnauthorized(err) || isApprovalPending(err) || isAccessUnavailable(err)) {
-          clearStoredToken();
-          setToken('');
-          setStatus('unauthenticated');
-          if (notice) {
-            setAuthNotice(notice);
-            if (
-              !throwOnError &&
-              typeof window !== 'undefined' &&
-              window.location.pathname !== '/login'
-            ) {
-              navigate('/login', { replace: true, state: { from: window.location.pathname } });
-            }
-          }
-        } else {
-          setStatus('error');
-        }
-        if (throwOnError) throw err;
-        return null;
+        return Promise.resolve(getDatastoreSnapshot());
       }
+
+      const request = (async () => {
+        setStatus((current) => (current === 'ready' ? current : 'loading'));
+        setError(null);
+
+        try {
+          const snapshot = await loadBackendData();
+          if (getStoredToken() !== storedToken) {
+            setToken('');
+            setStatus('unauthenticated');
+            return null;
+          }
+          lastRefreshAtRef.current = Date.now();
+          setToken(storedToken);
+          setStatus('ready');
+          setAuthNotice(null);
+          return snapshot;
+        } catch (err) {
+          if (!getStoredToken()) {
+            setToken('');
+            setStatus('unauthenticated');
+            return null;
+          }
+          setError(err);
+          const notice = getAuthNotice(err);
+          if (isUnauthorized(err) || isApprovalPending(err) || isAccessUnavailable(err)) {
+            clearStoredToken();
+            setToken('');
+            setStatus('unauthenticated');
+            if (notice) {
+              setAuthNotice(notice);
+              if (
+                !throwOnError &&
+                typeof window !== 'undefined' &&
+                window.location.pathname !== '/login'
+              ) {
+                navigateRef.current('/login', {
+                  replace: true,
+                  state: { from: window.location.pathname },
+                });
+              }
+            }
+          } else {
+            setStatus('error');
+          }
+          if (throwOnError) throw err;
+          return null;
+        }
+      })();
+
+      refreshInFlightRef.current = request;
+      request.finally(() => {
+        if (refreshInFlightRef.current === request) {
+          refreshInFlightRef.current = null;
+        }
+      });
+      return request;
     },
-    [navigate]
+    []
   );
 
   useEffect(() => {
@@ -140,7 +183,7 @@ export function BackendProvider({ children }) {
   const login = useCallback(
     async (credentials) => {
       const response = await loginRequest(credentials);
-      await refreshData({ throwOnError: true });
+      await refreshData({ throwOnError: true, force: true });
       return response;
     },
     [refreshData]
@@ -149,15 +192,20 @@ export function BackendProvider({ children }) {
   const verifyEmail = useCallback(
     async (input) => {
       const response = await verifyEmailRequest(input);
-      await refreshData();
+      await refreshData({ force: true });
       return response;
     },
     [refreshData]
   );
 
   const logout = useCallback(async () => {
+    const tokenToLogout = getStoredToken();
+    clearStoredToken();
+    setAuthNotice(null);
+    setToken('');
+    setStatus('unauthenticated');
     try {
-      await logoutRequest();
+      await logoutRequest(tokenToLogout);
     } finally {
       setAuthNotice(null);
       setToken('');
@@ -167,8 +215,13 @@ export function BackendProvider({ children }) {
   }, [navigate]);
 
   const logoutAllDevices = useCallback(async () => {
+    const tokenToLogout = getStoredToken();
+    clearStoredToken();
+    setAuthNotice(null);
+    setToken('');
+    setStatus('unauthenticated');
     try {
-      await logoutAllDevicesRequest();
+      await logoutAllDevicesRequest(tokenToLogout);
     } finally {
       setAuthNotice(null);
       setToken('');

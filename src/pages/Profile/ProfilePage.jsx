@@ -1,4 +1,4 @@
-import { memo, useState, useCallback } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Phone,
   Clock,
@@ -32,10 +32,14 @@ export const ProfilePage = memo(function ProfilePage() {
   const member = TEAM_MEMBERS.find((m) => m.id === CURRENT_USER_ID);
   const activities = getMemberActivities(CURRENT_USER_ID);
   const roleConfig = ROLES[member?.role];
-  const initialProfile = {
-    phone: member?.phone || '',
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Not provided',
-  };
+  const pwSavedTimerRef = useRef(null);
+  const initialProfile = useMemo(
+    () => ({
+      phone: member?.phone || '',
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Not provided',
+    }),
+    [member?.phone]
+  );
 
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState(initialProfile);
@@ -43,6 +47,13 @@ export const ProfilePage = memo(function ProfilePage() {
   const [pwForm, setPwForm] = useState({ oldPw: '', newPw: '', confirmPw: '' });
   const [pwSaved, setPwSaved] = useState(false);
   const [pwError, setPwError] = useState('');
+
+  useEffect(
+    () => () => {
+      if (pwSavedTimerRef.current) window.clearTimeout(pwSavedTimerRef.current);
+    },
+    []
+  );
 
   const handleEdit = useCallback(() => {
     setDraft(profile);
@@ -95,7 +106,11 @@ export const ProfilePage = memo(function ProfilePage() {
       });
       setPwSaved(true);
       setPwForm({ oldPw: '', newPw: '', confirmPw: '' });
-      setTimeout(() => setPwSaved(false), 2500);
+      if (pwSavedTimerRef.current) window.clearTimeout(pwSavedTimerRef.current);
+      pwSavedTimerRef.current = window.setTimeout(() => {
+        setPwSaved(false);
+        pwSavedTimerRef.current = null;
+      }, 2500);
     } catch (error) {
       setPwError(error.message || 'Unable to update password.');
     }
@@ -242,7 +257,7 @@ export const ProfilePage = memo(function ProfilePage() {
             className="profile-page__pw-input"
             value={pwForm.oldPw}
             onChange={(e) => handlePwChange('oldPw', e.target.value)}
-            placeholder="••••••••"
+            placeholder="********"
           />
         </div>
       </div>
@@ -256,7 +271,7 @@ export const ProfilePage = memo(function ProfilePage() {
             className="profile-page__pw-input"
             value={pwForm.newPw}
             onChange={(e) => handlePwChange('newPw', e.target.value)}
-            placeholder="••••••••"
+            placeholder="********"
           />
         </div>
       </div>
@@ -270,7 +285,7 @@ export const ProfilePage = memo(function ProfilePage() {
             className="profile-page__pw-input"
             value={pwForm.confirmPw}
             onChange={(e) => handlePwChange('confirmPw', e.target.value)}
-            placeholder="••••••••"
+            placeholder="********"
           />
         </div>
       </div>

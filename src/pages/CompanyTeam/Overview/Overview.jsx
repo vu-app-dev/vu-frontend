@@ -1,4 +1,4 @@
-import { memo, useState, useMemo, useCallback } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Users, Globe, Building2, Search } from 'lucide-react';
 import { EntityCard } from '../../../components/ui/Cards';
@@ -6,7 +6,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { SectionTitle } from '../../../components/ui/SectionTitle';
 import { TableHeader, TableRow, TableCell } from '../../../components/ui/Tables';
 import { Pagination } from '../../../components/ui/Pagination';
-import { COMPANY, TEAM_MEMBERS, CURRENT_USER_ID } from '../../../api';
+import { COMPANY, TEAM_MEMBERS, CURRENT_USER_ID, useBackendData } from '../../../api';
 import { useResponsiveItemsPerPage } from '../../../hooks';
 import './Overview.css';
 
@@ -32,6 +32,7 @@ export const Overview = memo(function Overview({
   canEditCompany = true,
   canViewTeamMembers = true,
 }) {
+  const { dataVersion } = useBackendData();
   const [currentPage, setCurrentPage] = useState(1);
   const [searchValue, setSearchValue] = useState('');
   const [sortKey, setSortKey] = useState(null);
@@ -53,6 +54,7 @@ export const Overview = memo(function Overview({
   }, []);
 
   const filteredMembers = useMemo(() => {
+    void dataVersion;
     const q = searchValue.trim().toLowerCase();
     let members = q
       ? TEAM_MEMBERS.filter(
@@ -73,12 +75,10 @@ export const Overview = memo(function Overview({
     }
 
     return members;
-  }, [searchValue, sortKey, sortDir]);
+  }, [searchValue, sortKey, sortDir, dataVersion]);
 
   const totalPages = Math.max(1, Math.ceil(filteredMembers.length / itemsPerPage));
   const safePage = Math.min(currentPage, totalPages);
-
-  if (currentPage > totalPages && totalPages > 0) setCurrentPage(1);
 
   const paginatedMembers = useMemo(() => {
     const start = (safePage - 1) * itemsPerPage;

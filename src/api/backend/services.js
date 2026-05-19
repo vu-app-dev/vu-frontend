@@ -67,6 +67,7 @@ import {
   setApplication,
   setBackendData,
   setCandidateInfo,
+  setJoinRequestsStore,
   updateCompanyStore,
   updateJoinRequestStore,
   updateMemberStore,
@@ -179,11 +180,14 @@ function extractCompanyUsersFallback(company, companyUser) {
   return companyUser ? [companyUser] : [];
 }
 
-async function optionalApi(fallback, request) {
+async function optionalApi(fallback, request, options = {}) {
+  const { silentStatuses = [] } = options;
   try {
     return await request();
   } catch (error) {
-    console.warn('Optional backend request failed.', error);
+    if (!silentStatuses.includes(error?.status) && !silentStatuses.includes(error?.statusCode)) {
+      console.warn('Optional backend request failed.', error);
+    }
     return fallback;
   }
 }
@@ -236,6 +240,10 @@ export function getCurrentUserRole() {
   return ROLE_TO_UI[CURRENT_USER?.companyUser?.type] || 'viewer';
 }
 
+function getCompanyUserRole(companyUser) {
+  return ROLE_TO_UI[companyUser?.type] || 'viewer';
+}
+
 export function canCurrentUser(permission) {
   return hasPermission(getCurrentUserRole(), permission);
 }
@@ -252,11 +260,12 @@ function extractHasNext(response) {
   if (typeof response.data?.hasNext === 'boolean') return response.data.hasNext;
   if (typeof response.data?.data?.hasNext === 'boolean') return response.data.data.hasNext;
 
-  const page = response.page || response.data?.page || response.data?.data?.page;
-  const totalPages =
-    response.totalPages || response.data?.totalPages || response.data?.data?.totalPages;
+  const page = Number(response.page ?? response.data?.page ?? response.data?.data?.page);
+  const totalPages = Number(
+    response.totalPages ?? response.data?.totalPages ?? response.data?.data?.totalPages
+  );
   if (Number.isFinite(page) && Number.isFinite(totalPages)) {
-    return Number(page) < Number(totalPages);
+    return page < totalPages;
   }
 
   return false;
@@ -397,6 +406,12 @@ export async function loadBackendData() {
     userId && normalizeId(company?.managerId || company?.ownerId || company?.createdById) === userId
   );
   const hasCompanyAccess = Boolean(hasApprovedCompanyUser || isCompanyManager);
+  const currentRole = isCompanyManager ? 'owner' : getCompanyUserRole(companyUser);
+  const canLoadCompanyUsers = currentRole === 'owner' || currentRole === 'editor';
+  const canLoadJoinRequests = hasPermission(currentRole, 'accept_members');
+  const canLoadMocks = hasPermission(currentRole, 'view_mocks');
+  const canLoadJobs = hasPermission(currentRole, 'view_jobs');
+  const canLoadCandidates = hasPermission(currentRole, 'view_candidates');
 
   if (!hasCompanyAccess) {
     setBackendData({
@@ -413,21 +428,34 @@ export async function loadBackendData() {
   }
 
   const [companyUsers, joinRequestsResponse, mocks, jobs, candidates] = await Promise.all([
-    optionalApi([], () =>
-      fetchPaginated(endpoints.companies.users, {
-        paginate: { page: 1, limit: 100 },
-      })
-    ),
-    optionalApi([], () => apiFetch(endpoints.companies.joinRequests)),
-    fetchPaginated(endpoints.mocks.paginated, {
-      sort: { field: 'createdAt', dir: 'DESC' },
-    }),
-    fetchPaginated(endpoints.jobs.paginated, {
-      sort: { field: 'createdAt', dir: 'DESC' },
-    }),
-    fetchPaginated(endpoints.candidates.paginated, {
-      sort: { field: 'createdAt', dir: 'DESC' },
-    }),
+    canLoadCompanyUsers
+      ? optionalApi(
+          [],
+          () =>
+            fetchPaginated(endpoints.companies.users, {
+              paginate: { page: 1, limit: 100 },
+            }),
+          { silentStatuses: [403] }
+        )
+      : Promise.resolve([]),
+    canLoadJoinRequests
+      ? optionalApi([], () => apiFetch(endpoints.companies.joinRequests), { silentStatuses: [403] })
+      : Promise.resolve([]),
+    canLoadMocks
+      ? fetchPaginated(endpoints.mocks.paginated, {
+          sort: { field: 'createdAt', dir: 'DESC' },
+        })
+      : Promise.resolve([]),
+    canLoadJobs
+      ? fetchPaginated(endpoints.jobs.paginated, {
+          sort: { field: 'createdAt', dir: 'DESC' },
+        })
+      : Promise.resolve([]),
+    canLoadCandidates
+      ? fetchPaginated(endpoints.candidates.paginated, {
+          sort: { field: 'createdAt', dir: 'DESC' },
+        })
+      : Promise.resolve([]),
   ]);
 
   const visibleCompanyUsers = companyUsers.length
@@ -516,10 +544,14 @@ export async function resetPassword(input) {
   );
 }
 
-export async function logout() {
+export async function logout(tokenOverride = getStoredToken()) {
+  const token = tokenOverride;
+  clearStoredToken();
+  clearCurrentUserStore();
+
   try {
-    if (getStoredToken()) {
-      await apiFetch(endpoints.auth.logout, { method: 'POST' });
+    if (token) {
+      await apiFetch(endpoints.auth.logout, { method: 'POST' }, token);
     }
   } finally {
     clearStoredToken();
@@ -527,10 +559,14 @@ export async function logout() {
   }
 }
 
-export async function logoutAllDevices() {
+export async function logoutAllDevices(tokenOverride = getStoredToken()) {
+  const token = tokenOverride;
+  clearStoredToken();
+  clearCurrentUserStore();
+
   try {
-    if (getStoredToken()) {
-      await apiFetch(endpoints.auth.logoutAllDevices, { method: 'POST' });
+    if (token) {
+      await apiFetch(endpoints.auth.logoutAllDevices, { method: 'POST' }, token);
     }
   } finally {
     clearStoredToken();
@@ -701,15 +737,32 @@ export function getCandidateById(id) {
   return CANDIDATES.find((candidate) => normalizeId(candidate.id) === normalizeId(id)) || null;
 }
 
-export function toSlug(name) {
+function nameToSlug(name) {
   return String(name || '')
     .toLowerCase()
     .replace(/\s+/g, '-')
     .replace(/[^a-z0-9-]/g, '');
 }
 
+export function toSlug(name, id = '') {
+  const base = nameToSlug(name) || 'candidate';
+  return id ? `${base}--${encodeURIComponent(normalizeId(id))}` : base;
+}
+
 export function getCandidateBySlug(slug) {
-  return CANDIDATES.find((candidate) => toSlug(candidate.name) === slug) || null;
+  const value = String(slug || '');
+  const markerIndex = value.lastIndexOf('--');
+  if (markerIndex >= 0) {
+    const encodedId = value.slice(markerIndex + 2);
+    try {
+      const id = decodeURIComponent(encodedId);
+      const candidate = getCandidateById(id);
+      if (candidate) return candidate;
+    } catch {
+      // Fall back to the legacy name lookup below.
+    }
+  }
+  return CANDIDATES.find((candidate) => nameToSlug(candidate.name) === value) || null;
 }
 
 export function getCandidatesByJob(jobTitle) {
@@ -726,22 +779,40 @@ export async function fetchCandidateById(id) {
   return upsertCandidate(mapped);
 }
 
+function getCandidateBackendId(candidate) {
+  return normalizeId(
+    candidate?.applicationId ||
+      candidate?.backendId ||
+      candidate?.raw?.applicationId ||
+      candidate?.raw?.jobApplicationId ||
+      candidate?.raw?.candidateApplicationId ||
+      candidate?.raw?.id ||
+      candidate?.id
+  );
+}
+
 export async function updateCandidateStatus(candidateId, status) {
   requireCurrentPermission('change_candidate_status', 'change candidate status');
   const candidate = getCandidateById(candidateId);
+  if (!candidate) {
+    throw new Error('Candidate not found.');
+  }
   if (['accepted', 'rejected'].includes(candidate?.status)) {
     throw new Error('Accepted or rejected candidates cannot be changed.');
   }
 
   if (status === 'shortlist' || status === 'shortlisted') {
     if (!candidate) return true;
-    patchLocalCandidateMetadata(candidate.id, {
+    const nextCandidate = {
+      ...candidate,
       status: 'shortlist',
       statusValue: CandidateStatusEnum.SHORTLISTED,
+    };
+    patchLocalCandidateMetadata(nextCandidate.id, {
+      status: nextCandidate.status,
+      statusValue: nextCandidate.statusValue,
     });
-    candidate.status = 'shortlist';
-    candidate.statusValue = CandidateStatusEnum.SHORTLISTED;
-    upsertCandidate(candidate);
+    upsertCandidate(nextCandidate);
     return true;
   }
 
@@ -750,27 +821,47 @@ export async function updateCandidateStatus(candidateId, status) {
     throw new Error('Unsupported candidate decision.');
   }
 
-  await apiFetch(endpoints.candidates.updateStatus(candidateId), {
-    method: 'PATCH',
-    body: { input: { status: backendStatus } },
-  });
+  const previousStatus = candidate?.status;
+  const previousStatusValue = candidate?.statusValue;
+  const nextStatus = CANDIDATE_STATUS_TO_UI[backendStatus] || 'pending';
 
   if (candidate) {
-    candidate.status = CANDIDATE_STATUS_TO_UI[backendStatus] || 'pending';
-    candidate.statusValue = backendStatus;
-    patchLocalCandidateMetadata(candidate.id, {
-      status: candidate.status,
+    const nextCandidate = {
+      ...candidate,
+      status: nextStatus,
       statusValue: backendStatus,
+    };
+    patchLocalCandidateMetadata(nextCandidate.id, {
+      status: nextCandidate.status,
+      statusValue: nextCandidate.statusValue,
     });
-    upsertCandidate(candidate);
+    upsertCandidate(nextCandidate);
+  }
+
+  try {
+    await apiFetch(endpoints.candidates.updateStatus(getCandidateBackendId(candidate)), {
+      method: 'PATCH',
+      body: { input: { status: backendStatus } },
+    });
+  } catch (error) {
+    if (candidate) {
+      patchLocalCandidateMetadata(candidate.id, {
+        status: previousStatus,
+        statusValue: previousStatusValue,
+      });
+      upsertCandidate({
+        ...candidate,
+        status: previousStatus,
+        statusValue: previousStatusValue,
+      });
+    }
+    throw error;
   }
 
   if (getStoredToken()) {
-    try {
-      await loadBackendData();
-    } catch (error) {
+    loadBackendData().catch((error) => {
       console.warn('Candidate data saved, but refresh failed.', error);
-    }
+    });
   }
 
   return true;
@@ -822,135 +913,11 @@ function buildPublicApplicationFallback(jobId, companyId) {
   });
 }
 
-function encodeShareSnapshot(snapshot) {
-  try {
-    const json = JSON.stringify(snapshot);
-    const bytes = new TextEncoder().encode(json);
-    let binary = '';
-    bytes.forEach((byte) => {
-      binary += String.fromCharCode(byte);
-    });
-    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-  } catch {
-    return '';
-  }
-}
-
-function decodeShareSnapshot(token) {
-  try {
-    if (!token) return null;
-    const base64 = String(token).replace(/-/g, '+').replace(/_/g, '/');
-    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
-    const binary = atob(padded);
-    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-    return JSON.parse(new TextDecoder().decode(bytes));
-  } catch {
-    return null;
-  }
-}
-
-function compactApplicationMock(jobMock) {
-  const fullMock = getMockById(jobMock?.id);
-  const durationMin = jobMock?.durationMin ?? fullMock?.durationMin ?? 10;
-  const questions = fullMock?.questions || jobMock?.questions || [];
-
-  return {
-    id: normalizeId(jobMock?.id || fullMock?.id),
-    name: jobMock?.name || fullMock?.title || 'Assessment',
-    weight: jobMock?.weight ?? fullMock?.weight ?? 0,
-    duration: jobMock?.duration || fullMock?.duration || `${durationMin} min`,
-    durationMin,
-    type: jobMock?.type || fullMock?.type || 'Technical',
-    difficulty: jobMock?.difficulty || fullMock?.difficulty || 'Medium',
-    description: fullMock?.description || jobMock?.description || '',
-    questionsCount: questions.length || jobMock?.questionsCount || 0,
-  };
-}
-
-function normalizeSnapshotStatus(status) {
-  const value = String(status || '').toLowerCase();
-  return ['active', 'scheduled', 'closed'].includes(value) ? value : 'active';
-}
-
-function jobFromShareSnapshot(snapshot, jobId, companyId) {
-  if (!snapshot?.job || normalizeId(snapshot.job.id) !== normalizeId(jobId)) return null;
-
-  const snapshotCompanyId = normalizeId(
-    snapshot.job.companyId || snapshot.company?.id || companyId
-  );
-  const mocks = Array.isArray(snapshot.mocks) ? snapshot.mocks.map(compactApplicationMock) : [];
-
-  return {
-    id: normalizeId(snapshot.job.id),
-    companyId: snapshotCompanyId,
-    title: snapshot.job.title || 'Job Application',
-    department: snapshot.job.department || 'Not provided',
-    departments: snapshot.job.department ? [snapshot.job.department] : [],
-    jobType: snapshot.job.jobType || 'Not provided',
-    status: normalizeSnapshotStatus(snapshot.job.status),
-    seniority: snapshot.job.seniority || 'Not provided',
-    locationType: snapshot.job.locationType || 'Not provided',
-    location: snapshot.job.location || 'Not provided',
-    description:
-      snapshot.job.description ||
-      'Complete your application details below. The hiring team will receive your submission.',
-    skills: Array.isArray(snapshot.job.skills) ? snapshot.job.skills : [],
-    technologiesTags: Array.isArray(snapshot.job.skills) ? snapshot.job.skills : [],
-    startDate: snapshot.job.startDate || 'Not provided',
-    startDateInput: snapshot.job.startDateInput || '',
-    endDate: snapshot.job.endDate || 'Not provided',
-    endDateInput: snapshot.job.endDateInput || '',
-    deadline: snapshot.job.deadline || snapshot.job.endDate || 'Not provided',
-    mocks,
-    raw: {
-      company: snapshot.company || {},
-    },
-  };
-}
-
-export function getApplicationShareSearch(job) {
-  if (!job?.id) return '';
-  const companyId = normalizeId(job.companyId || COMPANY.id);
-  const company = {
-    id: companyId,
-    name: COMPANY.name || job.raw?.company?.name || 'the company',
-    industry: COMPANY.industry || job.raw?.company?.industry || 'Not provided',
-    website: COMPANY.website || job.raw?.company?.website || '',
-    size: COMPANY.size || job.raw?.company?.size || 'Not provided',
-  };
-  const snapshot = {
-    v: 1,
-    job: {
-      id: normalizeId(job.id),
-      companyId,
-      title: job.title,
-      status: job.status,
-      startDate: job.startDate,
-      startDateInput: job.startDateInput,
-      endDate: job.endDate,
-      endDateInput: job.endDateInput,
-      deadline: job.endDate || job.deadline,
-      department: job.department,
-      seniority: job.seniority,
-      jobType: job.jobType,
-      location: job.location,
-      locationType: job.locationType,
-      description: job.description,
-      skills: job.skills || job.technologiesTags || [],
-    },
-    company,
-    mocks: (job.mocks || []).map(compactApplicationMock),
-  };
-  const token = encodeShareSnapshot(snapshot);
-  return token ? `?j=${token}` : '';
-}
-
 export function getApplicationSharePath(job, suffix = '') {
   if (!job?.id) return '/jobs';
   const companyId = normalizeId(job.companyId || COMPANY.id);
   const base = companyId ? `/apply/${companyId}/${job.id}` : `/apply/${job.id}`;
-  const path = suffix ? `${base}/${suffix.replace(/^\//, '')}` : base;
-  return `${path}${getApplicationShareSearch(job)}`;
+  return suffix ? `${base}/${suffix.replace(/^\//, '')}` : base;
 }
 
 function unwrapJobEntity(payload) {
@@ -979,7 +946,7 @@ function unwrapJobEntity(payload) {
   return entity;
 }
 
-async function fetchApplicationJob(jobId, token, companyId = '') {
+async function fetchApplicationJob(jobId, token = '', companyId = '') {
   const response = await apiFetch(endpoints.jobs.byId(jobId), {}, token);
   const jobEntity = unwrapJobEntity(response);
   if (!jobEntity || typeof jobEntity !== 'object') return null;
@@ -1019,19 +986,11 @@ export async function buildApplicationContext(jobId = JOBS[0]?.id, options = {})
   try {
     const publicCompanyId = normalizeId(options?.companyId);
     let job = getJobById(jobId);
-    if (!job && jobId && options?.shareToken) {
-      const snapshotJob = jobFromShareSnapshot(
-        decodeShareSnapshot(options.shareToken),
-        jobId,
-        publicCompanyId
-      );
-      if (snapshotJob?.id) job = upsertJob(snapshotJob);
-    }
 
-    if (!job && jobId && getStoredToken()) {
+    if (!job && jobId) {
       try {
-        const privateJob = await fetchApplicationJob(jobId, undefined, publicCompanyId);
-        if (privateJob?.id) job = upsertJob(privateJob);
+        const publicJob = await fetchApplicationJob(jobId, '', publicCompanyId);
+        if (publicJob?.id) job = upsertJob(publicJob);
       } catch (e) {
         console.error('Failed to fetch job for application', e);
       }
@@ -1355,6 +1314,12 @@ export async function joinCompany(companyId, input = {}) {
   });
 }
 
+export async function refreshJoinRequests() {
+  requireCurrentPermission('accept_members', 'view join requests');
+  const response = await apiFetch(endpoints.companies.joinRequests);
+  return setJoinRequestsStore(extractList(response));
+}
+
 export const datastore = {
   get jobs() {
     return JOBS;
@@ -1451,6 +1416,7 @@ export const backendApi = Object.freeze({
     updateCompany,
     getPendingRequestsCount,
     generateInviteLink,
+    refreshJoinRequests,
   },
   application: {
     get: () => APPLICATION,

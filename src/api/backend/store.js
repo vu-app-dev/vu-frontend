@@ -3,7 +3,6 @@
 // It also handles join requests using localStorage.
 
 import {
-  candidateMetadataKey,
   getLocalEntityMetadata,
   getLocalJoinRequests,
   getStoredCandidateInfo,
@@ -173,10 +172,7 @@ function applyJobMetadata(job, metadata = {}) {
 
 function applyCandidateMetadata(candidate, metadataMap = {}) {
   if (!candidate) return candidate;
-  const metadata =
-    metadataMap[normalizeId(candidate.id)] ||
-    metadataMap[candidateMetadataKey(candidate.jobId, candidate.email)] ||
-    {};
+  const metadata = metadataMap[normalizeId(candidate.id)] || {};
 
   return {
     ...candidate,
@@ -479,7 +475,7 @@ export function setBackendData({
     .map((job) => applyJobMetadata(job, localMetadata.jobs[normalizeId(job.id)]));
   const jobLookup = new Map(mappedJobsBase.map((job) => [normalizeId(job.id), job]));
   const mappedCandidates = candidates
-    .map((candidate) => mapBackendCandidate(candidate, jobLookup))
+    .map((candidate, index) => mapBackendCandidate(candidate, jobLookup, index))
     .map((candidate) => applyCandidateMetadata(candidate, localMetadata.candidates));
   const mappedJobs = mappedJobsBase.map((job) => enrichJobWithCandidates(job, mappedCandidates));
 
@@ -638,6 +634,13 @@ export function updateJoinRequestStore(requestId, patch) {
   setLocalJoinRequests(JOIN_REQUESTS);
   notify();
   return JOIN_REQUESTS[idx];
+}
+
+export function setJoinRequestsStore(joinRequests = []) {
+  replaceArray(JOIN_REQUESTS, safeArray(joinRequests).map(mapBackendJoinRequest));
+  setLocalJoinRequests(JOIN_REQUESTS);
+  notify();
+  return JOIN_REQUESTS;
 }
 
 export function getFileUi(file) {

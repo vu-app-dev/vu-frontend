@@ -1,4 +1,4 @@
-import { memo, useState, useCallback, useEffect } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { CheckCircle2, XCircle, Link2, Copy, Check } from 'lucide-react';
 import { EntityCard } from '../../../components/ui/Cards';
@@ -10,6 +10,7 @@ import {
   acceptJoinRequest,
   declineJoinRequest,
   generateInviteLink,
+  refreshJoinRequests,
   useBackendData,
 } from '../../../api';
 import './AddMembers.css';
@@ -17,15 +18,18 @@ import './AddMembers.css';
 const ICON_SM = 14;
 
 export const AddMembers = memo(function AddMembers({ onViewMember, onViewRequest }) {
-  const { dataVersion, refreshData } = useBackendData();
+  const { dataVersion } = useBackendData();
   const [refreshKey, setRefreshKey] = useState(0);
   const [assignRoles, setAssignRoles] = useState({});
   const [inviteLink, setInviteLink] = useState('');
   const [copied, setCopied] = useState(false);
+  const copiedTimerRef = useRef(null);
 
   useEffect(() => {
     const refreshRequests = () => {
-      void refreshData();
+      void refreshJoinRequests().catch(() => {
+        // Keep the current list if a background refresh fails.
+      });
     };
 
     refreshRequests();
@@ -38,14 +42,21 @@ export const AddMembers = memo(function AddMembers({ onViewMember, onViewRequest
     return () => {
       window.clearInterval(refreshTimer);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (copiedTimerRef.current) window.clearTimeout(copiedTimerRef.current);
     };
-  }, [refreshData]);
+  }, []);
 
-  void dataVersion;
-  void refreshKey;
-
-  const pendingRequests = JOIN_REQUESTS.filter((r) => r.status === 'pending');
-  const processedRequests = JOIN_REQUESTS.filter((r) => r.status !== 'pending');
+  const { pendingRequests, processedRequests } = useMemo(() => {
+    void dataVersion;
+    void refreshKey;
+    const pending = [];
+    const processed = [];
+    JOIN_REQUESTS.forEach((request) => {
+      if (request.status === 'pending') pending.push(request);
+      else processed.push(request);
+    });
+    return { pendingRequests: pending, processedRequests: processed };
+  }, [dataVersion, refreshKey]);
 
   const handleAccept = useCallback(
     async (id) => {
@@ -73,7 +84,11 @@ export const AddMembers = memo(function AddMembers({ onViewMember, onViewRequest
     if (inviteLink) {
       navigator.clipboard?.writeText(inviteLink);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (copiedTimerRef.current) window.clearTimeout(copiedTimerRef.current);
+      copiedTimerRef.current = window.setTimeout(() => {
+        setCopied(false);
+        copiedTimerRef.current = null;
+      }, 2000);
     }
   }, [inviteLink]);
 

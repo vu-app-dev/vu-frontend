@@ -41,6 +41,8 @@
   font-weight: var(--font-medium);
   line-height: 1.5;
   color: var(--text-tertiary);
+  border: none;
+  background: transparent;
   text-decoration: none;
   padding: var(--size-0-5) var(--size-1-5);
   margin: 0 calc(-1 * var(--size-1-5));

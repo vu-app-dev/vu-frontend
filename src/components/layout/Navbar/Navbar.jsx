@@ -83,26 +83,26 @@ const Navbar = memo(function Navbar({
     setIsNotificationOpen(false);
   }, []);
 
-  const backend = useBackendData();
+  const { dataVersion, logout } = useBackendData();
 
   const avatarMenu = useMemo(() => {
-    void backend.dataVersion;
+    void dataVersion;
     const items = [{ icon: User, label: 'My Profile', page: 'profile' }];
     if (canCurrentUser('edit_company')) {
       items.push({ icon: Building2, label: 'Company Settings', page: 'company-settings' });
     }
     return items;
-  }, [backend.dataVersion]);
+  }, [dataVersion]);
 
   const handleLogout = useCallback(async () => {
     setIsAvatarOpen(false);
 
     try {
-      await backend.logout();
+      await logout();
     } catch {
       // ignore errors during logout
     }
-  }, [backend]);
+  }, [logout]);
   const isLightTheme = theme === THEMES.light;
 
   return (

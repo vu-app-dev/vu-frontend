@@ -2,7 +2,7 @@ import { MockConfigForm } from '../MockConfigForm';
 import { addMock } from '../../../../api';
 
 /**
- * CreateMockConfig � thin wrapper that renders MockConfigForm in create mode.
+ * CreateMockConfig - thin wrapper that renders MockConfigForm in create mode.
  * On publish the mock is stored in the shared data file.
  * Status is derived (not set manually).
  */

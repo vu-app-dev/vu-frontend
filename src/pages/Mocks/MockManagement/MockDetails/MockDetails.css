@@ -1,4 +1,4 @@
-/* Mock Details Page � two-column layout (mirrors JobDetails) */
+/* Mock Details Page - two-column layout (mirrors JobDetails) */
 
 .mock-details {
   display: flex;
@@ -87,7 +87,7 @@
   padding: var(--padding-xl) var(--padding-2xl);
 }
 
-/* Quick stats � 4-column grid */
+/* Quick stats - 4-column grid */
 
 .mock-details__stats {
   display: grid;

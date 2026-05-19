@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { CheckCircle2, Clock, FileText, ArrowLeft } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
@@ -12,6 +12,17 @@ export const SubmissionComplete = memo(function SubmissionComplete({ onBackToJob
   const jobTitle = APPLICATION?.job?.title ?? 'the position';
   const companyName = APPLICATION?.company?.name ?? 'the company';
   const candidateName = CANDIDATE_INFO.firstName || 'Candidate';
+  const submittedAt = useMemo(
+    () =>
+      new Date().toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    []
+  );
 
   return (
     <div className="submission-complete">
@@ -43,15 +54,7 @@ export const SubmissionComplete = memo(function SubmissionComplete({ onBackToJob
             <div className="submission-complete__summary-item">
               <Clock size={14} />
               <span className="submission-complete__summary-label">Submitted At</span>
-              <span className="submission-complete__summary-value">
-                {new Date().toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </span>
+              <span className="submission-complete__summary-value">{submittedAt}</span>
             </div>
           </div>
         </div>

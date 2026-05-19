@@ -21,6 +21,14 @@ import './MockIntro.css';
 /* ── Device-check states ── */
 const CHECK = { idle: 'idle', checking: 'checking', granted: 'granted', denied: 'denied' };
 
+const MOCK_REQUIREMENTS = {
+  Technical: { camera: true, mic: true, screen: true },
+  Behavioral: { camera: true, mic: true, screen: false },
+  Coding: { camera: true, mic: true, screen: true },
+  Design: { camera: true, mic: true, screen: true },
+  Analytical: { camera: true, mic: true, screen: false },
+};
+
 const STATUS_META = {
   [CHECK.idle]: { label: 'Not checked', Icon: null, cls: '' },
   [CHECK.checking]: { label: 'Checking…', Icon: Loader, cls: 'mock-intro__check-icon--checking' },
@@ -31,6 +39,7 @@ const STATUS_META = {
 /* ── Component ── */
 export const MockIntro = memo(function MockIntro({ mockId, onStart }) {
   const mock = getApplicationMock(mockId);
+  const required = MOCK_REQUIREMENTS[mock?.type] || { camera: true, mic: true, screen: false };
 
   /* Device-check state */
   const [camera, setCamera] = useState(CHECK.idle);
@@ -76,7 +85,9 @@ export const MockIntro = memo(function MockIntro({ mockId, onStart }) {
 
   const allGranted =
     canSkipDeviceCheck ||
-    (camera === CHECK.granted && mic === CHECK.granted && screen === CHECK.granted);
+    ((!required.camera || camera === CHECK.granted) &&
+      (!required.mic || mic === CHECK.granted) &&
+      (!required.screen || screen === CHECK.granted));
 
   if (!mock) return null;
 
@@ -157,9 +168,10 @@ export const MockIntro = memo(function MockIntro({ mockId, onStart }) {
         {/* Device Checks */}
         <div className="mock-intro__checks">
           <span className="mock-intro__checks-title">Device Check</span>
-          {renderCheck(<Video size={14} />, 'Camera', camera, checkCamera)}
-          {renderCheck(<Mic size={14} />, 'Microphone', mic, checkMic)}
-          {renderCheck(<Monitor size={14} />, 'Screen Share', screen, checkScreen)}
+          {required.camera && renderCheck(<Video size={14} />, 'Camera', camera, checkCamera)}
+          {required.mic && renderCheck(<Mic size={14} />, 'Microphone', mic, checkMic)}
+          {required.screen &&
+            renderCheck(<Monitor size={14} />, 'Screen Share', screen, checkScreen)}
         </div>
 
         {/* Rules */}

@@ -152,12 +152,11 @@ function buildInsights(candidates, jobs) {
     const key = candidate.jobId || candidate.job;
     applicationsByJob.set(key, (applicationsByJob.get(key) || 0) + 1);
   });
-  const topJob = [...jobs]
-    .map((job) => ({
-      ...job,
-      filteredTotal: applicationsByJob.get(job.id) || applicationsByJob.get(job.title) || 0,
-    }))
-    .sort((a, b) => b.filteredTotal - a.filteredTotal)[0];
+  let topJob = null;
+  jobs.forEach((job) => {
+    const filteredTotal = applicationsByJob.get(job.id) || applicationsByJob.get(job.title) || 0;
+    if (!topJob || filteredTotal > topJob.filteredTotal) topJob = { ...job, filteredTotal };
+  });
   const averageScore = average(candidates.map((candidate) => candidate.score));
 
   return [
@@ -179,15 +178,36 @@ function buildInsights(candidates, jobs) {
 }
 
 function buildJobPerformanceData(jobs, candidates, useJobTotalsFallback = false) {
+  const jobKeyByLookup = new Map();
+  jobs.forEach((job) => {
+    jobKeyByLookup.set(job.id, job.id);
+    jobKeyByLookup.set(job.title, job.id);
+  });
+  const candidatesByJob = new Map();
+  candidates.forEach((candidate) => {
+    const key =
+      jobKeyByLookup.get(candidate.jobId) ||
+      jobKeyByLookup.get(candidate.job) ||
+      candidate.jobId ||
+      candidate.job;
+    if (!key) return;
+    const list = candidatesByJob.get(key) || [];
+    list.push(candidate);
+    candidatesByJob.set(key, list);
+  });
+
   return jobs.map((job) => {
-    const jobCandidates = candidates.filter(
-      (candidate) => candidate.jobId === job.id || candidate.job === job.title
-    );
-    const accepted = jobCandidates.filter((candidate) => candidate.status === 'accepted').length;
-    const rejected = jobCandidates.filter((candidate) => candidate.status === 'rejected').length;
-    const shortlisted = jobCandidates.filter((candidate) =>
-      ['shortlist', 'shortlisted'].includes(candidate.status)
-    ).length;
+    const jobCandidates = candidatesByJob.get(job.id) || [];
+    let accepted = 0;
+    let rejected = 0;
+    let shortlisted = 0;
+    jobCandidates.forEach((candidate) => {
+      if (candidate.status === 'accepted') accepted += 1;
+      else if (candidate.status === 'rejected') rejected += 1;
+      else if (candidate.status === 'shortlist' || candidate.status === 'shortlisted') {
+        shortlisted += 1;
+      }
+    });
 
     if (!jobCandidates.length && useJobTotalsFallback) {
       return {
@@ -314,12 +334,15 @@ export const Pipeline = memo(function Pipeline() {
     void dataVersion;
     const q = searchValue.trim() ? searchValue.toLowerCase() : null;
     const { status, job, score, flaggedOnly } = overlayFilters;
+    const normalizedStatuses = status.length
+      ? new Set(status.map((candidateStatus) => candidateStatus.toLowerCase()))
+      : null;
     const scoreMin = score.min !== '' ? Number(score.min) : null;
     const scoreMax = score.max !== '' ? Number(score.max) : null;
 
     return CANDIDATES.filter((c) => {
       if (q && !c.name.toLowerCase().includes(q) && !c.job.toLowerCase().includes(q)) return false;
-      if (status.length && !status.map((s) => s.toLowerCase()).includes(c.status)) return false;
+      if (normalizedStatuses && !normalizedStatuses.has(c.status)) return false;
       if (job && c.jobId !== job) return false;
       if (scoreMin !== null && c.score < scoreMin) return false;
       if (scoreMax !== null && c.score > scoreMax) return false;
@@ -412,7 +435,7 @@ export const Pipeline = memo(function Pipeline() {
   const handleCandidateSelect = useCallback(
     (candidate) => {
       setLastSelectedId(candidate.id);
-      navigate(`/candidates/${toSlug(candidate.name)}`, {
+      navigate(`/candidates/${toSlug(candidate.name, candidate.id)}`, {
         state: { selectedCandidateId: candidate.id },
       });
     },
@@ -433,6 +456,7 @@ export const Pipeline = memo(function Pipeline() {
       }
       try {
         await updateCandidateStatus(candidate.id, action);
+        setOpenMenuId(null);
       } catch (error) {
         window.alert(error.message || 'Unable to update candidate.');
       }

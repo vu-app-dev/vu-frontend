@@ -202,7 +202,7 @@ export function CompanyJoinPage() {
                 inputMode="tel"
                 autoComplete="tel"
                 placeholder={PHONE_EXAMPLE}
-                hint={errors.phone || `International format, e.g. ${PHONE_EXAMPLE}`}
+                hint={errors.phone}
                 error={Boolean(errors.phone)}
                 required
               />
@@ -210,7 +210,7 @@ export function CompanyJoinPage() {
                 label="Password"
                 value={form.password}
                 onChange={(event) => updateField('password', event.target.value)}
-                hint={errors.password || '8-20 chars, uppercase and lowercase'}
+                hint={errors.password}
                 error={Boolean(errors.password)}
                 required
               />
@@ -243,7 +243,7 @@ export function CompanyJoinPage() {
               value={verifyCode}
               onChange={(event) => setVerifyCode(event.target.value)}
               iconLeft={<Mail size={16} />}
-              hint={notice || 'Default development code is 1234'}
+              hint={notice}
             />
             {error && <p className="auth-page__error">{error}</p>}
             <div className="company-join__actions">

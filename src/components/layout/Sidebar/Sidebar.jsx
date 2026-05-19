@@ -54,8 +54,8 @@ export const Sidebar = memo(function Sidebar({
 
           {/* Navigation */}
           <nav className="sidebar__nav">
-            {navItems.map((item, index) => (
-              <div key={index}>
+            {navItems.map((item) => (
+              <div key={item.id || item.label}>
                 {item.separator && <div className="sidebar__separator" />}
                 <SidebarButton
                   icon={item.icon}
@@ -86,12 +86,14 @@ Sidebar.propTypes = {
   navItems: PropTypes.arrayOf(
     PropTypes.shape({
       icon: PropTypes.elementType,
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
       label: PropTypes.string.isRequired,
       isActive: PropTypes.bool,
       onClick: PropTypes.func,
       separator: PropTypes.bool,
       subItems: PropTypes.arrayOf(
         PropTypes.shape({
+          id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
           label: PropTypes.string.isRequired,
           isActive: PropTypes.bool,
           onClick: PropTypes.func,

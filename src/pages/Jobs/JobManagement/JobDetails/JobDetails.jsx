@@ -1,4 +1,4 @@
-import { memo, useState, useMemo, useCallback, useRef } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pencil,
   Users,
@@ -66,8 +66,16 @@ export const JobDetails = memo(function JobDetails({
   const [copied, setCopied] = useState(false);
   const [activeMobileTab, setActiveMobileTab] = useState('analysis');
   const mobileScrollRef = useRef(null);
+  const shareTimerRef = useRef(null);
   const job = getJobById(jobId);
   const applyPath = getApplicationSharePath(job);
+
+  useEffect(
+    () => () => {
+      if (shareTimerRef.current) window.clearTimeout(shareTimerRef.current);
+    },
+    []
+  );
 
   const totalDuration = useMemo(
     () => (job ? job.mocks.reduce((s, m) => s + m.durationMin, 0) : 0),
@@ -101,7 +109,11 @@ export const JobDetails = memo(function JobDetails({
   const handleShare = useCallback(() => {
     navigator.clipboard.writeText(`${window.location.origin}${applyPath}`);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (shareTimerRef.current) window.clearTimeout(shareTimerRef.current);
+    shareTimerRef.current = window.setTimeout(() => {
+      setCopied(false);
+      shareTimerRef.current = null;
+    }, 2000);
   }, [applyPath]);
 
   const mobileTabs = useMemo(

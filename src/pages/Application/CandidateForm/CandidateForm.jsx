@@ -4,7 +4,7 @@ import { ArrowRight, ArrowLeft } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { SectionTitle } from '../../../components/ui/SectionTitle';
 import { TextInput, EmailInput, FileInput, DropdownInput } from '../../../components/ui/Input';
-import { saveCandidateInfo, APPLICATION } from '../../../api';
+import { saveCandidateInfo, APPLICATION, CANDIDATE_INFO } from '../../../api';
 import './CandidateForm.css';
 
 /* ── Initial form state ── */
@@ -17,11 +17,16 @@ const INITIAL_FORM = {
   linkedin: '',
   resumeFile: null,
   resumeName: '',
+  cvUrl: '',
 };
 
 /* ── Component ── */
 export const CandidateForm = memo(function CandidateForm({ onSubmit, onBack }) {
-  const [form, setForm] = useState(INITIAL_FORM);
+  const [form, setForm] = useState(() => ({
+    ...INITIAL_FORM,
+    ...CANDIDATE_INFO,
+    resumeFile: null,
+  }));
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -54,7 +59,7 @@ export const CandidateForm = memo(function CandidateForm({ onSubmit, onBack }) {
     if (!form.lastName.trim()) errs.lastName = 'Last name is required';
     if (!form.email.trim()) errs.email = 'Email is required';
     if (!form.location) errs.location = 'Location is required';
-    if (!form.resumeFile) errs.resume = 'Resume is required';
+    if (!form.resumeFile && !form.cvUrl) errs.resume = 'Resume is required';
     return errs;
   }, [form]);
 
@@ -175,7 +180,10 @@ export const CandidateForm = memo(function CandidateForm({ onSubmit, onBack }) {
             required
             accept=".pdf,image/jpeg,image/png,image/webp"
             error={!!errors.resume}
-            hint={errors.resume || 'PDF or image (max 10MB)'}
+            hint={
+              errors.resume ||
+              (form.resumeName ? `${form.resumeName} uploaded. Continue when ready.` : '')
+            }
             onChange={handleFileChange}
           />
           {errors.submit && <p className="candidate-form__error">{errors.submit}</p>}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Toggle } from '../../components/ui/Toggle';
 import { DropdownInput } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -15,8 +15,19 @@ const JOB_STATUS_OPTIONS = [
 ];
 
 export default function SettingsPage() {
+  const savedTimerRef = useRef(null);
   // Load persisted settings
-  const persisted = typeof window !== 'undefined' ? loadSettings() : getDefaults();
+  const persisted = useMemo(
+    () => (typeof window !== 'undefined' ? loadSettings() : getDefaults()),
+    []
+  );
+
+  useEffect(
+    () => () => {
+      if (savedTimerRef.current) window.clearTimeout(savedTimerRef.current);
+    },
+    []
+  );
 
   // Theme state (stored as 'system' | 'light' | 'dark')
   const [currentTheme, setCurrentTheme] = useState(() => persisted.theme || 'system');
@@ -24,7 +35,9 @@ export default function SettingsPage() {
   const handleThemeChange = (newTheme) => {
     let themeToSet = newTheme;
     if (newTheme === 'system') {
-      const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+      const prefersLight =
+        typeof window !== 'undefined' &&
+        window.matchMedia?.('(prefers-color-scheme: light)').matches;
       themeToSet = prefersLight ? THEMES.light : THEMES.dark;
     }
     applyTheme(themeToSet);
@@ -70,14 +83,19 @@ export default function SettingsPage() {
     // apply theme now
     let themeToSet =
       currentTheme === 'system'
-        ? window.matchMedia('(prefers-color-scheme: light)').matches
+        ? typeof window !== 'undefined' &&
+          window.matchMedia?.('(prefers-color-scheme: light)').matches
           ? THEMES.light
           : THEMES.dark
         : currentTheme;
     applyTheme(themeToSet);
     persistTheme(themeToSet);
     setShowSaved(true);
-    setTimeout(() => setShowSaved(false), 3000);
+    if (savedTimerRef.current) window.clearTimeout(savedTimerRef.current);
+    savedTimerRef.current = window.setTimeout(() => {
+      setShowSaved(false);
+      savedTimerRef.current = null;
+    }, 3000);
   };
 
   return (

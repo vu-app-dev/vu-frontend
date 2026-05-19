@@ -27,17 +27,23 @@ const DECISION_ACTIONS = [
   { id: 'reject', label: 'Rejected', icon: X, className: 'candidate-details__decision--reject' },
 ];
 
+function getIsCompactLayout() {
+  return (
+    typeof window !== 'undefined' &&
+    Boolean(window.matchMedia?.('(max-width: 1023px)').matches)
+  );
+}
+
 export const CandidateDetails = memo(function CandidateDetails({ candidate }) {
   const { dataVersion } = useBackendData();
   void dataVersion;
   const [activeTab, setActiveTab] = useState('feedback');
   const [pendingDecision, setPendingDecision] = useState(null);
-  const [isCompactLayout, setIsCompactLayout] = useState(
-    () => window.matchMedia && window.matchMedia('(max-width: 1023px)').matches
-  );
+  const [isCompactLayout, setIsCompactLayout] = useState(getIsCompactLayout);
   const tabContentRef = useRef(null);
 
   useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
     const media = window.matchMedia('(max-width: 1023px)');
     const updateLayoutMode = (event) => setIsCompactLayout(event.matches);
 

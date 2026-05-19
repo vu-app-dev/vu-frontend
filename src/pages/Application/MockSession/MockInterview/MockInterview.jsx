@@ -110,6 +110,17 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
   /* 5-minute warning banner */
   const timeWarningShownRef = useRef(false);
   const [showTimeBanner, setShowTimeBanner] = useState(false);
+  const timeBannerTimerRef = useRef(null);
+  const tabWarningTimerRef = useRef(null);
+  const aiResponseTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      [timeBannerTimerRef, tabWarningTimerRef, aiResponseTimerRef].forEach((timerRef) => {
+        if (timerRef.current) window.clearTimeout(timerRef.current);
+      });
+    };
+  }, []);
 
   /* â”€â”€ Timer countdown â”€â”€ */
   useEffect(() => {
@@ -131,9 +142,14 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
   useEffect(() => {
     if (timeLeft <= 300 && timeLeft > 0 && !timeWarningShownRef.current && !isFinished) {
       timeWarningShownRef.current = true;
-      Promise.resolve().then(() => setShowTimeBanner(true));
-      const t = setTimeout(() => setShowTimeBanner(false), 6000);
-      return () => clearTimeout(t);
+      if (timeBannerTimerRef.current) window.clearTimeout(timeBannerTimerRef.current);
+      timeBannerTimerRef.current = window.setTimeout(() => {
+        setShowTimeBanner(true);
+        timeBannerTimerRef.current = window.setTimeout(() => {
+          setShowTimeBanner(false);
+          timeBannerTimerRef.current = null;
+        }, 6000);
+      }, 0);
     }
   }, [timeLeft, isFinished]);
 
@@ -143,11 +159,18 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
       if (document.hidden) {
         setTabSwitchCount((c) => c + 1);
         setTabWarning(true);
-        setTimeout(() => setTabWarning(false), 5000);
+        if (tabWarningTimerRef.current) window.clearTimeout(tabWarningTimerRef.current);
+        tabWarningTimerRef.current = window.setTimeout(() => {
+          setTabWarning(false);
+          tabWarningTimerRef.current = null;
+        }, 5000);
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      if (tabWarningTimerRef.current) window.clearTimeout(tabWarningTimerRef.current);
+    };
   }, []);
 
   /* â”€â”€ Camera stream â”€â”€ */
@@ -195,7 +218,8 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
         }
         screenStreamRef.current = stream;
         if (screenVideoRef.current) screenVideoRef.current.srcObject = stream;
-        stream.getVideoTracks()[0].onended = () => setShowScreen(false);
+        const [screenTrack] = stream.getVideoTracks();
+        if (screenTrack) screenTrack.onended = () => setShowScreen(false);
       } catch {
         setShowScreen(false);
       }
@@ -245,7 +269,9 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
     const followUpIdx = Math.min(questionIndex - 1, TOTAL_QUESTIONS - 1);
     const isLast = followUpIdx === TOTAL_QUESTIONS - 1;
 
-    setTimeout(() => {
+    if (aiResponseTimerRef.current) window.clearTimeout(aiResponseTimerRef.current);
+    aiResponseTimerRef.current = window.setTimeout(() => {
+      aiResponseTimerRef.current = null;
       const aiMsg = {
         id: Date.now() + 1,
         role: 'ai',
