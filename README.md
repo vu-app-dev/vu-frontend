@@ -1,342 +1,212 @@
-# VU - AI-Powered Virtual Interview Platform
+# VU Frontend
 
-> Making hiring and interview preparation more human, intelligent, and bias-free — by merging AI analytics with real communication.
+AI-powered virtual interview and recruiting dashboard built with React, Vite, and the VU backend API.
 
-## What is VU?
+## Overview
 
-VU is an AI-powered virtual interview platform that reimagines how people are evaluated and how companies recruit. Instead of relying on static CV filters or outdated test systems, VU enables interactive AI interviews that automatically assess communication, technical knowledge, and confidence.
+VU helps companies create job-specific mock interviews, share public application links, review candidate submissions, and manage hiring decisions from one dashboard. The app also includes the candidate-facing application flow used by public job links.
 
-### Two Modes
+## Current Features
 
-| Mode                 | For         | Features                                                            |
-| -------------------- | ----------- | ------------------------------------------------------------------- |
-| **Practice Mode**    | Job Seekers | Mock interviews, AI coaching, real-time feedback, skill analytics   |
-| **Recruitment Mode** | Companies   | AI-led interviews, candidate ranking, analytics dashboards, reports |
-
-### Core Features
-
-- **AI-Driven Virtual Screening** — Automated video interviews with AI evaluation
-- **Smart Question Generation** — Tailored questions based on CV, role, and difficulty
-- **Cheating & Authenticity Detection** — Eye tracking, face recognition, tab-switching detection
-- **Analytics Dashboards** — Performance insights, progress tracking, skill heat maps
-- **AI Feedback & Reports** — Automated summaries of strengths, weaknesses, and skill match
-
-## Related Repositories
-
-| Repository                                                        | Description                |
-| ----------------------------------------------------------------- | -------------------------- |
-| **[VU-WebApp (Backend)](https://github.com/Eyad-AbdElMohsen/VU)** | Backend API services       |
-| **This Repo**                                                     | Frontend React application |
-
-## Design
-
-**Figma**: [VU-WebApp Design](https://www.figma.com/design/LgLS6zCwbhl4yISLlsN2qC/VU-WebApp?node-id=3-19&t=L6mHSgM4Kqr0tyu2-1)
-
----
+- Authenticated dashboard with role-aware navigation and protected actions.
+- Candidates pipeline with filters, pagination, charts, candidate details, CV analysis, feedback, and replay views.
+- Job management with create/edit forms, linked mocks, shareable application links, and job analytics.
+- Mock management with create/edit forms, details, linked jobs, and test application flow.
+- Company team area with members, join requests, company settings, and role controls.
+- Candidate-facing application flow: landing, candidate form, mock checklist, mock session, and completion page.
+- Backend API integration through `src/api/backend`.
+- Request optimization for role-based data loading, optional endpoint fallbacks, refresh dedupe, and focused join-request polling.
+- Route-level code splitting with `React.lazy` and `Suspense`.
+- Route-level error boundaries so a broken page does not crash the whole app.
 
 ## Tech Stack
 
-| Technology       | Version | Purpose                                     |
-| ---------------- | ------- | ------------------------------------------- |
-| **React**        | 19      | UI Framework                                |
-| **Vite**         | 7       | Build tool & HMR dev server                 |
-| **React Router** | 6       | Client-side routing (declarative URL-based) |
-| **Recharts**     | 2       | Charting library (Area, Bar, Radar, Radial) |
-| **Lucide React** | 0.562+  | Icon components                             |
-| **PropTypes**    | 15.8+   | Runtime prop validation                     |
-| **ESLint**       | 9       | Linting (flat config)                       |
-
-### Design System
-
-- **490+ CSS variables** in `src/styles/tokens.css` (exported from Figma)
-- **BEM-like component CSS** — each component owns its `.css` file, classes follow `.block`, `.block__element`, `.block--modifier`
-- **React Router v6** — full declarative URL-based navigation with `useNavigate`, `useParams`, nested routes
-
----
+| Tool | Use |
+| --- | --- |
+| React 19 | UI runtime |
+| Vite 7 | Dev server and production build |
+| React Router 7 | Routing and nested layouts |
+| Recharts 3 | Dashboard charts |
+| Lucide React | Icons |
+| PropTypes | Runtime component contracts |
+| ESLint 9 | Linting |
 
 ## Getting Started
 
-### Prerequisites
+### Requirements
 
 - Node.js 18+
-- npm or pnpm
+- npm
 
-### Installation
+### Install
 
 ```bash
-# Clone the repository
-git clone https://github.com/UwUkareem/VU-WebApp.git
-cd vu-frontend
-
-# Install dependencies
 npm install
+```
 
-# Start development server
+### Environment
+
+Create `.env` from `.env.example`:
+
+```bash
+cp .env.example .env
+```
+
+Available frontend environment variables:
+
+```env
+VITE_API_BASE_URL=https://api.vuapp.dev
+VITE_PUBLIC_API_ORIGIN=https://api.vuapp.dev
+```
+
+Values prefixed with `VITE_` are exposed to the browser. Do not put secrets, private keys, database URLs, or admin tokens in `.env` or `.env.example`.
+
+### Run
+
+```bash
 npm run dev
 ```
 
-The app will be available at `http://localhost:5173`
+The app defaults to `http://localhost:5173`.
 
-### Available Scripts
+## Scripts
 
-| Command           | Description               |
-| ----------------- | ------------------------- |
-| `npm run dev`     | Start dev server with HMR |
-| `npm run build`   | Build for production      |
-| `npm run preview` | Preview production build  |
-| `npm run lint`    | Run ESLint                |
-
----
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start Vite dev server |
+| `npm run build` | Build production assets into `dist/` |
+| `npm run preview` | Preview the production build locally |
+| `npm run lint` | Run ESLint |
 
 ## Project Structure
 
-```
+```txt
 src/
-├── main.jsx                        # App entry point
-├── App.jsx                         # Root component + React Router v6 route definitions
-├── styles/
-│   ├── index.css                   # Global CSS reset + design token import
-│   └── tokens.css                  # 490+ Figma-exported design tokens
-├── data/                           # Centralised in-memory mock data + CRUD helpers
-│   ├── index.js                    # Barrel export for all data helpers
-│   ├── candidates.js               # Candidates, pipeline stages, filters
-│   ├── jobs.js                     # Jobs list with status, dates, stats, CRUD
-│   ├── mocks.js                    # Mock interviews, CRUD, getJobsUsingMock
-│   ├── company.js                  # Company info, team members, join requests
-│   ├── application.js              # Candidate-facing application session data
-│   └── config.js                   # Shared config constants
-├── components/
-│   ├── layout/                     # App shell components
-│   │   ├── Navbar/                 # Top bar + NotificationDropdown + avatar menu
-│   │   ├── PageLayout/             # Main layout (sidebar + navbar + content area)
-│   │   ├── Shortcuts/              # Action bar (filters, search, create button)
-│   │   ├── Sidebar/                # Collapsible navigation sidebar
-│   │   └── index.js                # Barrel export
-│   └── ui/                         # Reusable UI primitives
-│       ├── Badge/                  # Badge + RoleBadge + variants config
-│       ├── Breadcrumb/             # Breadcrumb navigation trail
-│       ├── Button/                 # Button (primary, secondary, ghost, danger, dashed)
-│       ├── Cards/                  # ActionCard, EntityCard, InfoCard, QuestionCard, QuickInfoCard
-│       ├── Charts/                 # AreaChart, BarChart, RadarChart, RadialBarChart + chartTokens
-│       ├── EmptyState/             # Empty placeholder for sections with no data
-│       ├── FilterOverlay/          # Slide-in filter panel (portal-rendered, avoids overflow clipping)
-│       ├── Input/                  # Input, InputField, DropdownInput, Label, Hint + variants
-│       ├── Pagination/             # Table/list pagination
-│       ├── QuickSort/              # Sort dropdown
-│       ├── RowMenu/                # Context menu for table rows
-│       ├── SectionTitle/           # Section header with optional action slot
-│       ├── SidebarButton/          # Navigation button used in Sidebar
-│       ├── Stepper/                # Multi-step progress indicator
-│       ├── Tables/                 # TableHeader, TableRow, TableCell
-│       ├── Tabs/                   # Tab navigation (supports scrollRef for auto scroll-reset)
-│       ├── Tags/                   # Tag chips with add/remove
-│       ├── Toggle/                 # Toggle switch (boolean onChange)
-│       ├── User/                   # User avatar + name display
-│       └── index.js                # Barrel export for all UI components
-└── pages/                          # Route-level page components
-    ├── _showcase/                  # Component demo/showcase page
-    ├── Candidates/
-    │   ├── Pipeline/               # Candidate pipeline table + FilterOverlay + pagination
-    │   └── CandidateDetails/       # Tabbed detail view (CVAnalysis, FullFeedback, MockReplay)
-    ├── Jobs/
-    │   └── JobManagement/
-    │       ├── JobList/            # Jobs table + search + Create Job button
-    │       └── JobDetails/         # Job detail sidebar layout + charts + candidate table
-    ├── Mocks/
-    │   └── MockManagement/
-    │       ├── MockList/           # Mocks table + search + filters
-    │       └── MockDetails/        # Mock detail sidebar layout + charts + jobs list
-    ├── CompanyTeam/
-    │   ├── Overview/               # Company stats + team member table
-    │   ├── AddMembers/             # Join requests management
-    │   ├── MemberDetails/          # Team member / request detail view
-    │   └── CompanySettings/        # Company info + department tags management
-    ├── Profile/                    # User profile (edit mode, password, activity timeline)
-    └── Application/                # Candidate-facing application flow (standalone, no sidebar)
-        ├── JobLanding/             # Job description + Apply button
-        ├── CandidateForm/          # Application form (personal info, CV upload)
-        ├── JobOverview/            # Mock interview checklist + start prompts
-        ├── MockSession/            # Live mock interview (intro → interview phases)
-        └── SubmissionComplete/     # Confirmation screen
+  App.jsx                         # Routes, layouts, page adapters
+  main.jsx                        # React entry point
+  api/
+    BackendProvider.jsx           # Auth/data provider and refresh orchestration
+    backend/
+      client.js                   # API fetch wrapper and ApiError
+      endpoints.js                # Backend route constants
+      mappers.js                  # Backend DTO to UI model mapping
+      services.js                 # Auth, jobs, mocks, candidates, company API facade
+      storage.js                  # Safe local/session storage helpers
+      store.js                    # UI datastore populated from backend responses
+  components/
+    layout/
+      Navbar/
+      PageLayout/
+      RouteErrorBoundary/
+      Shortcuts/
+      Sidebar/
+    ui/                           # Reusable buttons, cards, tables, charts, forms, etc.
+  hooks/                          # Shared hooks
+  pages/
+    Application/                  # Candidate-facing apply flow
+    Auth/                         # Login and company join
+    Candidates/
+    CompanyTeam/
+    Jobs/
+    Mocks/
+    Profile/
+    Settings/
+  styles/                         # Global styles and design tokens
+  utils/                          # Shared helpers
 ```
 
-### Key Files
+## Routing
 
-| File                             | Purpose                                                 |
-| -------------------------------- | ------------------------------------------------------- |
-| `src/App.jsx`                    | Root component — React Router v6 routes + page wrappers |
-| `src/styles/tokens.css`          | Design tokens — single source of truth (490+ vars)      |
-| `src/styles/index.css`           | Global CSS reset + token import                         |
-| `src/data/index.js`              | Central barrel export for all data helpers              |
-| `src/components/ui/index.js`     | Central barrel export for all UI primitives             |
-| `src/components/layout/index.js` | Barrel export for layout components                     |
-| `src/pages/_showcase/`           | Component demo page (useful for visual testing)         |
+Dashboard routes render inside `PageLayout` with sidebar, navbar, breadcrumbs, lazy route chunks, and a route error boundary.
 
----
-
-## Component Architecture
-
-### Standard Component Structure
-
-Each component follows this folder pattern:
-
-```
-src/components/ui/{ComponentName}/
-├── {ComponentName}.jsx     # Component logic + PropTypes + memo()
-├── {ComponentName}.css     # BEM-like CSS with design tokens
-└── index.js                # Named re-export
-```
-
-### Conventions
-
-- **All UI components** are wrapped in `React.memo()` for render optimization
-- **Named exports only** — no default exports (consistent barrel pattern)
-- **PropTypes** required on every component for runtime validation
-- **BEM-like CSS** — `.component`, `.component--modifier`, `.component__element`
-- **Design tokens** — reference `var(--token-name)` from `tokens.css`, never hardcode colors/sizes
-- **className assembly** — `['cls', cond && 'mod'].filter(Boolean).join(' ')`
-- **Lucide React** — all icons come from `lucide-react`
-- **Stable callbacks** — `useCallback` for handlers passed to children or effects
-
-### Data Layer
-
-All data lives in `src/data/` — a single centralised layer of in-memory mock data with mutable CRUD helpers:
-
-| File                  | Data                                                             |
-| --------------------- | ---------------------------------------------------------------- |
-| `data/candidates.js`  | Candidates, pipeline stages, stage transitions, filters          |
-| `data/jobs.js`        | Jobs with status, stats, mocks list; create/update/duplicate     |
-| `data/mocks.js`       | Mock interviews; create/update/duplicate; `getJobsUsingMock`     |
-| `data/company.js`     | Company info, team members, join requests, department tags       |
-| `data/application.js` | Candidate-facing session state (form data, mock progress)        |
-| `data/config.js`      | Shared constants (seniority levels, job types, difficulty, etc.) |
-
----
-
-## Design Tokens
-
-490+ CSS variables in `src/styles/tokens.css`:
-
-| Category    | Examples                                                                            |
-| ----------- | ----------------------------------------------------------------------------------- |
-| Typography  | `--font-sans`, `--text-sm`, `--font-medium`                                         |
-| Spacing     | `--size-1`, `--gap-sm`, `--gap-lg`                                                  |
-| Colors      | `--brand-default`, `--bg-base`, `--text-primary`                                    |
-| Components  | `--btn-primary-bg`, `--input-border`, `--card-bg`                                   |
-| Borders     | `--radius-sm`, `--radius-md`, `--border-subtle`                                     |
-| Shadows     | `--shadow-sm`, `--shadow-md`, `--shadow-card`                                       |
-| Status      | `--status-success-*`, `--status-error-*`, `--status-danger-*`, `--status-warning-*` |
-| Transitions | `--transition-fast`, `--transition-base`                                            |
-
----
-
-## Pages
-
-### Current Status
-
-| Page            | Status         | Sub-pages / Routes                                                                                               |
-| --------------- | -------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **Candidates**  | ✅ Implemented | Pipeline (`/candidates`), CandidateDetails (`/candidates/:id`) with CV Analysis, Full Feedback, Mock Replay tabs |
-| **Jobs**        | ✅ Implemented | JobList (`/jobs`), JobDetails (`/jobs/:id`) with Share Job, Test Application, status management                  |
-| **Mocks**       | ✅ Implemented | MockList (`/mocks`), MockDetails (`/mocks/:id`) with Test Mock, Edit, Duplicate                                  |
-| **Company**     | ✅ Implemented | Overview, AddMembers, MemberDetails, CompanySettings (`/company/*`)                                              |
-| **Profile**     | ✅ Implemented | Profile view/edit, password change, activity timeline (`/profile`)                                               |
-| **Application** | ✅ Implemented | Candidate-facing flow: Landing → Form → Overview → MockSession → Complete (`/apply/:jobId/*`)                    |
-| **Settings**    | 🔄 Placeholder | Currently shows ComponentShowcase                                                                                |
-
-### Routing (React Router v6)
-
-```
-/candidates               → Pipeline (list)
-/candidates/:slug         → CandidateDetails (tabbed detail)
-/jobs                     → JobList
-/jobs/create              → CreateConfig (4-step form)
-/jobs/:id                 → JobDetails
-/jobs/:id/edit            → EditConfig
-/mocks                    → MockList
-/mocks/create             → CreateMockConfig (3-step form)
-/mocks/:id                → MockDetails
-/mocks/:id/edit           → EditMockConfig
-/company                  → CompanyTeam Overview
-/company/team/:id         → MemberDetails (from overview)
-/company/members          → AddMembers
-/company/members/:id      → MemberDetails (from requests)
-/company/requests/:id     → RequestDetails
-/company/settings         → CompanySettings
-/profile                  → Profile
-/apply/:jobId             → JobLanding (candidate-facing)
-/apply/:jobId/form        → CandidateForm
-/apply/:jobId/overview    → JobOverview (mock checklist)
-/apply/:jobId/mock/:mockId→ MockSession (live interview)
-/apply/:jobId/complete    → SubmissionComplete
+```txt
+/login
+/join/:companyId
+/candidates
+/candidates/:slug
+/jobs
+/jobs/create
+/jobs/:id
+/jobs/:id/edit
+/mocks
+/mocks/create
+/mocks/:id
+/mocks/:id/edit
+/company
+/company/team/:id
+/company/members
+/company/members/:id
+/company/requests/:id
+/company/settings
+/profile
+/settings
 ```
 
-### Sidebar Navigation
+Candidate application routes render in a standalone shell:
 
-```
-Candidates
-Jobs
-Mocks
-Company
-  ├── Overview
-  ├── Add Members
-  └── Company Settings
-───────────
-Profile
-Settings
-```
+```txt
+/apply/:companyId/:jobId
+/apply/:companyId/:jobId/form
+/apply/:companyId/:jobId/overview
+/apply/:companyId/:jobId/mock/:mockId
+/apply/:companyId/:jobId/complete
 
-### PageLayout Pattern
-
-All dashboard pages render inside `PageLayout` (sidebar + navbar + content area). The application flow (`/apply/*`) uses a standalone `ApplicationLayout` with no sidebar.
-
-```jsx
-// Dashboard pages
-<PageLayout breadcrumbItems={breadcrumbs}>
-  <YourPageContent />
-</PageLayout>
-
-// Application flow (candidate-facing)
-<div className="application-shell">
-  <Outlet />
-</div>
+/apply/:jobId
+/apply/:jobId/form
+/apply/:jobId/overview
+/apply/:jobId/mock/:mockId
+/apply/:jobId/complete
 ```
 
----
+## Backend Integration Notes
 
-## Current State & Roadmap
+The frontend reads from the backend through `src/api/backend/services.js` and writes normalized data into `src/api/backend/store.js`.
 
-### Implemented
+Important behavior:
 
-- ✅ **Component library** — 20+ components: Button, Input variants (text, email, password, search, dropdown), Badge, Cards (Action, Entity, Info, Question, QuickInfo), Tables, Charts (Area, Bar, Radar, Radial), Tabs, Pagination, FilterOverlay, Toggle, Tags, Stepper, EmptyState, RowMenu, QuickSort, SectionTitle, User
-- ✅ **Layout system** — PageLayout, Navbar (notifications + avatar dropdown), collapsible Sidebar, Shortcuts action bar
-- ✅ **Design token system** — 490+ variables from Figma (`tokens.css`)
-- ✅ **React Router v6** — URL-based navigation with `useNavigate`, `useParams`, nested routes
-- ✅ **Centralised data layer** — `src/data/` with full CRUD helpers for all entities
-- ✅ **All dashboard pages** — Candidates, Jobs, Mocks, Company, Profile with full detail views
-- ✅ **Candidate-facing application flow** — Job landing → form → mock overview → live mock session → completion
-- ✅ **FilterOverlay** — Portal-rendered slide-in filter panel (escapes `overflow: hidden` parent constraints)
-- ✅ **Share Job** — Copies candidate application URL to clipboard with visual feedback
-- ✅ **Breadcrumb navigation** — Contextual back-links per page
+- Editors/viewers do not request owner-only endpoints such as company join requests.
+- Optional backend calls can fail silently for expected statuses like `403`.
+- Workspace refreshes are deduped to avoid repeated full reloads while navigating.
+- Join-request polling refreshes only join requests instead of reloading all workspace data.
+- Browser storage access is guarded so local/session storage failures do not crash the app.
 
-### Planned
+## Error Boundaries
 
-- Backend API integration (replace in-memory mock data)
-- Authentication & protected routes
-- Global state management (Context or Zustand when needed)
-- Settings page
-- Real AI mock session integration
+`src/components/layout/RouteErrorBoundary` protects:
 
----
+- login and join pages
+- dashboard shell
+- individual dashboard routes
+- candidate application shell
+- individual application routes
 
-## Additional Resources
+When a route crashes, users get a contained fallback with retry and safe-page navigation instead of a full app crash.
 
-- **Figma Design**: [VU-WebApp](https://www.figma.com/design/LgLS6zCwbhl4yISLlsN2qC/VU-WebApp?node-id=3-19&t=L6mHSgM4Kqr0tyu2-1)
-- **Backend Repository**: [VU-WebApp Backend](https://github.com/Eyad-AbdElMohsen/VU)
-- **Copilot Instructions**: `.github/copilot-instructions.md` for AI coding guidance
+## Cleanup Rules
 
----
+These should not be committed:
+
+- `.env`
+- `dist/`
+- `node_modules/`
+- `*.log`
+- local Vite dev logs
+- generated backend handoff files unless they are intentionally maintained docs
+
+`.env.example` is safe to commit only with public frontend config or placeholders.
+
+## Useful Checks Before Pushing
+
+```bash
+npm run lint
+npm run build
+```
+
+## Related
+
+- Backend repository: https://github.com/Eyad-AbdElMohsen/VU
+- Figma design: https://www.figma.com/design/LgLS6zCwbhl4yISLlsN2qC/VU-WebApp
 
 ## License
 
-This project is part of a graduation project.
+Graduation project.

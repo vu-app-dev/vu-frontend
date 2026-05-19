@@ -29,6 +29,10 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Generated backend handoff/reference files
+backend-docs.json
+BACKEND_MISSING_REQUIREMENTS.md
+
 # Environment variables
 .env
 .env.local
