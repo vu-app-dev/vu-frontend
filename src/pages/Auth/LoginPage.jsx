@@ -24,6 +24,7 @@ import {
   INDUSTRY_OPTIONS,
   useBackendData,
 } from '../../api';
+import { useVerificationResendCooldown } from './useVerificationResendCooldown';
 import './LoginPage.css';
 
 const EMPTY_LOGIN = { email: '', password: '' };
@@ -41,6 +42,7 @@ const EMPTY_REGISTER = {
   description: '',
 };
 const PHONE_PATTERN = /^\+[1-9]\d{7,14}$/;
+const PHONE_EXAMPLE = '+201055667788';
 
 function isEmailVerificationError(error) {
   const message = String(error?.message || error?.payload?.message || '').toLowerCase();
@@ -65,6 +67,48 @@ function isLoginPasswordError(error) {
         lower.includes('wrong'))
     );
   });
+}
+
+function isCredentialError(error) {
+  return getErrorMessages(error).some((message) => {
+    const lower = message.toLowerCase();
+    return (
+      lower.includes('bad credentials') ||
+      lower.includes('invalid credentials') ||
+      lower.includes('invalid email') ||
+      lower.includes('invalid password') ||
+      lower.includes('email or password') ||
+      lower.includes('unauthorized')
+    );
+  });
+}
+
+function getFriendlyAuthError(error, fallback) {
+  if (isCredentialError(error)) {
+    return 'We could not sign you in. Check your email and password, then try again. If this is a new account, verify your email first.';
+  }
+
+  const message = error?.message || fallback;
+  if (String(message).toLowerCase().includes('bad credentials')) {
+    return 'We could not sign you in. Check your email and password, then try again. If this is a new account, verify your email first.';
+  }
+
+  return message;
+}
+
+function getFriendlyVerificationError(error, fallback = 'Unable to verify email.') {
+  const message = error?.message || fallback;
+  const lower = String(message).toLowerCase();
+
+  if (lower.includes('bad credentials') || lower.includes('invalid') || lower.includes('wrong')) {
+    return 'That verification code is not valid. Check the latest email and try again.';
+  }
+
+  if (lower.includes('expired')) {
+    return 'That verification code expired. Please resend a new code.';
+  }
+
+  return message;
 }
 
 function isValidEmail(value) {
@@ -169,12 +213,16 @@ export function LoginPage() {
   const [mode, setMode] = useState('login');
   const [loginForm, setLoginForm] = useState(EMPTY_LOGIN);
   const [registerForm, setRegisterForm] = useState(EMPTY_REGISTER);
-  const [verifyForm, setVerifyForm] = useState({ email: '', code: '1234' });
+  const [verifyForm, setVerifyForm] = useState({ email: '', code: '' });
   const [busy, setBusy] = useState(false);
+  const [resending, setResending] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [loginNotice, setLoginNotice] = useState(null);
   const [verifyHint, setVerifyHint] = useState('');
+  const [showVerifyRecovery, setShowVerifyRecovery] = useState(false);
+  const { resendSeconds, canResendCode, startResendCooldown, resetResendCooldown } =
+    useVerificationResendCooldown();
 
   const title = useMemo(() => {
     if (mode === 'register') return 'Create Workspace';
@@ -197,6 +245,7 @@ export function LoginPage() {
       clearFieldError(field);
       setError('');
       setLoginNotice(null);
+      setShowVerifyRecovery(false);
       clearAuthNotice?.();
     },
     [clearAuthNotice, clearFieldError]
@@ -224,6 +273,48 @@ export function LoginPage() {
       return phone === form.phone ? form : { ...form, phone };
     });
   }, []);
+
+  const sendVerificationCode = useCallback(
+    async (email, successMessage = 'We sent a verification code. Check your inbox.') => {
+      const normalizedEmail = String(email || '').trim();
+      if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
+        setFieldErrors((current) => ({
+          ...current,
+          email: !normalizedEmail ? 'Email is required.' : 'Enter a valid email.',
+        }));
+        return false;
+      }
+
+      await requestVerificationCode({
+        email: normalizedEmail,
+        useCase: 'EMAIL_VERIFICATION',
+      });
+      startResendCooldown();
+      setVerifyHint(successMessage);
+      return true;
+    },
+    [requestVerificationCode, startResendCooldown]
+  );
+
+  const openVerificationForEmail = useCallback(
+    async (email) => {
+      const normalizedEmail = String(email || '').trim();
+      setVerifyForm({ email: normalizedEmail, code: '' });
+      setMode('verify');
+      setFieldErrors({});
+      setError('');
+      setVerifyHint('');
+      resetResendCooldown();
+
+      try {
+        await sendVerificationCode(normalizedEmail);
+      } catch (err) {
+        setVerifyHint('We could not send a verification code automatically. Try Resend code.');
+        setError(err.message || 'Unable to send a verification code.');
+      }
+    },
+    [resetResendCooldown, sendVerificationCode]
+  );
 
   const formatRegisterWebsite = useCallback(() => {
     setRegisterForm((form) => {
@@ -261,29 +352,21 @@ export function LoginPage() {
           });
         } else if (isEmailVerificationError(err)) {
           const email = loginForm.email.trim();
-          setVerifyForm({ email, code: '1234' });
-          setVerifyHint('');
-          try {
-            await requestVerificationCode({
-              email,
-              useCase: 'EMAIL_VERIFICATION',
-            });
-          } catch {
-            setVerifyHint('Development code: 1234.');
-          }
-          setMode('verify');
-          setFieldErrors({});
+          await openVerificationForEmail(email);
         } else if (isLoginPasswordError(err)) {
           setFieldErrors({ password: 'Wrong password.' });
           setError('');
+        } else if (isCredentialError(err)) {
+          setShowVerifyRecovery(isValidEmail(loginForm.email));
+          setError(getFriendlyAuthError(err, 'Unable to sign in.'));
         } else {
-          setError(err.message || 'Unable to sign in.');
+          setError(getFriendlyAuthError(err, 'Unable to sign in.'));
         }
       } finally {
         setBusy(false);
       }
     },
-    [login, loginForm, navigate, requestVerificationCode, returnTo]
+    [login, loginForm, navigate, openVerificationForEmail, returnTo]
   );
 
   const handleRegister = useCallback(
@@ -319,10 +402,19 @@ export function LoginPage() {
             description: normalizedForm.description || undefined,
           },
         });
-        setVerifyForm({ email: normalizedForm.email, code: '1234' });
-        setVerifyHint('Development code: 1234.');
+        setVerifyForm({ email: normalizedForm.email, code: '' });
+        setVerifyHint('');
         setMode('verify');
         setFieldErrors({});
+        try {
+          await sendVerificationCode(
+            normalizedForm.email,
+            'Workspace created. We sent a verification code to your email.'
+          );
+        } catch (err) {
+          setVerifyHint('Workspace created, but we could not send the code. Try Resend code.');
+          setError(err.message || 'Unable to send a verification code.');
+        }
       } catch (err) {
         const backendFieldErrors = mapBackendFieldErrors(err);
         if (Object.keys(backendFieldErrors).length) {
@@ -335,8 +427,20 @@ export function LoginPage() {
         setBusy(false);
       }
     },
-    [registerForm, registerManager]
+    [registerForm, registerManager, sendVerificationCode]
   );
+
+  const handleResendVerificationCode = useCallback(async () => {
+    setError('');
+    setResending(true);
+    try {
+      await sendVerificationCode(verifyForm.email, 'We sent a new verification code.');
+    } catch (err) {
+      setError(err.message || 'Unable to resend the verification code.');
+    } finally {
+      setResending(false);
+    }
+  }, [sendVerificationCode, verifyForm.email]);
 
   const handleVerify = useCallback(
     async (event) => {
@@ -351,7 +455,7 @@ export function LoginPage() {
         await verifyEmail(verifyForm);
         navigate(returnTo, { replace: true });
       } catch (err) {
-        setError(err.message || 'Unable to verify email.');
+        setError(getFriendlyVerificationError(err));
       } finally {
         setBusy(false);
       }
@@ -370,6 +474,11 @@ export function LoginPage() {
     setError('');
     setFieldErrors({});
     setLoginNotice(null);
+    setShowVerifyRecovery(false);
+    if (nextMode !== 'verify') {
+      setVerifyHint('');
+      resetResendCooldown();
+    }
     clearAuthNotice?.();
   };
 
@@ -409,6 +518,16 @@ export function LoginPage() {
               required
             />
             {error && <p className="auth-page__error">{error}</p>}
+            {showVerifyRecovery && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => openVerificationForEmail(loginForm.email)}
+                disabled={busy}
+              >
+                Verify this email
+              </Button>
+            )}
             <Button
               type="submit"
               variant="primary"
@@ -457,7 +576,7 @@ export function LoginPage() {
               value={registerForm.phone}
               onChange={(event) => updateRegisterPhone(event.target.value)}
               onBlur={formatRegisterPhone}
-              placeholder="+201001234567"
+              placeholder={PHONE_EXAMPLE}
               iconLeft={<Phone size={16} />}
               inputMode="tel"
               autoComplete="tel"
@@ -561,13 +680,20 @@ export function LoginPage() {
               required
             />
             {error && <p className="auth-page__error">{error}</p>}
-            <Button
-              type="submit"
-              variant="primary"
-              loading={busy}
-            >
-              Verify
-            </Button>
+            <div className="auth-page__actions auth-page__actions--inline">
+              <Button type="submit" variant="primary" loading={busy}>
+                Verify
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                loading={resending}
+                disabled={!canResendCode || busy}
+                onClick={handleResendVerificationCode}
+              >
+                {canResendCode ? 'Resend code' : `Resend in ${resendSeconds}s`}
+              </Button>
+            </div>
             <button type="button" className="auth-page__link" onClick={() => switchMode('login')}>
               Back to sign in
             </button>

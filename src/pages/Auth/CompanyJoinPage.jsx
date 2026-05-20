@@ -8,6 +8,7 @@ import {
   requestVerificationCode,
   verifyEmail as verifyJoinEmail,
 } from '../../api';
+import { useVerificationResendCooldown } from './useVerificationResendCooldown';
 import './LoginPage.css';
 import './CompanyJoinPage.css';
 
@@ -20,8 +21,9 @@ const JOIN_FORM_INITIAL = {
   phone: '',
 };
 
-const PHONE_EXAMPLE = '+201001234567';
+const PHONE_EXAMPLE = '+201055667788';
 const PHONE_PATTERN = /^\+[1-9]\d{7,14}$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function normalizePhoneInput(value) {
   const compact = value.replace(/[\s().-]/g, '').replace(/[^\d+]/g, '');
@@ -36,6 +38,7 @@ function validateJoinForm(form) {
   if (!form.firstName.trim()) errors.firstName = 'First name is required.';
   if (!form.lastName.trim()) errors.lastName = 'Last name is required.';
   if (!form.email.trim()) errors.email = 'Email is required.';
+  else if (!EMAIL_PATTERN.test(form.email.trim())) errors.email = 'Enter a valid email.';
   if (!form.phone.trim()) errors.phone = 'Phone is required.';
   else if (!PHONE_PATTERN.test(form.phone.trim())) {
     errors.phone = `Use international format like ${PHONE_EXAMPLE}.`;
@@ -69,11 +72,13 @@ export function CompanyJoinPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState('join');
   const [form, setForm] = useState(JOIN_FORM_INITIAL);
-  const [verifyCode, setVerifyCode] = useState('1234');
+  const [verifyCode, setVerifyCode] = useState('');
   const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const { resendSeconds, canResendCode, startResendCooldown } = useVerificationResendCooldown();
 
   const updateField = useCallback((field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -86,6 +91,19 @@ export function CompanyJoinPage() {
       updateField('phone', normalizePhoneInput(value));
     },
     [updateField]
+  );
+
+  const sendJoinVerificationCode = useCallback(
+    async (email, successMessage = 'We sent a verification code to your email.') => {
+      const normalizedEmail = String(email || '').trim();
+      await requestVerificationCode({
+        email: normalizedEmail,
+        useCase: 'EMAIL_VERIFICATION',
+      });
+      startResendCooldown();
+      setNotice(successMessage);
+    },
+    [startResendCooldown]
   );
 
   const handleJoinSubmit = useCallback(
@@ -102,14 +120,12 @@ export function CompanyJoinPage() {
         const input = toJoinInput(form);
         await requestCompanyJoin(companyId, input);
         try {
-          await requestVerificationCode({
-            email: input.email,
-            useCase: 'EMAIL_VERIFICATION',
-          });
-        } catch {
-          setNotice('The join request was created. Use the dev verification code for now.');
+          await sendJoinVerificationCode(input.email);
+        } catch (err) {
+          setNotice('The join request was created, but we could not send the code. Try Resend code.');
+          setError(err.message || 'Unable to send a verification code.');
         }
-        setVerifyCode('1234');
+        setVerifyCode('');
         setStep('verify');
       } catch (err) {
         setError(err.message || 'Unable to send the company join request.');
@@ -117,19 +133,35 @@ export function CompanyJoinPage() {
         setIsSubmitting(false);
       }
     },
-    [companyId, form]
+    [companyId, form, sendJoinVerificationCode]
   );
+
+  const handleResendVerificationCode = useCallback(async () => {
+    setError('');
+    setIsResending(true);
+    try {
+      await sendJoinVerificationCode(form.email, 'We sent a new verification code.');
+    } catch (err) {
+      setError(err.message || 'Unable to resend the verification code.');
+    } finally {
+      setIsResending(false);
+    }
+  }, [form.email, sendJoinVerificationCode]);
 
   const handleVerifySubmit = useCallback(
     async (event) => {
       event.preventDefault();
       setError('');
+      if (!verifyCode.trim()) {
+        setErrors((current) => ({ ...current, code: 'Verification code is required.' }));
+        return;
+      }
       setIsSubmitting(true);
       try {
         await verifyJoinEmail(
           {
             email: form.email.trim(),
-            code: verifyCode.trim() || '1234',
+            code: verifyCode.trim(),
           },
           { requireToken: false, storeToken: false }
         );
@@ -241,14 +273,29 @@ export function CompanyJoinPage() {
             <TextInput
               label="Verification code"
               value={verifyCode}
-              onChange={(event) => setVerifyCode(event.target.value)}
+              onChange={(event) => {
+                setVerifyCode(event.target.value);
+                setErrors((current) => ({ ...current, code: '' }));
+                setError('');
+              }}
               iconLeft={<Mail size={16} />}
-              hint={notice}
+              hint={errors.code || notice}
+              error={Boolean(errors.code)}
+              required
             />
             {error && <p className="auth-page__error">{error}</p>}
             <div className="company-join__actions">
               <Button type="submit" loading={isSubmitting} size="lg">
                 Verify email
+              </Button>
+              <Button
+                variant="secondary"
+                size="lg"
+                loading={isResending}
+                disabled={!canResendCode || isSubmitting}
+                onClick={handleResendVerificationCode}
+              >
+                {canResendCode ? 'Resend code' : `Resend in ${resendSeconds}s`}
               </Button>
               <Button variant="secondary" size="lg" onClick={() => setStep('join')}>
                 Edit details

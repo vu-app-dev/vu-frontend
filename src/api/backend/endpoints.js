@@ -38,6 +38,7 @@ export const endpoints = {
   },
   jobs: {
     byId: (jobId) => `/jobs/get/${jobId}`,
+    publicById: (jobId) => `/jobs/public-get/${jobId}`,
     paginated: '/jobs/get_paginated',
     create: '/jobs/create',
     update: (jobId) => `/jobs/update/${jobId}`,

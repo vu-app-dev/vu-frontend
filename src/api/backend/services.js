@@ -946,8 +946,8 @@ function unwrapJobEntity(payload) {
   return entity;
 }
 
-async function fetchApplicationJob(jobId, token = '', companyId = '') {
-  const response = await apiFetch(endpoints.jobs.byId(jobId), {}, token);
+async function fetchApplicationJob(jobId, companyId = '') {
+  const response = await apiFetch(endpoints.jobs.publicById(jobId), {}, '');
   const jobEntity = unwrapJobEntity(response);
   if (!jobEntity || typeof jobEntity !== 'object') return null;
   return mapBackendJob(
@@ -955,7 +955,7 @@ async function fetchApplicationJob(jobId, token = '', companyId = '') {
       ...jobEntity,
       companyId: jobEntity.companyId || jobEntity.company?.id || companyId,
     },
-    makeMockLookup()
+    new Map()
   );
 }
 
@@ -985,16 +985,19 @@ function getApplicationCompany(job, publicCompanyId) {
 export async function buildApplicationContext(jobId = JOBS[0]?.id, options = {}) {
   try {
     const publicCompanyId = normalizeId(options?.companyId);
-    let job = getJobById(jobId);
+    const localJob = getJobById(jobId);
+    let job = null;
 
-    if (!job && jobId) {
+    if (jobId) {
       try {
-        const publicJob = await fetchApplicationJob(jobId, '', publicCompanyId);
-        if (publicJob?.id) job = upsertJob(publicJob);
+        const publicJob = await fetchApplicationJob(jobId, publicCompanyId);
+        if (publicJob?.id) job = publicJob;
       } catch (e) {
         console.error('Failed to fetch job for application', e);
       }
     }
+
+    if (!job) job = localJob;
 
     if (!job) {
       return publicCompanyId

@@ -115,6 +115,11 @@ src/
   utils/                          # Shared helpers
 ```
 
+For detailed flow documentation, see:
+
+- [`USER_FLOWS.md`](./USER_FLOWS.md) for user-centered journeys.
+- [`APP_FLOWS.md`](./APP_FLOWS.md) for routing, role, backend, and app behavior.
+
 ## Routing
 
 Dashboard routes render inside `PageLayout` with sidebar, navbar, breadcrumbs, lazy route chunks, and a route error boundary.
