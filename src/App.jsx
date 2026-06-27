@@ -9,6 +9,7 @@ import {
   Outlet,
 } from 'react-router-dom';
 import { PageLayout } from './components/layout/PageLayout';
+import { AppLogo } from './components/ui/AppLogo';
 import { RouteErrorBoundary } from './components/layout/RouteErrorBoundary';
 import { Button } from './components/ui/Button';
 import { EmptyState } from './components/ui/EmptyState';
@@ -114,6 +115,9 @@ const SubmissionComplete = lazy(() =>
 );
 const ComponentShowcase = lazy(() =>
   import('./pages/_showcase').then((m) => ({ default: m.ComponentShowcase }))
+);
+const LandingPage = lazy(() =>
+  import('./pages/Landing').then((m) => ({ default: m.LandingPage }))
 );
 
 // ── Static config ──
@@ -573,6 +577,7 @@ function DashboardLayout() {
 
   return (
     <PageLayout
+      logo={<AppLogo size="md" />}
       navItems={navItems}
       user={currentUser}
       breadcrumbItems={breadcrumbs}
@@ -1039,6 +1044,7 @@ function AppCompletePage() {
 export default function App() {
   return (
     <Routes>
+      <Route path="/" element={<Suspense fallback={null}><LandingPage /></Suspense>} />
       <Route
         path="/login"
         element={
