@@ -4,3 +4,4 @@ export * from './backend/client';
 export * from './backend/endpoints';
 export * from './backend/mappers';
 export * from './backend/services';
+export * from './ai/client';
