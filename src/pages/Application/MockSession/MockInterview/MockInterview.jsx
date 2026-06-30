@@ -37,65 +37,59 @@ function formatTime(seconds) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-/* ── TTS queue ── */
+/* ── TTS queue (simple, reliable) ── */
 let _ttsQueue = [];
-let _ttsPlaying = false;
-let _ttsAudioEl = null;
-let _ttsAdvanceGuard = false;
+let _ttsBusy = false;
 
 function stopTTS() {
   _ttsQueue = [];
-  _ttsPlaying = false;
-  _ttsAdvanceGuard = false;
-  if (_ttsAudioEl) {
-    _ttsAudioEl.onended = null;
-    _ttsAudioEl.onerror = null;
-    _ttsAudioEl.pause();
-    _ttsAudioEl.src = '';
-    _ttsAudioEl = null;
-  }
-  if (window.speechSynthesis) {
-    window.speechSynthesis.cancel();
-  }
+  _ttsBusy = false;
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  document.querySelectorAll('audio[data-tts]').forEach((a) => { a.pause(); a.src = ''; a.remove(); });
 }
 
 function speak(text, audioBase64) {
   if (!text) return;
   _ttsQueue.push({ text, audioBase64 });
-  if (!_ttsPlaying) _playNextTTS();
-}
-
-function _advanceQueue() {
-  if (_ttsAdvanceGuard) return;
-  _ttsAdvanceGuard = true;
-  setTimeout(() => {
-    _ttsAdvanceGuard = false;
-    _playNextTTS();
-  }, 100);
+  console.log('[TTS] Queued:', text.slice(0, 40), '| queue:', _ttsQueue.length, '| busy:', _ttsBusy);
+  if (!_ttsBusy) _playNextTTS();
 }
 
 function _playNextTTS() {
   if (_ttsQueue.length === 0) {
-    _ttsPlaying = false;
+    _ttsBusy = false;
+    console.log('[TTS] Queue empty, idle');
     return;
   }
-  _ttsPlaying = true;
+  _ttsBusy = true;
   const { text, audioBase64 } = _ttsQueue.shift();
+  console.log('[TTS] Playing:', text.slice(0, 40), '| hasAudio:', !!audioBase64);
 
   if (audioBase64) {
     const audio = new Audio(`data:audio/mp3;base64,${audioBase64}`);
-    _ttsAudioEl = audio;
-    let started = false;
-    audio.play().then(() => {
-      started = true;
-      audio.onended = () => {
-        _ttsAudioEl = null;
-        _advanceQueue();
-      };
-    }).catch(() => {
-      if (!started) {
-        _speakBrowser(text);
-      }
+    audio.setAttribute('data-tts', '1');
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      console.log('[TTS] Finished:', text.slice(0, 40));
+      audio.remove();
+      _playNextTTS();
+    };
+    audio.onended = finish;
+    audio.onerror = () => {
+      console.warn('[TTS] Audio error, falling back:', text.slice(0, 40));
+      if (done) return;
+      done = true;
+      audio.remove();
+      _speakBrowser(text);
+    };
+    audio.play().catch(() => {
+      console.warn('[TTS] Play blocked, falling back:', text.slice(0, 40));
+      if (done) return;
+      done = true;
+      audio.remove();
+      _speakBrowser(text);
     });
   } else {
     _speakBrowser(text);
@@ -104,14 +98,26 @@ function _playNextTTS() {
 
 function _speakBrowser(text) {
   if (!window.speechSynthesis) {
-    _advanceQueue();
+    console.warn('[TTS] No speechSynthesis, skipping');
+    _playNextTTS();
     return;
   }
   const u = new SpeechSynthesisUtterance(text);
   u.rate = 1.0;
   u.lang = 'en-US';
-  u.onend = () => _advanceQueue();
-  u.onerror = () => _advanceQueue();
+  let done = false;
+  u.onend = () => {
+    if (done) return;
+    done = true;
+    console.log('[TTS] Browser TTS finished:', text.slice(0, 40));
+    _playNextTTS();
+  };
+  u.onerror = () => {
+    if (done) return;
+    done = true;
+    console.warn('[TTS] Browser TTS error:', text.slice(0, 40));
+    _playNextTTS();
+  };
   window.speechSynthesis.speak(u);
 }
 
