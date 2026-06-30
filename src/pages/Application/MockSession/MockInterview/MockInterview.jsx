@@ -37,58 +37,81 @@ function formatTime(seconds) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-/* ── TTS queue (simple, reliable) ── */
+/* ── TTS queue (persistent audio element) ── */
 let _ttsQueue = [];
 let _ttsBusy = false;
+let _ttsAudioEl = null;
+
+function _getAudioEl() {
+  if (!_ttsAudioEl) {
+    _ttsAudioEl = document.getElementById('tts-audio');
+    if (!_ttsAudioEl) {
+      _ttsAudioEl = document.createElement('audio');
+      _ttsAudioEl.id = 'tts-audio';
+      _ttsAudioEl.style.display = 'none';
+      document.body.appendChild(_ttsAudioEl);
+    }
+  }
+  return _ttsAudioEl;
+}
+
+function unlockAudio() {
+  const el = _getAudioEl();
+  el.play().then(() => { el.pause(); el.currentTime = 0; }).catch(() => {});
+  if (window.speechSynthesis) {
+    const u = new SpeechSynthesisUtterance(' ');
+    u.volume = 0;
+    window.speechSynthesis.speak(u);
+  }
+}
 
 function stopTTS() {
   _ttsQueue = [];
   _ttsBusy = false;
+  const el = _getAudioEl();
+  el.onended = null;
+  el.onerror = null;
+  el.pause();
+  el.src = '';
   if (window.speechSynthesis) window.speechSynthesis.cancel();
-  document.querySelectorAll('audio[data-tts]').forEach((a) => { a.pause(); a.src = ''; a.remove(); });
 }
 
 function speak(text, audioBase64) {
   if (!text) return;
   _ttsQueue.push({ text, audioBase64 });
-  console.log('[TTS] Queued:', text.slice(0, 40), '| queue:', _ttsQueue.length, '| busy:', _ttsBusy);
   if (!_ttsBusy) _playNextTTS();
 }
 
 function _playNextTTS() {
   if (_ttsQueue.length === 0) {
     _ttsBusy = false;
-    console.log('[TTS] Queue empty, idle');
     return;
   }
   _ttsBusy = true;
   const { text, audioBase64 } = _ttsQueue.shift();
-  console.log('[TTS] Playing:', text.slice(0, 40), '| hasAudio:', !!audioBase64);
 
   if (audioBase64) {
-    const audio = new Audio(`data:audio/mp3;base64,${audioBase64}`);
-    audio.setAttribute('data-tts', '1');
+    const el = _getAudioEl();
     let done = false;
     const finish = () => {
       if (done) return;
       done = true;
-      console.log('[TTS] Finished:', text.slice(0, 40));
-      audio.remove();
       _playNextTTS();
     };
-    audio.onended = finish;
-    audio.onerror = () => {
-      console.warn('[TTS] Audio error, falling back:', text.slice(0, 40));
+    el.onended = finish;
+    el.onerror = () => {
       if (done) return;
       done = true;
-      audio.remove();
       _speakBrowser(text);
     };
-    audio.play().catch(() => {
-      console.warn('[TTS] Play blocked, falling back:', text.slice(0, 40));
+    el.src = `data:audio/mp3;base64,${audioBase64}`;
+    el.play().then(() => {
+      // playing
+    }).catch(() => {
       if (done) return;
       done = true;
-      audio.remove();
+      el.onended = null;
+      el.onerror = null;
       _speakBrowser(text);
     });
   } else {
@@ -98,7 +121,6 @@ function _playNextTTS() {
 
 function _speakBrowser(text) {
   if (!window.speechSynthesis) {
-    console.warn('[TTS] No speechSynthesis, skipping');
     _playNextTTS();
     return;
   }
@@ -109,13 +131,11 @@ function _speakBrowser(text) {
   u.onend = () => {
     if (done) return;
     done = true;
-    console.log('[TTS] Browser TTS finished:', text.slice(0, 40));
     _playNextTTS();
   };
   u.onerror = () => {
     if (done) return;
     done = true;
-    console.warn('[TTS] Browser TTS error:', text.slice(0, 40));
     _playNextTTS();
   };
   window.speechSynthesis.speak(u);
@@ -256,6 +276,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
 
   /* ── Start interview (user click unlocks audio) ── */
   const handleStartInterview = useCallback(() => {
+    unlockAudio();
     const d = introDataRef.current;
     if (d) {
       if (d.intro) speak(d.intro, d.introAudio);
