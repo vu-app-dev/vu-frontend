@@ -37,6 +37,45 @@ function formatTime(seconds) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+/* ── TTS helpers ── */
+let _ttsAudioEl = null;
+let _ttsUtterance = null;
+
+function stopTTS() {
+  if (_ttsAudioEl) {
+    _ttsAudioEl.pause();
+    _ttsAudioEl.src = '';
+    _ttsAudioEl = null;
+  }
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+    _ttsUtterance = null;
+  }
+}
+
+function speak(text, audioBase64) {
+  if (!text) return;
+  stopTTS();
+
+  if (audioBase64) {
+    _ttsAudioEl = new Audio(`data:audio/mp3;base64,${audioBase64}`);
+    _ttsAudioEl.play().catch((e) => {
+      console.warn('[TTS] Audio playback failed, falling back to browser TTS', e);
+      _speakBrowser(text);
+    });
+  } else {
+    _speakBrowser(text);
+  }
+}
+
+function _speakBrowser(text) {
+  if (!window.speechSynthesis) return;
+  _ttsUtterance = new SpeechSynthesisUtterance(text);
+  _ttsUtterance.rate = 1.0;
+  _ttsUtterance.lang = 'en-US';
+  window.speechSynthesis.speak(_ttsUtterance);
+}
+
 const PANEL = { camera: 'camera', code: 'code', screen: 'screen' };
 
 const MOCK_REQUIREMENTS = {
@@ -155,6 +194,25 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
         setMessages(initialMessages);
         answerStartedAtRef.current = new Date().toISOString();
         setSessionLoading(false);
+
+        // Speak intro then first question
+        if (data.intro) {
+          speak(data.intro, data.introAudio);
+          const tryFirstQ = () => {
+            if (data.firstQuestion) {
+              speak(data.firstQuestion.text, data.firstQuestionAudio);
+            }
+          };
+          if (data.introAudio) {
+            _ttsAudioEl.addEventListener('ended', tryFirstQ, { once: true });
+          } else if (window.speechSynthesis) {
+            _ttsUtterance.addEventListener('end', tryFirstQ, { once: true });
+          } else {
+            setTimeout(tryFirstQ, 2000);
+          }
+        } else if (data.firstQuestion) {
+          speak(data.firstQuestion.text, data.firstQuestionAudio);
+        }
       } catch (err) {
         if (!cancelled) {
           setSessionError(err.message);
@@ -174,6 +232,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
       sessionToken,
       onIntro: (data) => {
         addMessage('ai', data.text);
+        speak(data.text, data.audioBase64);
       },
       onQuestion: (data) => {
         cancelSilenceCountdown();
@@ -182,13 +241,16 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
         setQuestionIndex((prev) => prev + 1);
         answerStartedAtRef.current = new Date().toISOString();
         addMessage('ai', data.text);
+        speak(data.text, data.audioBase64);
         setIsTyping(false);
       },
       onAcknowledgement: (data) => {
         addMessage('ai', data.text);
+        speak(data.text, data.audioBase64);
         setIsTyping(false);
       },
       onSessionEnd: (data) => {
+        stopTTS();
         cancelSilenceCountdown();
         transcriptRef.current = '';
         setIsFinished(true);
@@ -210,6 +272,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
       onPartial: (text) => {
         setSttPartial(text);
         if (text.trim()) {
+          stopTTS();
           cancelSilenceCountdown();
         }
       },
@@ -330,6 +393,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
       setSttRecording(false);
     } else {
       if (!micCaptureRef.current) {
+        stopTTS();
         micCaptureRef.current = startMicCapture((base64) => {
           sendAudioToSTT(sttWsRef.current, base64);
         });
@@ -449,6 +513,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
     const camRef = camStreamRef;
     const screenRef = screenStreamRef;
     return () => {
+      stopTTS();
       camRef.current?.getTracks().forEach((t) => t.stop());
       screenRef.current?.getTracks().forEach((t) => t.stop());
       micCaptureRef.current?.stop();
@@ -465,6 +530,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
 
   /* ── Manual send (text input or submit accumulated voice) ── */
   const handleSend = useCallback(() => {
+    stopTTS();
     cancelSilenceCountdown();
     const voiceTranscript = transcriptRef.current.trim();
     transcriptRef.current = '';
