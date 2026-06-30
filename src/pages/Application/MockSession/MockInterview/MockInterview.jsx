@@ -37,11 +37,15 @@ function formatTime(seconds) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-/* ── TTS helpers ── */
+/* ── TTS queue ── */
+let _ttsQueue = [];
+let _ttsPlaying = false;
 let _ttsAudioEl = null;
 let _ttsUtterance = null;
 
 function stopTTS() {
+  _ttsQueue = [];
+  _ttsPlaying = false;
   if (_ttsAudioEl) {
     _ttsAudioEl.pause();
     _ttsAudioEl.src = '';
@@ -55,12 +59,26 @@ function stopTTS() {
 
 function speak(text, audioBase64) {
   if (!text) return;
-  stopTTS();
+  _ttsQueue.push({ text, audioBase64 });
+  if (!_ttsPlaying) _playNextTTS();
+}
+
+function _playNextTTS() {
+  if (_ttsQueue.length === 0) {
+    _ttsPlaying = false;
+    return;
+  }
+  _ttsPlaying = true;
+  const { text, audioBase64 } = _ttsQueue.shift();
 
   if (audioBase64) {
     _ttsAudioEl = new Audio(`data:audio/mp3;base64,${audioBase64}`);
-    _ttsAudioEl.play().catch((e) => {
-      console.warn('[TTS] Audio playback failed, falling back to browser TTS', e);
+    _ttsAudioEl.onended = _playNextTTS;
+    _ttsAudioEl.onerror = () => {
+      console.warn('[TTS] Audio playback failed, falling back to browser TTS');
+      _speakBrowser(text);
+    };
+    _ttsAudioEl.play().catch(() => {
       _speakBrowser(text);
     });
   } else {
@@ -69,10 +87,15 @@ function speak(text, audioBase64) {
 }
 
 function _speakBrowser(text) {
-  if (!window.speechSynthesis) return;
+  if (!window.speechSynthesis) {
+    _playNextTTS();
+    return;
+  }
   _ttsUtterance = new SpeechSynthesisUtterance(text);
   _ttsUtterance.rate = 1.0;
   _ttsUtterance.lang = 'en-US';
+  _ttsUtterance.onend = _playNextTTS;
+  _ttsUtterance.onerror = _playNextTTS;
   window.speechSynthesis.speak(_ttsUtterance);
 }
 
@@ -195,22 +218,11 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
         answerStartedAtRef.current = new Date().toISOString();
         setSessionLoading(false);
 
-        // Speak intro then first question
+        // Queue intro + first question for sequential playback
         if (data.intro) {
           speak(data.intro, data.introAudio);
-          const tryFirstQ = () => {
-            if (data.firstQuestion) {
-              speak(data.firstQuestion.text, data.firstQuestionAudio);
-            }
-          };
-          if (data.introAudio) {
-            _ttsAudioEl.addEventListener('ended', tryFirstQ, { once: true });
-          } else if (window.speechSynthesis) {
-            _ttsUtterance.addEventListener('end', tryFirstQ, { once: true });
-          } else {
-            setTimeout(tryFirstQ, 2000);
-          }
-        } else if (data.firstQuestion) {
+        }
+        if (data.firstQuestion) {
           speak(data.firstQuestion.text, data.firstQuestionAudio);
         }
       } catch (err) {
