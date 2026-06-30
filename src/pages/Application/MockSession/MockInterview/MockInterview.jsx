@@ -72,13 +72,17 @@ function _playNextTTS() {
   const { text, audioBase64 } = _ttsQueue.shift();
 
   if (audioBase64) {
-    _ttsAudioEl = new Audio(`data:audio/mp3;base64,${audioBase64}`);
-    _ttsAudioEl.onended = _playNextTTS;
-    _ttsAudioEl.onerror = () => {
-      console.warn('[TTS] Audio playback failed, falling back to browser TTS');
-      _speakBrowser(text);
-    };
-    _ttsAudioEl.play().catch(() => {
+    const audio = new Audio(`data:audio/mp3;base64,${audioBase64}`);
+    _ttsAudioEl = audio;
+    audio.onended = _playNextTTS;
+    audio.play().then(() => {
+      // Playback started successfully — onended will continue the queue
+    }).catch(() => {
+      // Autoplay blocked or audio error — fall back to browser TTS
+      audio.onended = null;
+      if (audio === _ttsAudioEl) {
+        _ttsAudioEl = null;
+      }
       _speakBrowser(text);
     });
   } else {
