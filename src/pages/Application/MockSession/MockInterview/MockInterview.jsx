@@ -41,19 +41,21 @@ function formatTime(seconds) {
 let _ttsQueue = [];
 let _ttsPlaying = false;
 let _ttsAudioEl = null;
-let _ttsUtterance = null;
+let _ttsAdvanceGuard = false;
 
 function stopTTS() {
   _ttsQueue = [];
   _ttsPlaying = false;
+  _ttsAdvanceGuard = false;
   if (_ttsAudioEl) {
+    _ttsAudioEl.onended = null;
+    _ttsAudioEl.onerror = null;
     _ttsAudioEl.pause();
     _ttsAudioEl.src = '';
     _ttsAudioEl = null;
   }
   if (window.speechSynthesis) {
     window.speechSynthesis.cancel();
-    _ttsUtterance = null;
   }
 }
 
@@ -61,6 +63,15 @@ function speak(text, audioBase64) {
   if (!text) return;
   _ttsQueue.push({ text, audioBase64 });
   if (!_ttsPlaying) _playNextTTS();
+}
+
+function _advanceQueue() {
+  if (_ttsAdvanceGuard) return;
+  _ttsAdvanceGuard = true;
+  setTimeout(() => {
+    _ttsAdvanceGuard = false;
+    _playNextTTS();
+  }, 100);
 }
 
 function _playNextTTS() {
@@ -74,16 +85,17 @@ function _playNextTTS() {
   if (audioBase64) {
     const audio = new Audio(`data:audio/mp3;base64,${audioBase64}`);
     _ttsAudioEl = audio;
-    audio.onended = _playNextTTS;
+    let started = false;
     audio.play().then(() => {
-      // Playback started successfully — onended will continue the queue
-    }).catch(() => {
-      // Autoplay blocked or audio error — fall back to browser TTS
-      audio.onended = null;
-      if (audio === _ttsAudioEl) {
+      started = true;
+      audio.onended = () => {
         _ttsAudioEl = null;
+        _advanceQueue();
+      };
+    }).catch(() => {
+      if (!started) {
+        _speakBrowser(text);
       }
-      _speakBrowser(text);
     });
   } else {
     _speakBrowser(text);
@@ -92,15 +104,15 @@ function _playNextTTS() {
 
 function _speakBrowser(text) {
   if (!window.speechSynthesis) {
-    _playNextTTS();
+    _advanceQueue();
     return;
   }
-  _ttsUtterance = new SpeechSynthesisUtterance(text);
-  _ttsUtterance.rate = 1.0;
-  _ttsUtterance.lang = 'en-US';
-  _ttsUtterance.onend = _playNextTTS;
-  _ttsUtterance.onerror = _playNextTTS;
-  window.speechSynthesis.speak(_ttsUtterance);
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 1.0;
+  u.lang = 'en-US';
+  u.onend = () => _advanceQueue();
+  u.onerror = () => _advanceQueue();
+  window.speechSynthesis.speak(u);
 }
 
 const PANEL = { camera: 'camera', code: 'code', screen: 'screen' };
