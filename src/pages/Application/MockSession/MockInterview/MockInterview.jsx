@@ -141,6 +141,8 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
   const [sessionToken, setSessionToken] = useState(null);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [sessionError, setSessionError] = useState(null);
+  const [readyToInterview, setReadyToInterview] = useState(false);
+  const introDataRef = useRef(null);
 
   /* Chat state */
   const [messages, setMessages] = useState([]);
@@ -240,13 +242,8 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
         answerStartedAtRef.current = new Date().toISOString();
         setSessionLoading(false);
 
-        // Queue intro + first question for sequential playback
-        if (data.intro) {
-          speak(data.intro, data.introAudio);
-        }
-        if (data.firstQuestion) {
-          speak(data.firstQuestion.text, data.firstQuestionAudio);
-        }
+        // Store intro/question data for playback after user clicks "Start"
+        introDataRef.current = { intro: data.intro, introAudio: data.introAudio, firstQuestion: data.firstQuestion, firstQuestionAudio: data.firstQuestionAudio };
       } catch (err) {
         if (!cancelled) {
           setSessionError(err.message);
@@ -257,9 +254,19 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
     return () => { cancelled = true; };
   }, [mockId]);
 
+  /* ── Start interview (user click unlocks audio) ── */
+  const handleStartInterview = useCallback(() => {
+    const d = introDataRef.current;
+    if (d) {
+      if (d.intro) speak(d.intro, d.introAudio);
+      if (d.firstQuestion) speak(d.firstQuestion.text, d.firstQuestionAudio);
+    }
+    setReadyToInterview(true);
+  }, []);
+
   /* ── Connect interview WS + STT WS when session is ready ── */
   useEffect(() => {
-    if (!sessionId || !sessionToken || isFinished) return;
+    if (!sessionId || !sessionToken || !readyToInterview || isFinished) return;
 
     const interviewWs = createInterviewWS({
       sessionId,
@@ -611,6 +618,22 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
     return (
       <div className="mock-interview">
         <div className="mock-interview__header"><h3>Error: {sessionError}</h3></div>
+      </div>
+    );
+  }
+
+  if (!readyToInterview) {
+    return (
+      <div className="mock-interview">
+        <div className="mock-interview__ready-overlay">
+          <div className="mock-interview__ready-card">
+            <Bot size={32} />
+            <h3>Ready to Begin?</h3>
+            <p>Your AI interviewer is prepared. Click below to start the session.</p>
+            <p className="mock-interview__ready-note">Enable your camera and microphone when prompted.</p>
+            <Button variant="primary" onClick={handleStartInterview}>Start Interview</Button>
+          </div>
+        </div>
       </div>
     );
   }

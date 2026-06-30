@@ -872,3 +872,42 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
 }
+
+/* ── Ready overlay ── */
+.mock-interview__ready-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: var(--bg-base);
+}
+
+.mock-interview__ready-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 48px;
+  background: var(--bg-elevated, #1a1a2e);
+  border-radius: 16px;
+  text-align: center;
+  max-width: 420px;
+}
+
+.mock-interview__ready-card h3 {
+  margin: 0;
+  font-size: 20px;
+  color: var(--text-primary, #e0e0e0);
+}
+
+.mock-interview__ready-card p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary, #888);
+  line-height: 1.5;
+}
+
+.mock-interview__ready-note {
+  font-size: 12px !important;
+  opacity: 0.7;
+}
