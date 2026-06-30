@@ -359,7 +359,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
       interviewWsRef.current = null;
       sttWsRef.current = null;
     };
-  }, [sessionId, sessionToken, isFinished]);
+  }, [sessionId, sessionToken, readyToInterview, isFinished]);
 
   /* ── addMessage helper ── */
   const addMessage = useCallback((role, text) => {
@@ -469,7 +469,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
 
   /* ── Timer countdown ── */
   useEffect(() => {
-    if (isFinished || sessionLoading) return;
+    if (isFinished || sessionLoading || !readyToInterview) return;
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
