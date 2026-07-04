@@ -18,10 +18,8 @@ import { Button } from '../../../../components/ui/Button';
 import { Toggle } from '../../../../components/ui/Toggle';
 import {
   startInterview,
-  endInterview,
   createInterviewWS,
   sendAnswer,
-  sendEndSession,
   closeInterviewWS,
   createSTTConnection,
   sendAudioToSTT,
@@ -57,7 +55,12 @@ function _getAudioEl() {
 
 function unlockAudio() {
   const el = _getAudioEl();
-  el.play().then(() => { el.pause(); el.currentTime = 0; }).catch(() => {});
+  el.play()
+    .then(() => {
+      el.pause();
+      el.currentTime = 0;
+    })
+    .catch(() => {});
   if (window.speechSynthesis) {
     const u = new SpeechSynthesisUtterance(' ');
     u.volume = 0;
@@ -105,15 +108,17 @@ function _playNextTTS() {
       _speakBrowser(text);
     };
     el.src = `data:audio/mp3;base64,${audioBase64}`;
-    el.play().then(() => {
-      // playing
-    }).catch(() => {
-      if (done) return;
-      done = true;
-      el.onended = null;
-      el.onerror = null;
-      _speakBrowser(text);
-    });
+    el.play()
+      .then(() => {
+        // playing
+      })
+      .catch(() => {
+        if (done) return;
+        done = true;
+        el.onended = null;
+        el.onerror = null;
+        _speakBrowser(text);
+      });
   } else {
     _speakBrowser(text);
   }
@@ -185,6 +190,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
   const [sttConnected, setSttConnected] = useState(false);
   const [sttRecording, setSttRecording] = useState(false);
   const [sttPartial, setSttPartial] = useState('');
+  const [voiceDraft, setVoiceDraft] = useState('');
 
   /* Silence countdown state */
   const SILENCE_TIMEOUT_MS = 5000;
@@ -229,16 +235,20 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
         const data = await startInterview({
           mockId,
           candidateId: 'candidate-1',
-          mockData: mock ? {
-            type: mock.type || 'TECHNICAL',
-            difficulty: mock.difficulty || 'MEDIUM',
-            technologies: mock.technologies || [],
-            topics: mock.topics || [],
-            estimatedTimeInMinutes: mock.durationMin || 30,
-            questions: (mock.questions || []).map(q => typeof q === 'string' ? { title: q } : q),
-            title: mock.name || mock.title || '',
-            description: mock.description || '',
-          } : undefined,
+          mockData: mock
+            ? {
+                type: mock.type || 'TECHNICAL',
+                difficulty: mock.difficulty || 'MEDIUM',
+                technologies: mock.technologies || [],
+                topics: mock.topics || [],
+                estimatedTimeInMinutes: mock.durationMin || 30,
+                questions: (mock.questions || []).map((q) =>
+                  typeof q === 'string' ? { title: q } : q
+                ),
+                title: mock.name || mock.title || '',
+                description: mock.description || '',
+              }
+            : undefined,
         });
         if (cancelled) return;
         setSessionId(data.sessionId);
@@ -246,7 +256,12 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
 
         const initialMessages = [];
         if (data.intro) {
-          initialMessages.push({ id: Date.now(), role: 'ai', message: data.intro, timestamp: formatTime(0) });
+          initialMessages.push({
+            id: Date.now(),
+            role: 'ai',
+            message: data.intro,
+            timestamp: formatTime(0),
+          });
         }
         if (data.firstQuestion) {
           setCurrentQuestionId(data.firstQuestion.id);
@@ -263,7 +278,12 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
         setSessionLoading(false);
 
         // Store intro/question data for playback after user clicks "Start"
-        introDataRef.current = { intro: data.intro, introAudio: data.introAudio, firstQuestion: data.firstQuestion, firstQuestionAudio: data.firstQuestionAudio };
+        introDataRef.current = {
+          intro: data.intro,
+          introAudio: data.introAudio,
+          firstQuestion: data.firstQuestion,
+          firstQuestionAudio: data.firstQuestionAudio,
+        };
       } catch (err) {
         if (!cancelled) {
           setSessionError(err.message);
@@ -271,8 +291,10 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
         }
       }
     })();
-    return () => { cancelled = true; };
-  }, [mockId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [mockId, mock]);
 
   /* ── Start interview (user click unlocks audio) ── */
   const handleStartInterview = useCallback(() => {
@@ -285,98 +307,43 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
     setReadyToInterview(true);
   }, []);
 
-  /* ── Connect interview WS + STT WS when session is ready ── */
+  const timeLeftRef = useRef(timeLeft);
   useEffect(() => {
-    if (!sessionId || !sessionToken || !readyToInterview || isFinished) return;
+    timeLeftRef.current = timeLeft;
+  }, [timeLeft]);
 
-    const interviewWs = createInterviewWS({
-      sessionId,
-      sessionToken,
-      onIntro: (data) => {
-        addMessage('ai', data.text);
-        speak(data.text, data.audioBase64);
-      },
-      onQuestion: (data) => {
-        cancelSilenceCountdown();
-        transcriptRef.current = '';
-        setCurrentQuestionId(data.id);
-        setQuestionIndex((prev) => prev + 1);
-        answerStartedAtRef.current = new Date().toISOString();
-        addMessage('ai', data.text);
-        speak(data.text, data.audioBase64);
-        setIsTyping(false);
-      },
-      onAcknowledgement: (data) => {
-        addMessage('ai', data.text);
-        speak(data.text, data.audioBase64);
-        setIsTyping(false);
-      },
-      onSessionEnd: (data) => {
-        stopTTS();
-        cancelSilenceCountdown();
-        transcriptRef.current = '';
-        setIsFinished(true);
-        if (data?.performance?.score != null) {
-          addMessage('ai', `Assessment complete. Overall score: ${data.performance.score}/100. Cheat status: ${data.cheat}.`);
-        } else {
-          addMessage('ai', 'Assessment complete. Thank you for your time.');
-        }
-      },
-      onError: (data) => {
-        console.error('[Interview]', data.message);
-      },
-      onClose: () => {},
-    });
-    interviewWsRef.current = interviewWs;
+  const isTypingRef = useRef(isTyping);
+  useEffect(() => {
+    isTypingRef.current = isTyping;
+  }, [isTyping]);
 
-    const sttWs = createSTTConnection({
-      onSessionBegins: () => setSttConnected(true),
-      onPartial: (text) => {
-        setSttPartial(text);
-        if (text.trim()) {
-          stopTTS();
-          cancelSilenceCountdown();
-        }
-      },
-      onFinal: (text) => {
-        setSttPartial('');
-        if (!text.trim()) return;
-        if (isTypingRef.current) return;
-        transcriptRef.current += (transcriptRef.current ? ' ' : '') + text.trim();
-        restartSilenceCountdown();
-      },
-      onError: (msg) => console.error('[STT]', msg),
-      onClose: () => {
-        setSttConnected(false);
-        setSttRecording(false);
-      },
-    });
-    sttWsRef.current = sttWs;
+  const sessionIdRef = useRef(sessionId);
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
 
-    return () => {
-      closeInterviewWS(interviewWs);
-      closeSTTConnection(sttWs);
-      interviewWsRef.current = null;
-      sttWsRef.current = null;
-    };
-  }, [sessionId, sessionToken, readyToInterview, isFinished]);
+  const currentQuestionIdRef = useRef(currentQuestionId);
+  useEffect(() => {
+    currentQuestionIdRef.current = currentQuestionId;
+  }, [currentQuestionId]);
 
   /* ── addMessage helper ── */
-  const addMessage = useCallback((role, text) => {
-    setMessages((prev) => [...prev, { id: Date.now() + Math.random(), role, message: text, timestamp: formatTime(totalSeconds - timeLeftRef.current) }]);
-  }, []);
-
-  const timeLeftRef = useRef(timeLeft);
-  useEffect(() => { timeLeftRef.current = timeLeft; }, [timeLeft]);
-  const isTypingRef = useRef(isTyping);
-  useEffect(() => { isTypingRef.current = isTyping; }, [isTyping]);
+  const addMessage = useCallback(
+    (role, text) => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now() + Math.random(),
+          role,
+          message: text,
+          timestamp: formatTime(totalSeconds - timeLeftRef.current),
+        },
+      ]);
+    },
+    [totalSeconds]
+  );
 
   /* ── Send answer to interview WS ── */
-  const sessionIdRef = useRef(sessionId);
-  useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
-  const currentQuestionIdRef = useRef(currentQuestionId);
-  useEffect(() => { currentQuestionIdRef.current = currentQuestionId; }, [currentQuestionId]);
-
   const sendAnswerToInterview = useCallback((transcript) => {
     if (!interviewWsRef.current || interviewWsRef.current.readyState !== WebSocket.OPEN) return;
     const sid = sessionIdRef.current;
@@ -416,12 +383,14 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
     const transcript = transcriptRef.current.trim();
     if (!transcript || isTypingRef.current) {
       transcriptRef.current = '';
+      setVoiceDraft('');
       return;
     }
     transcriptRef.current = '';
+    setVoiceDraft('');
     addMessage('candidate', transcript);
     sendAnswerToInterview(transcript);
-  }, [addMessage, sendAnswerToInterview]);
+  }, [addMessage, cancelSilenceCountdown, sendAnswerToInterview]);
 
   const restartSilenceCountdown = useCallback(() => {
     cancelSilenceCountdown();
@@ -447,6 +416,97 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
       submitAccumulatedTranscript();
     }, SILENCE_TIMEOUT_MS);
   }, [cancelSilenceCountdown, submitAccumulatedTranscript]);
+
+  /* ── Connect interview WS + STT WS when session is ready ── */
+  useEffect(() => {
+    if (!sessionId || !sessionToken || !readyToInterview || isFinished) return;
+
+    const interviewWs = createInterviewWS({
+      sessionId,
+      sessionToken,
+      onIntro: (data) => {
+        addMessage('ai', data.text);
+        speak(data.text, data.audioBase64);
+      },
+      onQuestion: (data) => {
+        cancelSilenceCountdown();
+        transcriptRef.current = '';
+        setVoiceDraft('');
+        setCurrentQuestionId(data.id);
+        setQuestionIndex((prev) => prev + 1);
+        answerStartedAtRef.current = new Date().toISOString();
+        addMessage('ai', data.text);
+        speak(data.text, data.audioBase64);
+        setIsTyping(false);
+      },
+      onAcknowledgement: (data) => {
+        addMessage('ai', data.text);
+        speak(data.text, data.audioBase64);
+        setIsTyping(false);
+      },
+      onSessionEnd: (data) => {
+        stopTTS();
+        cancelSilenceCountdown();
+        transcriptRef.current = '';
+        setVoiceDraft('');
+        setIsFinished(true);
+        if (data?.performance?.score != null) {
+          addMessage(
+            'ai',
+            `Assessment complete. Overall score: ${data.performance.score}/100. Cheat status: ${data.cheat}.`
+          );
+        } else {
+          addMessage('ai', 'Assessment complete. Thank you for your time.');
+        }
+      },
+      onError: (data) => {
+        console.error('[Interview]', data.message);
+      },
+      onClose: () => {},
+    });
+    interviewWsRef.current = interviewWs;
+
+    const sttWs = createSTTConnection({
+      onSessionBegins: () => setSttConnected(true),
+      onPartial: (text) => {
+        setSttPartial(text);
+        if (text.trim()) {
+          stopTTS();
+          cancelSilenceCountdown();
+        }
+      },
+      onFinal: (text) => {
+        setSttPartial('');
+        if (!text.trim()) return;
+        if (isTypingRef.current) return;
+        const nextTranscript = `${transcriptRef.current ? `${transcriptRef.current} ` : ''}${text.trim()}`;
+        transcriptRef.current = nextTranscript;
+        setVoiceDraft(nextTranscript);
+        restartSilenceCountdown();
+      },
+      onError: (msg) => console.error('[STT]', msg),
+      onClose: () => {
+        setSttConnected(false);
+        setSttRecording(false);
+      },
+    });
+    sttWsRef.current = sttWs;
+
+    return () => {
+      closeInterviewWS(interviewWs);
+      closeSTTConnection(sttWs);
+      interviewWsRef.current = null;
+      sttWsRef.current = null;
+    };
+  }, [
+    addMessage,
+    cancelSilenceCountdown,
+    isFinished,
+    readyToInterview,
+    restartSilenceCountdown,
+    sessionId,
+    sessionToken,
+  ]);
 
   /* ── Mic toggle ── */
   const handleMicToggle = useCallback(() => {
@@ -481,7 +541,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [isFinished, sessionLoading]);
+  }, [isFinished, readyToInterview, sessionLoading]);
 
   /* ── 5-minute warning ── */
   useEffect(() => {
@@ -535,12 +595,19 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
     (async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
         camStreamRef.current = stream;
         if (camVideoRef.current) camVideoRef.current.srcObject = stream;
-      } catch { /* permission denied */ }
+      } catch {
+        /* permission denied */
+      }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [showCamera]);
 
   /* ── Screen share ── */
@@ -560,14 +627,21 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
     (async () => {
       try {
         const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
         screenStreamRef.current = stream;
         if (screenVideoRef.current) screenVideoRef.current.srcObject = stream;
         const [screenTrack] = stream.getVideoTracks();
         if (screenTrack) screenTrack.onended = () => setShowScreen(false);
-      } catch { setShowScreen(false); }
+      } catch {
+        setShowScreen(false);
+      }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [showScreen]);
 
   /* ── Cleanup all on unmount ── */
@@ -585,10 +659,14 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
   }, []);
 
   /* ── Auto-scroll ── */
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping]);
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isTyping]);
 
   /* ── Auto-focus ── */
-  useEffect(() => { if (!isTyping && !isFinished) inputRef.current?.focus(); }, [isTyping, isFinished]);
+  useEffect(() => {
+    if (!isTyping && !isFinished) inputRef.current?.focus();
+  }, [isTyping, isFinished]);
 
   /* ── Manual send (text input or submit accumulated voice) ── */
   const handleSend = useCallback(() => {
@@ -596,7 +674,8 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
     cancelSilenceCountdown();
     const voiceTranscript = transcriptRef.current.trim();
     transcriptRef.current = '';
-    const text = (inputValue.trim() || voiceTranscript);
+    setVoiceDraft('');
+    const text = inputValue.trim() || voiceTranscript;
     if (!text || isFinished) return;
     addMessage('candidate', text);
     setInputValue('');
@@ -604,16 +683,15 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
     sendAnswerToInterview(text);
   }, [inputValue, isFinished, sendAnswerToInterview, addMessage, cancelSilenceCountdown]);
 
-  const handleKeyDown = useCallback((e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
-  }, [handleSend]);
-
-  /* ── End session ── */
-  const handleEndSession = useCallback(() => {
-    if (interviewWsRef.current && sessionId) {
-      sendEndSession(interviewWsRef.current, { sessionId });
-    }
-  }, [sessionId]);
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    },
+    [handleSend]
+  );
 
   /* ── Derived ── */
   const timerWarning = timeLeft < 300;
@@ -624,13 +702,17 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
   if (showCode) visiblePanels.push(PANEL.code);
   if (showScreen) visiblePanels.push(PANEL.screen);
 
-  const effectivePinned = visiblePanels.includes(pinnedPanel) ? pinnedPanel : (visiblePanels[0] ?? null);
+  const effectivePinned = visiblePanels.includes(pinnedPanel)
+    ? pinnedPanel
+    : (visiblePanels[0] ?? null);
   const stripPanels = visiblePanels.filter((p) => p !== effectivePinned);
 
   if (sessionLoading) {
     return (
       <div className="mock-interview">
-        <div className="mock-interview__header"><h3>Loading interview...</h3></div>
+        <div className="mock-interview__header">
+          <h3>Loading interview...</h3>
+        </div>
       </div>
     );
   }
@@ -638,7 +720,9 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
   if (sessionError) {
     return (
       <div className="mock-interview">
-        <div className="mock-interview__header"><h3>Error: {sessionError}</h3></div>
+        <div className="mock-interview__header">
+          <h3>Error: {sessionError}</h3>
+        </div>
       </div>
     );
   }
@@ -651,8 +735,12 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
             <Bot size={32} />
             <h3>Ready to Begin?</h3>
             <p>Your AI interviewer is prepared. Click below to start the session.</p>
-            <p className="mock-interview__ready-note">Enable your camera and microphone when prompted.</p>
-            <Button variant="primary" onClick={handleStartInterview}>Start Interview</Button>
+            <p className="mock-interview__ready-note">
+              Enable your camera and microphone when prompted.
+            </p>
+            <Button variant="primary" onClick={handleStartInterview}>
+              Start Interview
+            </Button>
           </div>
         </div>
       </div>
@@ -661,16 +749,51 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
 
   /* ── Thumbnail ── */
   const renderThumb = (key) => (
-    <button key={key} type="button" className="mock-interview__thumb" onClick={() => setPinnedPanel(key)} title={`Expand ${key}`}>
+    <button
+      key={key}
+      type="button"
+      className="mock-interview__thumb"
+      onClick={() => setPinnedPanel(key)}
+      title={`Expand ${key}`}
+    >
       <span className="mock-interview__thumb-label">
-        {key === PANEL.camera && <><Video size={9} /> Cam</>}
-        {key === PANEL.code && <><Code2 size={9} /> Code</>}
-        {key === PANEL.screen && <><Monitor size={9} /> Screen</>}
+        {key === PANEL.camera && (
+          <>
+            <Video size={9} /> Cam
+          </>
+        )}
+        {key === PANEL.code && (
+          <>
+            <Code2 size={9} /> Code
+          </>
+        )}
+        {key === PANEL.screen && (
+          <>
+            <Monitor size={9} /> Screen
+          </>
+        )}
       </span>
       <div className="mock-interview__thumb-inner">
-        {key === PANEL.camera && <video ref={setCamVideoRef} className="mock-interview__thumb-video" autoPlay muted playsInline />}
-        {key === PANEL.code && <pre className="mock-interview__thumb-code">{codeValue.slice(0, 120)}</pre>}
-        {key === PANEL.screen && <video ref={setScreenVideoRef} className="mock-interview__thumb-video" autoPlay playsInline />}
+        {key === PANEL.camera && (
+          <video
+            ref={setCamVideoRef}
+            className="mock-interview__thumb-video"
+            autoPlay
+            muted
+            playsInline
+          />
+        )}
+        {key === PANEL.code && (
+          <pre className="mock-interview__thumb-code">{codeValue.slice(0, 120)}</pre>
+        )}
+        {key === PANEL.screen && (
+          <video
+            ref={setScreenVideoRef}
+            className="mock-interview__thumb-video"
+            autoPlay
+            playsInline
+          />
+        )}
       </div>
       <Pin size={9} className="mock-interview__thumb-pin-icon" />
     </button>
@@ -683,7 +806,13 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
       <div className="mock-interview__main-content">
         {effectivePinned === PANEL.camera && (
           <div className="mock-interview__video-wrapper">
-            <video ref={setCamVideoRef} className="mock-interview__video-fill" autoPlay muted playsInline />
+            <video
+              ref={setCamVideoRef}
+              className="mock-interview__video-fill"
+              autoPlay
+              muted
+              playsInline
+            />
             {sttRecording && (
               <div className="mock-interview__audio-indicator">
                 <span className="mock-interview__audio-bar" />
@@ -697,15 +826,34 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
         )}
         {effectivePinned === PANEL.screen && (
           <div className="mock-interview__video-wrapper">
-            <video ref={setScreenVideoRef} className="mock-interview__video-fill" autoPlay playsInline />
+            <video
+              ref={setScreenVideoRef}
+              className="mock-interview__video-fill"
+              autoPlay
+              playsInline
+            />
           </div>
         )}
         {effectivePinned === PANEL.code && (
           <>
-            <div className="mock-interview__code-bar"><Code2 size={12} /><span>Code Editor</span><span className="mock-interview__code-lang">JavaScript</span></div>
+            <div className="mock-interview__code-bar">
+              <Code2 size={12} />
+              <span>Code Editor</span>
+              <span className="mock-interview__code-lang">JavaScript</span>
+            </div>
             <div className="mock-interview__code-body">
-              <div className="mock-interview__line-nums" aria-hidden="true">{codeValue.split('\n').map((_, i) => <span key={i}>{i + 1}</span>)}</div>
-              <textarea className="mock-interview__code-input" value={codeValue} onChange={(e) => setCodeValue(e.target.value)} spellCheck={false} disabled={isFinished} />
+              <div className="mock-interview__line-nums" aria-hidden="true">
+                {codeValue.split('\n').map((_, i) => (
+                  <span key={i}>{i + 1}</span>
+                ))}
+              </div>
+              <textarea
+                className="mock-interview__code-input"
+                value={codeValue}
+                onChange={(e) => setCodeValue(e.target.value)}
+                spellCheck={false}
+                disabled={isFinished}
+              />
             </div>
           </>
         )}
@@ -718,7 +866,9 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
       {tabWarning && (
         <div className="mock-interview__tab-warning">
           <Eye size={14} />
-          <span>Tab switch detected ({tabSwitchCount}). Leaving during an assessment is flagged.</span>
+          <span>
+            Tab switch detected ({tabSwitchCount}). Leaving during an assessment is flagged.
+          </span>
         </div>
       )}
       {showTimeBanner && (
@@ -739,28 +889,45 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
         <div className="mock-interview__header-right">
           <div className="mock-interview__toggles">
             <label className="mock-interview__toggle-item" title="Toggle camera">
-              <span className="mock-interview__toggle-icon"><Video size={12} /></span>
+              <span className="mock-interview__toggle-icon">
+                <Video size={12} />
+              </span>
               <span className="mock-interview__toggle-label">Cam</span>
               <Toggle checked={showCamera} onChange={() => setShowCamera((v) => !v)} />
             </label>
-            <label className="mock-interview__toggle-item" title={sttRecording ? 'Pause mic' : sttConnected ? 'Start talking' : 'Connecting...'}>
-              <span className="mock-interview__toggle-icon"><Mic size={12} /></span>
+            <label
+              className="mock-interview__toggle-item"
+              title={sttRecording ? 'Pause mic' : sttConnected ? 'Start talking' : 'Connecting...'}
+            >
+              <span className="mock-interview__toggle-icon">
+                <Mic size={12} />
+              </span>
               <span className="mock-interview__toggle-label">{sttRecording ? 'Stop' : 'Mic'}</span>
-              <Toggle checked={sttRecording} onChange={handleMicToggle} disabled={!sttConnected || isFinished} />
+              <Toggle
+                checked={sttRecording}
+                onChange={handleMicToggle}
+                disabled={!sttConnected || isFinished}
+              />
             </label>
             <label className="mock-interview__toggle-item" title="Toggle code editor">
-              <span className="mock-interview__toggle-icon"><Code2 size={12} /></span>
+              <span className="mock-interview__toggle-icon">
+                <Code2 size={12} />
+              </span>
               <span className="mock-interview__toggle-label">Code</span>
               <Toggle checked={showCode} onChange={() => setShowCode((v) => !v)} />
             </label>
             <label className="mock-interview__toggle-item" title="Toggle screen share">
-              <span className="mock-interview__toggle-icon"><Monitor size={12} /></span>
+              <span className="mock-interview__toggle-icon">
+                <Monitor size={12} />
+              </span>
               <span className="mock-interview__toggle-label">Screen</span>
               <Toggle checked={showScreen} onChange={() => setShowScreen((v) => !v)} />
             </label>
           </div>
           <div className="mock-interview__header-divider" />
-          <div className={`mock-interview__timer${timerWarning ? ' mock-interview__timer--warning' : ''}${timerCritical ? ' mock-interview__timer--critical' : ''}`}>
+          <div
+            className={`mock-interview__timer${timerWarning ? ' mock-interview__timer--warning' : ''}${timerCritical ? ' mock-interview__timer--critical' : ''}`}
+          >
             <Clock size={14} />
             <span>{formatTime(timeLeft)}</span>
           </div>
@@ -768,10 +935,16 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
       </div>
 
       {/* Body */}
-      <div className={`mock-interview__body${visiblePanels.length === 0 ? ' mock-interview__body--chat-only' : ''}`}>
+      <div
+        className={`mock-interview__body${visiblePanels.length === 0 ? ' mock-interview__body--chat-only' : ''}`}
+      >
         {visiblePanels.length > 0 && (
           <div className="mock-interview__left">
-            {stripPanels.length > 0 && <div className="mock-interview__strip">{stripPanels.map((key) => renderThumb(key))}</div>}
+            {stripPanels.length > 0 && (
+              <div className="mock-interview__strip">
+                {stripPanels.map((key) => renderThumb(key))}
+              </div>
+            )}
             <div className="mock-interview__main-view">{renderMainView()}</div>
           </div>
         )}
@@ -782,17 +955,26 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
           </div>
           <div className="mock-interview__messages">
             {messages.map((msg) => (
-              <div key={msg.id} className={`mock-interview__message mock-interview__message--${msg.role}`}>
-                <div className="mock-interview__message-avatar">{msg.role === 'ai' ? <Bot size={14} /> : <User size={14} />}</div>
+              <div
+                key={msg.id}
+                className={`mock-interview__message mock-interview__message--${msg.role}`}
+              >
+                <div className="mock-interview__message-avatar">
+                  {msg.role === 'ai' ? <Bot size={14} /> : <User size={14} />}
+                </div>
                 <div className="mock-interview__message-bubble">
                   <p className="mock-interview__message-text">{msg.message}</p>
-                  {msg.timestamp && <span className="mock-interview__message-time">{msg.timestamp}</span>}
+                  {msg.timestamp && (
+                    <span className="mock-interview__message-time">{msg.timestamp}</span>
+                  )}
                 </div>
               </div>
             ))}
             {isTyping && (
               <div className="mock-interview__message mock-interview__message--ai">
-                <div className="mock-interview__message-avatar"><Bot size={14} /></div>
+                <div className="mock-interview__message-avatar">
+                  <Bot size={14} />
+                </div>
                 <div className="mock-interview__message-bubble mock-interview__typing">
                   <span className="mock-interview__typing-dot" />
                   <span className="mock-interview__typing-dot" />
@@ -804,8 +986,13 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
           </div>
           {isFinished ? (
             <div className="mock-interview__complete-bar">
-              <div className="mock-interview__complete-info"><CheckCircle2 size={16} /><span>Assessment completed</span></div>
-              <Button variant="primary" size="sm" onClick={onComplete}>View Results</Button>
+              <div className="mock-interview__complete-info">
+                <CheckCircle2 size={16} />
+                <span>Assessment completed</span>
+              </div>
+              <Button variant="primary" size="sm" onClick={onComplete}>
+                View Results
+              </Button>
             </div>
           ) : (
             <div className="mock-interview__input-bar">
@@ -821,8 +1008,8 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
                   disabled={isTyping}
                 />
                 {sttPartial && <div className="mock-interview__stt-partial">{sttPartial}</div>}
-                {!sttPartial && transcriptRef.current && !silenceCountdown && sttRecording && (
-                  <div className="mock-interview__stt-partial">{transcriptRef.current}</div>
+                {!sttPartial && voiceDraft && !silenceCountdown && sttRecording && (
+                  <div className="mock-interview__stt-partial">{voiceDraft}</div>
                 )}
                 {silenceCountdown !== null && (
                   <div className="mock-interview__silence-countdown">
@@ -834,7 +1021,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
               <button
                 className="mock-interview__send-btn"
                 onClick={handleSend}
-                disabled={(!inputValue.trim() && !transcriptRef.current.trim()) || isTyping}
+                disabled={(!inputValue.trim() && !voiceDraft.trim()) || isTyping}
                 type="button"
                 title="Send"
               >
