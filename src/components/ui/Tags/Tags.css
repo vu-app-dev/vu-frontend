@@ -70,7 +70,7 @@
   font-weight: var(--font-regular);
   color: var(--text-secondary);
   line-height: 1.4;
-  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Remove Button */
@@ -120,7 +120,7 @@
   transition:
     background-color var(--transition-fast),
     transform var(--transition-fast);
-  user-select: none;
+  -webkit-user-select: none;
 }
 
 .tags__add-btn:hover {
