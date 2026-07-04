@@ -30,6 +30,7 @@ export const SidebarButton = memo(function SidebarButton({
           .join(' ')}
         onClick={onClick}
         title={collapsed ? label : undefined}
+        aria-current={isButtonActive ? 'page' : undefined}
       >
         {Icon && (
           <span className="sidebar-button__icon" aria-hidden="true">
@@ -63,6 +64,7 @@ const SidebarSubItem = memo(function SidebarSubItem({ label, isActive, onClick }
         .filter(Boolean)
         .join(' ')}
       onClick={onClick}
+      aria-current={isActive ? 'page' : undefined}
     >
       <span className="sidebar-subitem__label">{label}</span>
     </button>

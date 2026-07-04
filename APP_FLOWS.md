@@ -4,29 +4,29 @@ This document describes the main user, routing, permission, data, and failure fl
 
 ## Actors
 
-| Actor | Purpose |
-| --- | --- |
-| Owner | Full company workspace control, including company settings, members, join requests, jobs, mocks, and candidates. |
-| Editor | Can manage jobs, mocks, and candidates, but cannot manage company members or company settings. |
-| Viewer | Can view jobs, mocks, and candidates, but cannot create, edit, or make decisions. |
-| Candidate | Public user applying through an `/apply` link. |
+| Actor     | Purpose                                                                                                          |
+| --------- | ---------------------------------------------------------------------------------------------------------------- |
+| Owner     | Full company workspace control, including company settings, members, join requests, jobs, mocks, and candidates. |
+| Editor    | Can manage jobs, mocks, and candidates, but cannot manage company members or company settings.                   |
+| Viewer    | Can view jobs, mocks, and candidates, but cannot create, edit, or make decisions.                                |
+| Candidate | Public user applying through an `/apply` link.                                                                   |
 
 ## Permission Model
 
-| Permission | Owner | Editor | Viewer | Used For |
-| --- | --- | --- | --- | --- |
-| `view_jobs` | Yes | Yes | Yes | Jobs list/details and application links. |
-| `view_mocks` | Yes | Yes | Yes | Mocks list/details and job mock lookup. |
-| `view_candidates` | Yes | Yes | Yes | Candidate pipeline and details. |
-| `create_jobs` | Yes | Yes | No | Create job form and sidebar action. |
-| `edit_jobs` | Yes | Yes | No | Edit job, delete/duplicate job, share/test job actions. |
-| `create_mocks` | Yes | Yes | No | Create mock form and sidebar action. |
-| `edit_mocks` | Yes | Yes | No | Edit/delete/duplicate mock actions. |
-| `review_candidates` | Yes | Yes | No | Candidate review surfaces. |
-| `change_candidate_status` | Yes | Yes | No | Accept, reject, and shortlist candidate decisions. |
-| `accept_members` | Yes | No | No | Join request list, accept, and decline flows. |
-| `edit_company` | Yes | No | No | Company settings page. |
-| `remove_members` | Yes | No | No | Team member removal. |
+| Permission                | Owner | Editor | Viewer | Used For                                                |
+| ------------------------- | ----- | ------ | ------ | ------------------------------------------------------- |
+| `view_jobs`               | Yes   | Yes    | Yes    | Jobs list/details and application links.                |
+| `view_mocks`              | Yes   | Yes    | Yes    | Mocks list/details and job mock lookup.                 |
+| `view_candidates`         | Yes   | Yes    | Yes    | Candidate pipeline and details.                         |
+| `create_jobs`             | Yes   | Yes    | No     | Create job form and sidebar action.                     |
+| `edit_jobs`               | Yes   | Yes    | No     | Edit job, delete/duplicate job, share/test job actions. |
+| `create_mocks`            | Yes   | Yes    | No     | Create mock form and sidebar action.                    |
+| `edit_mocks`              | Yes   | Yes    | No     | Edit/delete/duplicate mock actions.                     |
+| `review_candidates`       | Yes   | Yes    | No     | Candidate review surfaces.                              |
+| `change_candidate_status` | Yes   | Yes    | No     | Accept, reject, and shortlist candidate decisions.      |
+| `accept_members`          | Yes   | No     | No     | Join request list, accept, and decline flows.           |
+| `edit_company`            | Yes   | No     | No     | Company settings page.                                  |
+| `remove_members`          | Yes   | No     | No     | Team member removal.                                    |
 
 ## High-Level App Flow
 
@@ -546,7 +546,7 @@ Flow:
 Owner opens company settings
   -> Permission check requires edit_company
   -> Company form loads from store
-  -> Owner edits identity, statuses, departments
+  -> Owner edits identity and candidate status labels
   -> updateCompany(form) sends backend update request
   -> Saved state appears briefly
 ```
@@ -810,18 +810,18 @@ Public job fetch fails
 
 ## Main Data Objects
 
-| Store object | Meaning |
-| --- | --- |
-| `JOBS` | Normalized jobs shown in dashboard and application links. |
-| `MOCKS` | Normalized mock interviews and evaluation config. |
-| `CANDIDATES` | Normalized candidate applications and review data. |
-| `COMPANY` | Current company/workspace profile. |
-| `TEAM_MEMBERS` | Company users visible to owner/editor. |
-| `JOIN_REQUESTS` | Pending/processed join requests visible to owner. |
-| `APPLICATION` | Current candidate-facing application context. |
-| `CANDIDATE_INFO` | Public candidate form/session data. |
-| `CURRENT_USER` | Authenticated backend user. |
-| `CURRENT_USER_ID` | Current user id used for member lookup and role checks. |
+| Store object      | Meaning                                                   |
+| ----------------- | --------------------------------------------------------- |
+| `JOBS`            | Normalized jobs shown in dashboard and application links. |
+| `MOCKS`           | Normalized mock interviews and evaluation config.         |
+| `CANDIDATES`      | Normalized candidate applications and review data.        |
+| `COMPANY`         | Current company/workspace profile.                        |
+| `TEAM_MEMBERS`    | Company users visible to owner/editor.                    |
+| `JOIN_REQUESTS`   | Pending/processed join requests visible to owner.         |
+| `APPLICATION`     | Current candidate-facing application context.             |
+| `CANDIDATE_INFO`  | Public candidate form/session data.                       |
+| `CURRENT_USER`    | Authenticated backend user.                               |
+| `CURRENT_USER_ID` | Current user id used for member lookup and role checks.   |
 
 ## End-To-End Happy Paths
 

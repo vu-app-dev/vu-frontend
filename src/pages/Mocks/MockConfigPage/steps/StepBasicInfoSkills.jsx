@@ -17,14 +17,9 @@ export function StepBasicInfoSkills({
   return (
     <>
       <section className="create-mock__section">
-        <SectionTitle
-          variant="inline"
-          description="Define the core details for this evaluation module"
-        >
-          Basic Information
-        </SectionTitle>
+        <SectionTitle variant="inline">Basic information</SectionTitle>
         <TextInput
-          label="Mock Name"
+          label="Assessment name"
           placeholder="e.g. System Design Interview"
           required
           value={form.title}
@@ -32,7 +27,7 @@ export function StepBasicInfoSkills({
           disabled={isActive}
           onBlur={() => markTouched?.('title')}
           error={Boolean(showFieldError?.('title'))}
-          hint={showFieldError?.('title') ? validationErrors.title : 'Minimum 3 characters'}
+          hint={showFieldError?.('title') ? validationErrors.title : ''}
         />
         <div className="create-mock__row create-mock__row--3">
           <DropdownInput
@@ -45,7 +40,7 @@ export function StepBasicInfoSkills({
             disabled={isActive}
             onBlur={() => markTouched?.('type')}
             error={Boolean(showFieldError?.('type'))}
-            hint={showFieldError?.('type') ? validationErrors.type : 'Required'}
+            hint={showFieldError?.('type') ? validationErrors.type : ''}
           />
           <DropdownInput
             label="Difficulty"
@@ -57,10 +52,10 @@ export function StepBasicInfoSkills({
             disabled={isActive}
             onBlur={() => markTouched?.('difficulty')}
             error={Boolean(showFieldError?.('difficulty'))}
-            hint={showFieldError?.('difficulty') ? validationErrors.difficulty : 'Required'}
+            hint={showFieldError?.('difficulty') ? validationErrors.difficulty : ''}
           />
           <DropdownInput
-            label="Estimated Duration"
+            label="Estimated duration"
             placeholder="Select duration"
             required
             options={DURATION_OPTIONS}
@@ -69,12 +64,12 @@ export function StepBasicInfoSkills({
             disabled={isActive}
             onBlur={() => markTouched?.('durationMin')}
             error={Boolean(showFieldError?.('durationMin'))}
-            hint={showFieldError?.('durationMin') ? validationErrors.durationMin : 'Required'}
+            hint={showFieldError?.('durationMin') ? validationErrors.durationMin : ''}
           />
         </div>
         <Textarea
-          label="Short Description"
-          placeholder="Briefly describe what this mock evaluates..."
+          label="Candidate-facing summary"
+          placeholder="Briefly describe what this assessment evaluates..."
           rows={3}
           maxLength={500}
           showCounter
@@ -82,48 +77,33 @@ export function StepBasicInfoSkills({
           onChange={(e) => updateField('description', e.target.value)}
           onBlur={() => markTouched?.('description')}
           error={Boolean(showFieldError?.('description'))}
-          hint={showFieldError?.('description') ? validationErrors.description : 'Minimum 10 characters'}
+          hint={showFieldError?.('description') ? validationErrors.description : ''}
           disabled={isActive}
         />
+
+        <div className="create-mock__field-group">
+          <span className="create-mock__field-label">Skills covered</span>
+          <Tags
+            tags={form.technologies}
+            variant={isActive ? 'readonly' : 'editable'}
+            showTitle={false}
+            onAdd={isActive ? undefined : addTechnology}
+            onRemove={isActive ? undefined : removeTechnology}
+          />
+          {showFieldError?.('technologies') && (
+            <p className="create-mock__hint">{validationErrors.technologies}</p>
+          )}
+        </div>
       </section>
 
       <section className="create-mock__section">
-        <SectionTitle
-          variant="inline"
-          description="Add technologies this mock evaluates. Used for CV analysis, alignment scoring, and search/filter."
-        >
-          Technologies Covered
-        </SectionTitle>
-        <Tags
-          tags={form.technologies}
-          variant={isActive ? 'readonly' : 'editable'}
-          showTitle={false}
-          onAdd={isActive ? undefined : addTechnology}
-          onRemove={isActive ? undefined : removeTechnology}
-        />
-        {(showFieldError?.('technologies') || form.technologies.length === 0) && (
-          <p className="create-mock__hint">
-            {showFieldError?.('technologies')
-              ? validationErrors.technologies
-              : 'Add at least one technology to continue. Type and press Enter.'}
-          </p>
-        )}
-      </section>
-
-      <section className="create-mock__section">
-        <SectionTitle
-          variant="inline"
-          description="Configure additional features for this mock session"
-        >
-          Session Features
-        </SectionTitle>
+        <SectionTitle variant="inline">Session options</SectionTitle>
         <div className="create-mock__toggles">
           <div className="create-mock__toggle-group">
             <div className="create-mock__toggle-info">
-              <span className="create-mock__toggle-label">Enable Follow-up Questions</span>
+              <span className="create-mock__toggle-label">Follow-up questions</span>
               <span className="create-mock__toggle-desc">
-                Allow the AI to ask dynamically generated follow-up questions based on the
-                candidate's answers.
+                Allow the interview to ask relevant follow-up questions based on candidate answers.
               </span>
             </div>
             <Toggle
@@ -134,9 +114,9 @@ export function StepBasicInfoSkills({
           </div>
           <div className="create-mock__toggle-group">
             <div className="create-mock__toggle-info">
-              <span className="create-mock__toggle-label">Enable Record Replay</span>
+              <span className="create-mock__toggle-label">Replay recording</span>
               <span className="create-mock__toggle-desc">
-                Automatically record the candidate's session for playback and detailed review.
+                Record the candidate session so reviewers can inspect the evidence later.
               </span>
             </div>
             <Toggle

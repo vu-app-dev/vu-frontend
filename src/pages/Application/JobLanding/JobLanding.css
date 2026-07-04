@@ -95,7 +95,7 @@
 .job-landing__quick-info-link {
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
-  color: var(--brand-default);
+  color: var(--text-accent);
   text-decoration: none;
 }
 

@@ -1,5 +1,7 @@
 import { MockConfigForm } from '../MockConfigForm';
 import { addMock } from '../../../../api';
+import { useState } from 'react';
+import { ConfirmDialog } from '../../../../components/ui/Dialog';
 
 /**
  * CreateMockConfig - thin wrapper that renders MockConfigForm in create mode.
@@ -7,14 +9,29 @@ import { addMock } from '../../../../api';
  * Status is derived (not set manually).
  */
 export function CreateMockConfig({ onCreated }) {
+  const [error, setError] = useState('');
+
   const handlePublish = async (form) => {
     try {
       const mock = await addMock(form);
       onCreated?.(mock.id);
     } catch (error) {
-      window.alert(error.message || 'Unable to create mock.');
+      setError(error.message || 'Unable to create mock.');
     }
   };
 
-  return <MockConfigForm mode="create" onPublish={handlePublish} />;
+  return (
+    <>
+      <MockConfigForm mode="create" onPublish={handlePublish} />
+      <ConfirmDialog
+        isOpen={Boolean(error)}
+        title="Unable to create mock"
+        description={error}
+        confirmLabel="Close"
+        showCancel={false}
+        onConfirm={() => setError('')}
+        onClose={() => setError('')}
+      />
+    </>
+  );
 }

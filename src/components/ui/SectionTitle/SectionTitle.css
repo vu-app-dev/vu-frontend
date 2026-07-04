@@ -27,7 +27,7 @@
 
 .section-title__heading::after {
   content: '.';
-  color: var(--brand-default);
+  color: var(--text-accent);
 }
 
 .section-title__description {

@@ -8,6 +8,7 @@ import { canCurrentUser, useBackendData } from '../../../api';
 import './Navbar.css';
 
 const EMPTY_BREADCRUMBS = [];
+const UNREAD_NOTIFICATION_COUNT = 2;
 
 function getInitials(name = '') {
   return name
@@ -27,7 +28,7 @@ const Navbar = memo(function Navbar({
   onMenuToggle,
 }) {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [notificationCount, setNotificationCount] = useState(3);
+  const notificationCount = UNREAD_NOTIFICATION_COUNT;
   const [isAvatarOpen, setIsAvatarOpen] = useState(false);
   const [theme, setTheme] = useState(() => getActiveTheme());
 
@@ -61,8 +62,7 @@ const Navbar = memo(function Navbar({
   const handleNotificationClick = useCallback(() => {
     setIsAvatarOpen(false);
     setIsNotificationOpen((prev) => !prev);
-    if (!isNotificationOpen && notificationCount > 0) setNotificationCount(0);
-  }, [isNotificationOpen, notificationCount]);
+  }, []);
 
   const handleAvatarClick = useCallback(() => {
     setIsNotificationOpen(false);
@@ -87,9 +87,9 @@ const Navbar = memo(function Navbar({
 
   const avatarMenu = useMemo(() => {
     void dataVersion;
-    const items = [{ icon: User, label: 'My Profile', page: 'profile' }];
+    const items = [{ icon: User, label: 'Profile', page: 'profile' }];
     if (canCurrentUser('edit_company')) {
-      items.push({ icon: Building2, label: 'Company Settings', page: 'company-settings' });
+      items.push({ icon: Building2, label: 'Company settings', page: 'company-settings' });
     }
     return items;
   }, [dataVersion]);
@@ -142,6 +142,7 @@ const Navbar = memo(function Navbar({
             onClick={handleNotificationClick}
             aria-label="Notifications"
             aria-expanded={isNotificationOpen}
+            aria-haspopup="dialog"
           >
             <Bell size={20} />
             {notificationCount > 0 && (
@@ -174,6 +175,7 @@ const Navbar = memo(function Navbar({
             onClick={handleAvatarClick}
             aria-label="User menu"
             aria-expanded={isAvatarOpen}
+            aria-haspopup="menu"
           >
             {user?.name ? (
               <span className="navbar__avatar-initials">{getInitials(user.name)}</span>
@@ -213,7 +215,7 @@ const Navbar = memo(function Navbar({
 
               <div className="navbar__avatar-divider" />
 
-              {/* Logout */}
+              {/* Sign out */}
               <button
                 type="button"
                 className="navbar__avatar-item navbar__avatar-item--danger"
@@ -221,7 +223,7 @@ const Navbar = memo(function Navbar({
                 onClick={handleLogout}
               >
                 <LogOut size={14} />
-                <span>Logout</span>
+                <span>Sign out</span>
               </button>
             </div>
           )}

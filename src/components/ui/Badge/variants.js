@@ -6,7 +6,6 @@ import {
   ShieldCheck,
   ShieldAlert,
   ShieldX,
-  Sparkles,
   CalendarClock,
   CircleMinus,
   CirclePause,
@@ -20,8 +19,8 @@ export const BADGE_VARIANTS = {
   candidateState: {
     accepted: { label: 'Accepted', color: 'green', Icon: CircleCheck },
     pending: { label: 'Pending', color: 'yellow', Icon: Clock },
-    shortlist: { label: 'Shortlist', color: 'blue', Icon: Star },
-    shortlisted: { label: 'Shortlist', color: 'blue', Icon: Star },
+    shortlist: { label: 'Shortlisted', color: 'blue', Icon: Star },
+    shortlisted: { label: 'Shortlisted', color: 'blue', Icon: Star },
     rejected: { label: 'Rejected', color: 'red', Icon: Ban },
   },
   cheatingFlag: {
@@ -30,10 +29,14 @@ export const BADGE_VARIANTS = {
     critical: { label: 'Critical', color: 'red', Icon: ShieldX },
   },
   jobStatus: {
-    active: { label: 'Active', color: 'green', Icon: Sparkles },
+    active: { label: 'Active', color: 'green', Icon: CircleCheck },
     scheduled: { label: 'Scheduled', color: 'yellow', Icon: CalendarClock },
     closed: { label: 'Closed', color: 'gray', Icon: CircleMinus },
     inactive: { label: 'Inactive', color: 'gray', Icon: CirclePause },
+  },
+  mockStatus: {
+    inUse: { label: 'In use', color: 'green', Icon: CircleCheck },
+    available: { label: 'Available', color: 'gray', Icon: CirclePause },
   },
   role: {
     owner: { label: 'Owner', color: 'purple', Icon: Crown },

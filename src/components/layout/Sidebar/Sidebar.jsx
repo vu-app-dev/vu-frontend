@@ -35,6 +35,7 @@ export const Sidebar = memo(function Sidebar({
         ]
           .filter(Boolean)
           .join(' ')}
+        aria-label="Primary workspace navigation"
       >
         <div className="sidebar__content">
           {/* Logo + close */}
@@ -53,7 +54,7 @@ export const Sidebar = memo(function Sidebar({
           </div>
 
           {/* Navigation */}
-          <nav className="sidebar__nav">
+          <nav className="sidebar__nav" aria-label="Workspace">
             {navItems.map((item) => (
               <div key={item.id || item.label}>
                 {item.separator && <div className="sidebar__separator" />}

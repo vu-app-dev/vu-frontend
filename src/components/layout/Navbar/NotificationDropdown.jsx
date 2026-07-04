@@ -32,7 +32,7 @@ const DUMMY_NOTIFICATIONS = [
     id: 4,
     userName: 'Omar Al-Hassan',
     userAvatar: 'OA',
-    message: 'Changed candidate status: Elena Volkov → Shortlisted for UX Designer.',
+    message: 'Changed Elena Volkov to Shortlisted for UX Designer.',
     time: '3 hrs ago',
     unread: false,
   },
@@ -50,8 +50,10 @@ export const NotificationDropdown = memo(function NotificationDropdown({ onClose
   const notifications = DUMMY_NOTIFICATIONS;
   const hasNotifications = notifications.length > 0;
 
+  if (!open) return null;
+
   return (
-    <div className={['notification-dropdown', open && 'open'].filter(Boolean).join(' ')}>
+    <div className="notification-dropdown open" role="dialog" aria-label="Notifications">
       <div className="notification-dropdown__header">
         <div className="notification-dropdown__title-wrapper">
           <Bell size={18} className="notification-dropdown__icon" />
@@ -69,35 +71,25 @@ export const NotificationDropdown = memo(function NotificationDropdown({ onClose
 
       <div className="notification-dropdown__body">
         {hasNotifications ? (
-          <>
-            <ul className="notification-dropdown__list">
-              {notifications.map((notification) => (
-                <li
-                  key={notification.id}
-                  className={[
-                    'notification-item',
-                    notification.unread && 'notification-item--unread',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                >
-                  <div className="notification-item__avatar">{notification.userAvatar}</div>
-                  <div className="notification-item__content">
-                    <div className="notification-item__header">
-                      <span className="notification-item__name">{notification.userName}</span>
-                      <span className="notification-item__time">{notification.time}</span>
-                    </div>
-                    <p className="notification-item__message">{notification.message}</p>
+          <ul className="notification-dropdown__list">
+            {notifications.map((notification) => (
+              <li
+                key={notification.id}
+                className={['notification-item', notification.unread && 'notification-item--unread']
+                  .filter(Boolean)
+                  .join(' ')}
+              >
+                <div className="notification-item__avatar">{notification.userAvatar}</div>
+                <div className="notification-item__content">
+                  <div className="notification-item__header">
+                    <span className="notification-item__name">{notification.userName}</span>
+                    <span className="notification-item__time">{notification.time}</span>
                   </div>
-                </li>
-              ))}
-            </ul>
-            <div className="notification-dropdown__footer">
-              <a href="#" className="notification-dropdown__link">
-                See all incoming activity
-              </a>
-            </div>
-          </>
+                  <p className="notification-item__message">{notification.message}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
         ) : (
           <div className="notification-dropdown__empty">
             <Bell size={48} className="notification-dropdown__empty-icon" />

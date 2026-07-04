@@ -10,6 +10,7 @@
   font-family: var(--font-sans);
   font-weight: var(--font-medium);
   white-space: nowrap;
+  -webkit-user-select: none;
   user-select: none;
   cursor: pointer;
   border: var(--border-sm) solid transparent;
@@ -19,8 +20,7 @@
     border-color var(--transition-base),
     color var(--transition-base),
     box-shadow var(--transition-fast),
-    opacity var(--transition-base),
-    transform var(--transition-fast);
+    opacity var(--transition-base);
   outline: none;
 }
 
@@ -28,10 +28,6 @@
   opacity: 0.5;
   cursor: not-allowed;
   box-shadow: none !important;
-}
-
-.btn:active:not(:disabled) {
-  transform: scale(0.98);
 }
 
 .btn--lg {
@@ -62,7 +58,7 @@
 .btn--primary {
   background-color: var(--btn-primary-bg);
   color: var(--btn-primary-text);
-  border-color: var(--brand-700);
+  border-color: var(--btn-primary-border);
   box-shadow: var(--btn-primary-shadow);
 }
 
@@ -103,17 +99,30 @@
   color: var(--text-secondary);
 }
 
+/* Success: quiet affirmative action */
+.btn--success {
+  background-color: transparent;
+  color: var(--status-success-text);
+  border-color: var(--status-success-bg);
+}
+
+.btn--success:hover:not(:disabled) {
+  background-color: var(--status-success-bg);
+  border-color: var(--status-success-hover);
+  color: var(--status-success-text);
+}
+
 /* Danger: Semantic Contrast */
 .btn--danger {
   background-color: transparent;
-  color: var(--red-400);
+  color: var(--status-error-text);
   border-color: var(--status-error-bg);
 }
 
 .btn--danger:hover:not(:disabled) {
   background-color: var(--status-error-bg);
   border-color: var(--status-error-hover);
-  color: var(--red-300);
+  color: var(--status-error-text);
 }
 
 /* Dashed: Outlined placeholder action */
@@ -125,8 +134,8 @@
 }
 
 .btn--dashed:hover:not(:disabled) {
-  border-color: var(--brand-default);
-  color: var(--brand-default);
+  border-color: var(--text-accent);
+  color: var(--text-accent);
   background-color: var(--white-a5);
 }
 
@@ -136,9 +145,7 @@
 
 /* Global Pro Focus State */
 .btn:focus-visible {
-  box-shadow:
-    0 0 0 var(--size-0-5) var(--bg-base),
-    0 0 0 var(--size-1) var(--brand-default);
+  box-shadow: var(--focus-ring);
 }
 
 /* Internal Layout Mastery (Prevents Jumps) */

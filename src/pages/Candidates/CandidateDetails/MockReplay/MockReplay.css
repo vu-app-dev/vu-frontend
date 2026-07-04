@@ -1,102 +1,55 @@
-/* Mock Replay Tab */
-
 .mock-replay {
   display: flex;
   flex-direction: column;
-  gap: var(--gap-2xl);
-  padding-top: var(--gap-xs);
   padding-bottom: var(--gap-xl);
 }
 
-/* Shared section rhythm */
-
-.mock-replay__section {
+.mock-replay__placeholder {
   display: flex;
   flex-direction: column;
   gap: var(--gap-lg);
 }
 
-/* ── Video Player ── */
-
-.mock-replay__player {
-  position: relative;
-  width: 100%;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background-color: var(--bg-base);
-  border: var(--border-sm) solid var(--border-subtle);
-  aspect-ratio: 16 / 9;
-}
-
-.mock-replay__video {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
-  background: var(--bg-base);
-}
-
-/* ── Transcript ── */
-
-.mock-replay__transcript {
+.mock-replay__empty {
+  min-height: 18rem;
   display: flex;
   flex-direction: column;
-  gap: var(--gap-md);
-}
-
-.mock-replay__section .section-title {
-  margin-top: var(--size-4);
-}
-
-.mock-replay__entry--candidate {
-  background: var(--bg-subcard);
-  margin-left: 16px;
-  width: auto;
-}
-
-.mock-replay__entry--ai {
-  border: none;
-}
-.mock-replay__entry--ai .action-card__title {
-  color: var(--blue-500);
-}
-
-.mock-replay__entry--candidate .action-card__title {
-  color: var(--brand-default);
-}
-
-/* ActionCard overrides for transcript entries */
-
-.mock-replay__entry.action-card {
-  padding: var(--padding-lg) var(--padding-xl);
+  justify-content: center;
   gap: var(--gap-sm);
+  padding: var(--padding-2xl);
+  background: var(--bg-card);
+  border: var(--border-sm) solid var(--border-subtle);
+  border-radius: var(--radius-sm);
 }
 
-.mock-replay__entry .action-card__title {
-  font-size: var(--text-sm);
-  font-weight: var(--font-semibold);
-}
-
-.mock-replay__entry .action-card__subtitle {
-  font-size: var(--text-sm);
-  line-height: 1.7;
-  color: var(--text-secondary);
-}
-
-.mock-replay__entry .action-card__caption {
-  font-family: var(--font-mono);
+.mock-replay__empty span {
+  color: var(--text-tertiary);
+  font-family: var(--font-sans);
   font-size: var(--text-xs);
-  color: var(--text-subtle);
+  font-weight: var(--font-medium);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
-.mock-replay__entry .action-card__description-meta {
-  margin-top: var(--gap-xs);
+.mock-replay__empty h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  line-height: 1.3;
 }
 
-/* Responsive */
+.mock-replay__empty p {
+  max-width: 34rem;
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
 
-@media (max-width: 768px) {
-  .mock-replay__player {
-    aspect-ratio: 4 / 3;
+@media (max-width: 639px) {
+  .mock-replay__empty {
+    min-height: 14rem;
+    padding: var(--padding-lg);
   }
 }

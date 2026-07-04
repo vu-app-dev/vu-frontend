@@ -63,20 +63,27 @@ export const FullFeedback = memo(function FullFeedback({ candidate }) {
           title="Performance Scores"
           data={performanceStats}
           dataKeys={[{ key: 'value', label: 'Score' }]}
-          animated
+          density="compact"
+          animated={false}
         />
-        <RadarChart title="Score Breakdown" stats={performanceStats} animated />
+        <RadarChart
+          title="Score Breakdown"
+          stats={performanceStats}
+          density="compact"
+          animated={false}
+        />
       </div>
 
       <div className="full-feedback__section">
-        <SectionTitle>AI Insights</SectionTitle>
+        <SectionTitle>Interview Signals</SectionTitle>
         <div className="full-feedback__insights">
           <div className="full-feedback__insights-row">
             {insights.length === 0 && (
               <InfoCard
-                title="No feedback returned"
-                description="The backend did not include candidate question feedback."
-                animated
+                title="No interview notes yet"
+                description="Interview evidence will appear here when completed responses include feedback."
+                density="compact"
+                animated={false}
               />
             )}
             {insights.map((insight) => (
@@ -84,22 +91,24 @@ export const FullFeedback = memo(function FullFeedback({ candidate }) {
                 key={insight.id}
                 title={insight.title}
                 description={insight.description}
-                animated
+                density="compact"
+                animated={false}
               />
             ))}
           </div>
           <ActionCard
-            title="Cheating Detection"
+            title="Integrity review"
             showBadge
             badgeType="cheatingFlag"
             badgeVariant={candidate.antiCheat}
             badgeIcon
             content={
               candidate.performance?.cheat
-                ? `Backend result: ${candidate.performance.cheat}`
-                : 'No cheat analysis returned.'
+                ? `Integrity state: ${candidate.performance.cheat}`
+                : 'No integrity concerns are recorded for this interview.'
             }
-            animated
+            density="compact"
+            animated={false}
           />
         </div>
       </div>
@@ -109,9 +118,10 @@ export const FullFeedback = memo(function FullFeedback({ candidate }) {
         <div className="full-feedback__questions">
           {questions.length === 0 && (
             <InfoCard
-              title="No questions returned"
-              description="Candidate detail does not include question relations yet."
-              animated
+              title="No question evidence yet"
+              description="Question-level evidence will appear after completed interview responses are available."
+              density="compact"
+              animated={false}
             />
           )}
           {questions.map((question) => (
@@ -136,4 +146,3 @@ export const FullFeedback = memo(function FullFeedback({ candidate }) {
 FullFeedback.propTypes = {
   candidate: PropTypes.object.isRequired,
 };
-

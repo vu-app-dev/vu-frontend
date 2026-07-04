@@ -38,9 +38,9 @@ export function StepScheduling({
       <section className="create-job__section">
         <SectionTitle
           variant="inline"
-          description="Choose which automated emails to send to candidates"
+          description="Choose which candidate notifications are sent during the process."
         >
-          Email Notifications
+          Email notifications
         </SectionTitle>
         <div className="create-job__mock-list">
           {EMAIL_TRIGGERS.map((t) => (
@@ -64,8 +64,8 @@ export function StepScheduling({
           variant="inline"
           description={
             isActiveEdit
-              ? 'Active jobs stay active. You can only extend the end date.'
-              : 'Choose whether this job opens now or later'
+              ? 'Active jobs stay open. You can only extend the end date.'
+              : 'Choose whether this job opens now or on a scheduled date.'
           }
         >
           Scheduling
@@ -96,18 +96,18 @@ export function StepScheduling({
         <div className="create-job__row create-job__row--2">
           {scheduleMode === 'scheduled' && (
             <TextInput
-              label="Open Date"
+              label="Open date"
               type="date"
               min={today}
               value={form.startDate}
               onChange={(e) => handleStartDate(e.target.value)}
               onBlur={() => markTouched?.('startDate')}
-              hint={showFieldError?.('startDate') ? validationErrors.startDate : 'Required'}
+              hint={showFieldError?.('startDate') ? validationErrors.startDate : ''}
               error={Boolean(showFieldError?.('startDate'))}
             />
           )}
           <TextInput
-            label="End Date"
+            label="End date"
             type="date"
             min={
               isActiveEdit
@@ -119,25 +119,24 @@ export function StepScheduling({
             value={form.endDate}
             onChange={(e) => updateField('endDate', e.target.value)}
             onBlur={() => markTouched?.('endDate')}
-            hint={showFieldError?.('endDate') ? validationErrors.endDate : 'Required'}
+            hint={showFieldError?.('endDate') ? validationErrors.endDate : ''}
             error={Boolean(showFieldError?.('endDate'))}
           />
         </div>
 
         <div className="create-job__row create-job__row--2">
           <TextInput
-            label="Max Candidates"
+            label="Max candidates"
             type="number"
             min="1"
             placeholder="e.g. 200"
             value={form.maxCandidates}
             onChange={(e) => updateField('maxCandidates', e.target.value)}
-            hint="Limit applications accepted"
             disabled={isActiveEdit}
           />
         </div>
         <div className="create-job__status-preview">
-          <span className="create-job__status-preview-title">Status Preview</span>
+          <span className="create-job__status-preview-title">Publishing rules</span>
           {statusPreview.map((line, i) => (
             <div key={i} className="create-job__status-row">
               <span className={`create-job__status-dot create-job__status-dot--${line.color}`} />

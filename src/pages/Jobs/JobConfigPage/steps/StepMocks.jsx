@@ -53,9 +53,9 @@ export function StepMocks({
     <section className="create-job__section">
       <SectionTitle
         variant="inline"
-        description="Add mock interviews from the library. Drag to reorder and adjust weights. Weights must total exactly 100% to continue."
+        description="Choose the assessments candidates will complete. Weights must total exactly 100%."
       >
-        Mock Interviews
+        Assessments
       </SectionTitle>
 
       {showError && (validationErrors.mocks || validationErrors.mockWeights) && (
@@ -138,14 +138,14 @@ export function StepMocks({
 
       {mocks.length > 0 && (
         <div className="create-job__weight-bar">
-          <span className="create-job__weight-label">Total Weight</span>
+          <span className="create-job__weight-label">Total weight</span>
           <span className={`create-job__weight-value ${weightClass}`}>{totalWeight}%</span>
         </div>
       )}
 
       {mocks.length > 0 && (
         <div className="create-job__duration-bar">
-          <span className="create-job__duration-label">Total Interview Time</span>
+          <span className="create-job__duration-label">Total assessment time</span>
           <span className="create-job__duration-value">
             <Clock size={14} />
             {totalDuration} mins
@@ -167,7 +167,7 @@ export function StepMocks({
           onClick={() => setShowLibrary((o) => !o)}
           disabled={isLocked}
         >
-          Add Mock from Library
+          Add assessment
         </Button>
         <div
           className={`create-job__mock-library-menu ${showLibrary ? 'create-job__mock-library-menu--open' : ''}`}

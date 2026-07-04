@@ -233,7 +233,7 @@ export const QuestionCard = memo(function QuestionCard({
                 required
                 onBlur={() => markTouched?.(`question:${questionId}:title`)}
                 error={Boolean(errors?.title)}
-                hint={errors?.title || 'Minimum 3 characters'}
+                hint={errors?.title || ''}
               />
 
               <Textarea
@@ -246,7 +246,7 @@ export const QuestionCard = memo(function QuestionCard({
                 required
                 onBlur={() => markTouched?.(`question:${questionId}:description`)}
                 error={Boolean(errors?.description)}
-                hint={errors?.description || 'Minimum 10 characters'}
+                hint={errors?.description || ''}
               />
 
               <div className="question-card__row">
@@ -260,7 +260,7 @@ export const QuestionCard = memo(function QuestionCard({
                   required
                   onBlur={() => markTouched?.(`question:${questionId}:difficulty`)}
                   error={Boolean(errors?.difficulty)}
-                  hint={errors?.difficulty || 'Required'}
+                  hint={errors?.difficulty || ''}
                 />
                 <DropdownInput
                   label="Estimated Time"
@@ -272,7 +272,7 @@ export const QuestionCard = memo(function QuestionCard({
                   required
                   onBlur={() => markTouched?.(`question:${questionId}:estimatedTime`)}
                   error={Boolean(errors?.estimatedTime)}
-                  hint={errors?.estimatedTime || 'Required'}
+                  hint={errors?.estimatedTime || ''}
                 />
               </div>
 

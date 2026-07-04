@@ -1,0 +1,31 @@
+.applied-filter-chips {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--size-7);
+  padding: 0 var(--padding-sm);
+  border: var(--border-sm) solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-tertiary);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.applied-filter-chips:hover {
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.applied-filter-chips:focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-outline-offset);
+}

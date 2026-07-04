@@ -25,6 +25,17 @@
   border-color: var(--border-default);
 }
 
+.action-card--compact {
+  gap: var(--gap-sm);
+  padding: var(--padding-md) var(--padding-lg);
+  border-radius: var(--radius-sm);
+  transform: none;
+  transition:
+    opacity var(--transition-base),
+    border-color var(--transition-base),
+    background-color var(--transition-base);
+}
+
 /* Header row */
 .action-card__header {
   display: flex;
@@ -50,6 +61,11 @@
   color: var(--text-secondary);
   flex: 1;
   min-width: 0;
+}
+
+.action-card--compact .action-card__title {
+  font-size: var(--text-sm);
+  line-height: 1.35;
 }
 
 /* Caption */
@@ -81,6 +97,11 @@
   min-width: 0;
 }
 
+.action-card--compact .action-card__subtitle {
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
 /* Description meta */
 .action-card__description-meta {
   display: flex;
@@ -90,7 +111,7 @@
 }
 
 .action-card__description-icon {
-  color: var(--brand-default);
+  color: var(--text-accent);
   fill: var(--brand-default);
   flex-shrink: 0;
   margin-right: calc(-1 * var(--size-1));
@@ -101,6 +122,10 @@
   font-size: var(--text-base);
   font-weight: var(--font-medium);
   color: var(--text-secondary);
+}
+
+.action-card--compact .action-card__description-number {
+  font-size: var(--text-sm);
 }
 
 .action-card__description-title {
@@ -119,6 +144,11 @@
   font-weight: var(--font-regular);
   line-height: 1.6;
   color: var(--text-subtle);
+}
+
+.action-card--compact .action-card__content {
+  font-size: var(--text-xs);
+  line-height: 1.55;
 }
 
 /* Button danger variant */

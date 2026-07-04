@@ -14,6 +14,7 @@ export const Shortcuts = memo(function Shortcuts({
   searchPlaceholder = 'Search',
   secondaryAction,
   primaryAction,
+  filterSlot,
   children,
   className = '',
 }) {
@@ -34,6 +35,12 @@ export const Shortcuts = memo(function Shortcuts({
             <span className="shortcuts__count">{filterCount}</span>
           </>
         )}
+        {filterSlot && (
+          <>
+            <span className="shortcuts__separator" />
+            {filterSlot}
+          </>
+        )}
         {children && (
           <>
             <span className="shortcuts__separator" />
@@ -52,7 +59,14 @@ export const Shortcuts = memo(function Shortcuts({
         {secondaryAction && (
           <Button
             variant="secondary"
-            iconRight={secondaryAction.icon && <secondaryAction.icon size={16} />}
+            iconLeft={
+              secondaryAction.iconPosition !== 'right' &&
+              secondaryAction.icon && <secondaryAction.icon size={16} />
+            }
+            iconRight={
+              secondaryAction.iconPosition === 'right' &&
+              secondaryAction.icon && <secondaryAction.icon size={16} />
+            }
             onClick={secondaryAction.onClick}
           >
             {secondaryAction.label}
@@ -61,7 +75,14 @@ export const Shortcuts = memo(function Shortcuts({
         {primaryAction && (
           <Button
             variant="primary"
-            iconRight={primaryAction.icon && <primaryAction.icon size={16} />}
+            iconLeft={
+              primaryAction.iconPosition !== 'right' &&
+              primaryAction.icon && <primaryAction.icon size={16} />
+            }
+            iconRight={
+              primaryAction.iconPosition === 'right' &&
+              primaryAction.icon && <primaryAction.icon size={16} />
+            }
             onClick={primaryAction.onClick}
           >
             {primaryAction.label}
@@ -91,6 +112,7 @@ Shortcuts.propTypes = {
     iconPosition: PropTypes.oneOf(['left', 'right']),
     onClick: PropTypes.func,
   }),
+  filterSlot: PropTypes.node,
   children: PropTypes.node,
   className: PropTypes.string,
 };

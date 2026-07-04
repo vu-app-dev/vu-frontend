@@ -726,8 +726,8 @@ export default function ComponentShowcase() {
             ]}
             xKey="week"
             dataKeys={[
-              { key: 'applications', label: 'Applications', color: '#e64f28' },
-              { key: 'mocks', label: 'Completed Mocks', color: '#0057b5' },
+              { key: 'applications', label: 'Applications', color: 'var(--chart-brand)' },
+              { key: 'mocks', label: 'Completed Mocks', color: 'var(--chart-info)' },
             ]}
           />
         </div>

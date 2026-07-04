@@ -25,7 +25,7 @@ export const CVAnalysis = memo(function CVAnalysis({ candidate }) {
       skills.slice(0, 6).map((skill) => ({
         id: skill,
         title: skill,
-        description: 'Extracted from backend CV analysis.',
+        description: 'Detected in resume analysis.',
       })),
     [skills]
   );
@@ -50,11 +50,11 @@ export const CVAnalysis = memo(function CVAnalysis({ candidate }) {
       </div>
 
       <div className="cv-analysis__section">
-        <SectionTitle>Extracted Skills</SectionTitle>
+        <SectionTitle>Resume Skills</SectionTitle>
         <div className="cv-analysis__skills">
           {skills.length === 0 && (
             <span className="cv-analysis__skill-tag cv-analysis__skill-tag--missing">
-              No skills returned
+              No resume skills yet
             </span>
           )}
           {skills.map((skill) => (
@@ -66,18 +66,19 @@ export const CVAnalysis = memo(function CVAnalysis({ candidate }) {
       </div>
 
       <div className="cv-analysis__section">
-        <SectionTitle>Summary</SectionTitle>
+        <SectionTitle>Resume Summary</SectionTitle>
         <div className="cv-analysis__experience">
           <InfoCard
-            title="CV Analysis"
-            description={analysis.summary || 'The backend did not return a CV summary.'}
-            animated
+            title="Resume analysis"
+            description={analysis.summary || 'No resume summary is available yet.'}
+            density="compact"
+            animated={false}
           />
         </div>
       </div>
 
       <div className="cv-analysis__section">
-        <SectionTitle>Skill Highlights</SectionTitle>
+        <SectionTitle>Resume Highlights</SectionTitle>
         <div className="cv-analysis__gap-grid">
           <div className="cv-analysis__gap-col">
             <h4 className="cv-analysis__gap-heading cv-analysis__gap-heading--strengths">
@@ -86,9 +87,10 @@ export const CVAnalysis = memo(function CVAnalysis({ candidate }) {
             <div className="cv-analysis__gap-list">
               {strengths.length === 0 && (
                 <InfoCard
-                  title="No strengths returned"
-                  description="Backend CV analysis only returns skills, summary, and score."
-                  animated
+                  title="No resume highlights yet"
+                  description="Highlights will appear when resume analysis identifies relevant strengths."
+                  density="compact"
+                  animated={false}
                 />
               )}
               {strengths.map((item) => (
@@ -96,7 +98,8 @@ export const CVAnalysis = memo(function CVAnalysis({ candidate }) {
                   key={item.id}
                   title={item.title}
                   description={item.description}
-                  animated
+                  density="compact"
+                  animated={false}
                 />
               ))}
             </div>
@@ -106,7 +109,7 @@ export const CVAnalysis = memo(function CVAnalysis({ candidate }) {
 
       <div className="cv-analysis__section">
         <button type="button" className="cv-analysis__cv-toggle" onClick={toggleCv}>
-          <SectionTitle>CV File</SectionTitle>
+          <SectionTitle>Resume File</SectionTitle>
           <ChevronDown
             size={20}
             className={['cv-analysis__cv-chevron', cvExpanded && 'cv-analysis__cv-chevron--open']
@@ -126,7 +129,7 @@ export const CVAnalysis = memo(function CVAnalysis({ candidate }) {
                 {candidate.cvUrl}
               </a>
             ) : (
-              <pre className="cv-analysis__cv-text">No CV URL returned.</pre>
+              <pre className="cv-analysis__cv-text">No resume file is available.</pre>
             )}
           </div>
         </div>

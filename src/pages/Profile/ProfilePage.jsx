@@ -1,88 +1,195 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Phone,
-  Clock,
-  CalendarDays,
-  Building2,
-  Activity,
-  Pencil,
-  Save,
-  X,
+  Image,
   Lock,
+  LogOut,
+  Pencil,
+  Phone,
+  Save,
+  ShieldAlert,
+  ShieldCheck,
+  UserRound,
+  X,
 } from 'lucide-react';
-import { EntityCard } from '../../components/ui/Cards';
-import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { Button } from '../../components/ui/Button';
+import { PasswordInput, TextInput } from '../../components/ui/Input';
 import { SectionTitle } from '../../components/ui/SectionTitle';
 import {
   changePassword,
   editCurrentUser,
-  getMemberActivities,
-  TEAM_MEMBERS,
   CURRENT_USER_ID,
   ROLES,
+  TEAM_MEMBERS,
+  useBackendData,
 } from '../../api';
 import './ProfilePage.css';
 
 const ICON_SM = 14;
 
-/* ── Static profile data (personal info layer on top of team member data) ── */
-/* ── Component ── */
+function getInitials(name = '') {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase() || 'VU'
+  );
+}
+
+function splitMemberName(member) {
+  const rawUser = member?.raw?.user || {};
+  const nameParts = String(member?.name || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  return {
+    firstName: rawUser.firstName || nameParts[0] || '',
+    lastName: rawUser.lastName || nameParts.slice(1).join(' ') || '',
+  };
+}
+
+function getProfileForm(member) {
+  const rawUser = member?.raw?.user || {};
+  const name = splitMemberName(member);
+
+  return {
+    firstName: name.firstName,
+    lastName: name.lastName,
+    phone: member?.phone || rawUser.phone || '',
+    profilePictureUrl: rawUser.profilePictureUrl || '',
+  };
+}
+
+function normalizeProfilePayload(draft) {
+  return {
+    firstName: draft.firstName.trim(),
+    lastName: draft.lastName.trim(),
+    phone: draft.phone.trim() || undefined,
+    profilePictureUrl: draft.profilePictureUrl.trim() || undefined,
+  };
+}
+
 export const ProfilePage = memo(function ProfilePage() {
-  const member = TEAM_MEMBERS.find((m) => m.id === CURRENT_USER_ID);
-  const activities = getMemberActivities(CURRENT_USER_ID);
-  const roleConfig = ROLES[member?.role];
+  const { dataVersion, logout, logoutAllDevices } = useBackendData();
+  const savedTimerRef = useRef(null);
   const pwSavedTimerRef = useRef(null);
-  const initialProfile = useMemo(
-    () => ({
-      phone: member?.phone || '',
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Not provided',
-    }),
-    [member?.phone]
+
+  const member = useMemo(() => {
+    void dataVersion;
+    return TEAM_MEMBERS.find((item) => String(item.id) === String(CURRENT_USER_ID));
+  }, [dataVersion]);
+
+  const currentForm = useMemo(() => getProfileForm(member), [member]);
+  const roleConfig = ROLES[member?.role];
+  const timezone = useMemo(
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'Not provided',
+    []
   );
 
   const [isEditing, setIsEditing] = useState(false);
-  const [profile, setProfile] = useState(initialProfile);
-  const [draft, setDraft] = useState(initialProfile);
+  const [draft, setDraft] = useState(currentForm);
+  const [errors, setErrors] = useState({});
+  const [saveError, setSaveError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [isEditingPassword, setIsEditingPassword] = useState(false);
   const [pwForm, setPwForm] = useState({ oldPw: '', newPw: '', confirmPw: '' });
   const [pwSaved, setPwSaved] = useState(false);
   const [pwError, setPwError] = useState('');
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [accountAction, setAccountAction] = useState('');
+  const [accountError, setAccountError] = useState('');
+
+  useEffect(() => {
+    setDraft(currentForm);
+    setErrors({});
+    setSaveError('');
+    setSaved(false);
+  }, [currentForm]);
 
   useEffect(
     () => () => {
+      if (savedTimerRef.current) window.clearTimeout(savedTimerRef.current);
       if (pwSavedTimerRef.current) window.clearTimeout(pwSavedTimerRef.current);
     },
     []
   );
 
+  const hasChanges = useMemo(() => {
+    return Object.keys(currentForm).some((key) => draft[key] !== currentForm[key]);
+  }, [currentForm, draft]);
+
+  const handleDraftChange = useCallback((field, value) => {
+    setDraft((current) => ({ ...current, [field]: value }));
+    setErrors((current) => ({ ...current, [field]: '' }));
+    setSaveError('');
+    setSaved(false);
+  }, []);
+
   const handleEdit = useCallback(() => {
-    setDraft(profile);
+    setDraft(currentForm);
+    setErrors({});
+    setSaveError('');
     setIsEditing(true);
-  }, [profile]);
+  }, [currentForm]);
+
+  const handleCancel = useCallback(() => {
+    setDraft(currentForm);
+    setErrors({});
+    setSaveError('');
+    setIsEditing(false);
+  }, [currentForm]);
 
   const handleSave = useCallback(async () => {
+    const nextErrors = {};
+    if (!draft.firstName.trim()) nextErrors.firstName = 'First name is required.';
+    if (!draft.lastName.trim()) nextErrors.lastName = 'Last name is required.';
+
+    if (Object.keys(nextErrors).length) {
+      setErrors(nextErrors);
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError('');
     try {
-      await editCurrentUser({ phone: draft.phone });
-      setProfile(draft);
+      await editCurrentUser(normalizeProfilePayload(draft));
+      setSaved(true);
       setIsEditing(false);
+      if (savedTimerRef.current) window.clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = window.setTimeout(() => {
+        setSaved(false);
+        savedTimerRef.current = null;
+      }, 2200);
     } catch (error) {
-      window.alert(error.message || 'Unable to update profile.');
+      setSaveError(error.message || 'Profile changes could not be saved.');
+    } finally {
+      setIsSaving(false);
     }
   }, [draft]);
 
-  const handleCancel = useCallback(() => {
-    setDraft(profile);
-    setIsEditing(false);
-  }, [profile]);
-
-  const handleDraftChange = useCallback((field, value) => {
-    setDraft((d) => ({ ...d, [field]: value }));
-  }, []);
-
   const handlePwChange = useCallback((field, value) => {
-    setPwForm((f) => ({ ...f, [field]: value }));
+    setPwForm((current) => ({ ...current, [field]: value }));
     setPwError('');
     setPwSaved(false);
+  }, []);
+
+  const handlePasswordEdit = useCallback(() => {
+    setPwForm({ oldPw: '', newPw: '', confirmPw: '' });
+    setPwError('');
+    setPwSaved(false);
+    setIsEditingPassword(true);
+  }, []);
+
+  const handlePasswordCancel = useCallback(() => {
+    setPwForm({ oldPw: '', newPw: '', confirmPw: '' });
+    setPwError('');
+    setPwSaved(false);
+    setIsEditingPassword(false);
   }, []);
 
   const handlePasswordSave = useCallback(async () => {
@@ -91,13 +198,16 @@ export const ProfilePage = memo(function ProfilePage() {
       return;
     }
     if (pwForm.newPw.length < 8) {
-      setPwError('New password must be at least 8 characters.');
+      setPwError('Use at least 8 characters for the new password.');
       return;
     }
     if (pwForm.newPw !== pwForm.confirmPw) {
-      setPwError('Passwords do not match.');
+      setPwError('New password and confirmation do not match.');
       return;
     }
+
+    setIsSavingPassword(true);
+    setPwError('');
     try {
       await changePassword({
         oldPassword: pwForm.oldPw,
@@ -105,6 +215,7 @@ export const ProfilePage = memo(function ProfilePage() {
         confirmPassword: pwForm.confirmPw,
       });
       setPwSaved(true);
+      setIsEditingPassword(false);
       setPwForm({ oldPw: '', newPw: '', confirmPw: '' });
       if (pwSavedTimerRef.current) window.clearTimeout(pwSavedTimerRef.current);
       pwSavedTimerRef.current = window.setTimeout(() => {
@@ -112,9 +223,33 @@ export const ProfilePage = memo(function ProfilePage() {
         pwSavedTimerRef.current = null;
       }, 2500);
     } catch (error) {
-      setPwError(error.message || 'Unable to update password.');
+      setPwError(error.message || 'Password could not be updated.');
+    } finally {
+      setIsSavingPassword(false);
     }
   }, [pwForm]);
+
+  const handleSignOut = useCallback(async () => {
+    setAccountAction('sign-out');
+    setAccountError('');
+    try {
+      await logout();
+    } catch (error) {
+      setAccountAction('');
+      setAccountError(error.message || 'Unable to sign out.');
+    }
+  }, [logout]);
+
+  const handleSignOutAll = useCallback(async () => {
+    setAccountAction('all-devices');
+    setAccountError('');
+    try {
+      await logoutAllDevices();
+    } catch (error) {
+      setAccountAction('');
+      setAccountError(error.message || 'Unable to sign out all devices.');
+    }
+  }, [logoutAllDevices]);
 
   if (!member) {
     return (
@@ -124,257 +259,254 @@ export const ProfilePage = memo(function ProfilePage() {
     );
   }
 
-  const entityCard = (
-    <EntityCard
-      showAvatar
-      userName={member.name}
-      userEmail={member.email}
-      showBadge
-      badgeType="role"
-      badgeVariant={member.role}
-      colLeft={{ icon: Building2, title: member.department, subtitle: 'Department' }}
-      colMid={{ icon: CalendarDays, title: member.joinedDate, subtitle: 'Joined' }}
-      colRight={{ icon: Activity, title: member.lastActivity, subtitle: 'Last Active' }}
-      animated={false}
-    />
-  );
-
-  const activitySection = (
-    <section className="profile-page__section">
-      <SectionTitle variant="inline">Recent Activity</SectionTitle>
-      <div className="profile-page__timeline">
-        {activities.length === 0 && (
-          <p className="profile-page__empty-text">No activity recorded yet.</p>
-        )}
-        {activities.map((act) => (
-          <div key={act.id} className="profile-page__activity-item">
-            <div className="profile-page__activity-icon">
-              <Activity size={14} />
-            </div>
-            <div className="profile-page__activity-content">
-              <span className="profile-page__activity-action">{act.action}</span>
-              <span className="profile-page__activity-target">{act.target}</span>
-            </div>
-            <div className="profile-page__activity-time">
-              <span className="profile-page__activity-date">{act.date}</span>
-              <span className="profile-page__activity-hour">{act.time}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-
-  const profileCard = (
-    <div className="profile-page__card">
-      <SectionTitle variant="inline">Profile</SectionTitle>
-      <div className="profile-page__action-list">
-        {isEditing ? (
-          <>
-            <Button
-              variant="primary"
-              size="sm"
-              iconLeft={<Save size={ICON_SM} />}
-              onClick={handleSave}
-            >
-              Save Changes
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              iconLeft={<X size={ICON_SM} />}
-              onClick={handleCancel}
-            >
-              Cancel
-            </Button>
-          </>
-        ) : (
-          <Button
-            variant="secondary"
-            size="sm"
-            iconLeft={<Pencil size={ICON_SM} />}
-            onClick={handleEdit}
-          >
-            Edit Profile
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-
-  const personalInfoCard = (
-    <div className="profile-page__card">
-      <SectionTitle variant="inline">Personal Info</SectionTitle>
-
-      <div className="profile-page__info-row">
-        <Phone size={14} className="profile-page__info-icon" />
-        {isEditing ? (
-          <input
-            className="profile-page__info-input"
-            value={draft.phone}
-            onChange={(e) => handleDraftChange('phone', e.target.value)}
-            placeholder="Phone number"
-          />
-        ) : (
-          <div className="profile-page__info-group">
-            <span className="profile-page__info-label">Phone</span>
-            <span className="profile-page__info-value">{profile.phone}</span>
-          </div>
-        )}
-      </div>
-
-      <div className="profile-page__divider" />
-
-      <div className="profile-page__info-row">
-        <Clock size={14} className="profile-page__info-icon" />
-        {isEditing ? (
-          <input
-            className="profile-page__info-input"
-            value={draft.timezone}
-            onChange={(e) => handleDraftChange('timezone', e.target.value)}
-            placeholder="Timezone"
-          />
-        ) : (
-          <div className="profile-page__info-group">
-            <span className="profile-page__info-label">Timezone</span>
-            <span className="profile-page__info-value">{profile.timezone}</span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  const securityCard = (
-    <div className="profile-page__card">
-      <SectionTitle variant="inline">Security</SectionTitle>
-
-      <div className="profile-page__pw-field">
-        <label className="profile-page__pw-label">Current Password</label>
-        <div className="profile-page__pw-input-wrapper">
-          <Lock size={13} className="profile-page__pw-icon" />
-          <input
-            type="password"
-            className="profile-page__pw-input"
-            value={pwForm.oldPw}
-            onChange={(e) => handlePwChange('oldPw', e.target.value)}
-            placeholder="********"
-          />
-        </div>
-      </div>
-
-      <div className="profile-page__pw-field">
-        <label className="profile-page__pw-label">New Password</label>
-        <div className="profile-page__pw-input-wrapper">
-          <Lock size={13} className="profile-page__pw-icon" />
-          <input
-            type="password"
-            className="profile-page__pw-input"
-            value={pwForm.newPw}
-            onChange={(e) => handlePwChange('newPw', e.target.value)}
-            placeholder="********"
-          />
-        </div>
-      </div>
-
-      <div className="profile-page__pw-field">
-        <label className="profile-page__pw-label">Confirm New Password</label>
-        <div className="profile-page__pw-input-wrapper">
-          <Lock size={13} className="profile-page__pw-icon" />
-          <input
-            type="password"
-            className="profile-page__pw-input"
-            value={pwForm.confirmPw}
-            onChange={(e) => handlePwChange('confirmPw', e.target.value)}
-            placeholder="********"
-          />
-        </div>
-      </div>
-
-      {pwError && <p className="profile-page__pw-error">{pwError}</p>}
-
-      <Button
-        variant={pwSaved ? 'ghost' : 'secondary'}
-        size="sm"
-        iconLeft={<Lock size={ICON_SM} />}
-        onClick={handlePasswordSave}
-      >
-        {pwSaved ? 'Password Updated!' : 'Update Password'}
-      </Button>
-    </div>
-  );
-
-  const accountCard = (
-    <div className="profile-page__card">
-      <SectionTitle variant="inline">Account</SectionTitle>
-
-      <div className="profile-page__info-group">
-        <span className="profile-page__info-label">Email</span>
-        <span className="profile-page__info-value">{member.email}</span>
-      </div>
-
-      <div className="profile-page__divider" />
-
-      <div className="profile-page__info-group">
-        <span className="profile-page__info-label">Role</span>
-        <Badge type="role" variant={member.role} />
-      </div>
-
-      <div className="profile-page__divider" />
-
-      <div className="profile-page__info-group">
-        <span className="profile-page__info-label">Department</span>
-        <span className="profile-page__info-value">{member.department}</span>
-      </div>
-
-      <div className="profile-page__divider" />
-
-      <div className="profile-page__info-group">
-        <span className="profile-page__info-label">Member Since</span>
-        <span className="profile-page__info-value">{member.joinedDate}</span>
-      </div>
-
-      <div className="profile-page__divider" />
-
-      <div className="profile-page__info-group">
-        <span className="profile-page__info-label">Permissions</span>
-        <div className="profile-page__permissions">
-          {roleConfig?.permissions.map((perm) => (
-            <span key={perm} className="profile-page__perm-tag">
-              {perm.replace(/_/g, ' ')}
-            </span>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <div className="profile-page">
-      <div className="profile-page__desktop-layout">
-        <div className="profile-page__main">
-          <div className="profile-page__scroll">
-            {entityCard}
-            {activitySection}
-          </div>
-        </div>
+      <div className="profile-page__layout">
+        <main className="profile-page__main">
+          <section className="profile-page__header">
+            <div className="profile-page__identity">
+              <div className="profile-page__avatar" aria-hidden="true">
+                {currentForm.profilePictureUrl ? (
+                  <img src={currentForm.profilePictureUrl} alt="" />
+                ) : (
+                  getInitials(member.name)
+                )}
+              </div>
+              <div className="profile-page__identity-copy">
+                <span className="profile-page__eyebrow">Profile</span>
+                <h1>{member.name}</h1>
+                <p>{member.email}</p>
+              </div>
+              <Badge type="role" variant={member.role} />
+            </div>
+
+            <div className="profile-page__meta-strip">
+              <div>
+                <span>Joined</span>
+                <strong>{member.joinedDate || 'Not provided'}</strong>
+              </div>
+              <div>
+                <span>Last active</span>
+                <strong>{member.lastActivity || 'Recently'}</strong>
+              </div>
+              <div>
+                <span>Timezone</span>
+                <strong>{timezone}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section className="profile-page__panel">
+            <div className="profile-page__section-head">
+              <SectionTitle variant="inline">Profile details</SectionTitle>
+              <div className="profile-page__details-actions">
+                {isEditing ? (
+                  <>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      iconLeft={<Save size={ICON_SM} />}
+                      onClick={handleSave}
+                      disabled={!hasChanges || isSaving}
+                      loading={isSaving}
+                    >
+                      {saved ? 'Saved' : 'Save changes'}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      iconLeft={<X size={ICON_SM} />}
+                      onClick={handleCancel}
+                      disabled={isSaving}
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    iconLeft={<Pencil size={ICON_SM} />}
+                    onClick={handleEdit}
+                  >
+                    Edit profile
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div className="profile-page__form-grid">
+              <TextInput
+                label="First name"
+                value={draft.firstName}
+                onChange={(event) => handleDraftChange('firstName', event.target.value)}
+                iconLeft={<UserRound size={ICON_SM} />}
+                disabled={!isEditing || isSaving}
+                error={Boolean(errors.firstName)}
+                hint={errors.firstName}
+                required
+              />
+              <TextInput
+                label="Last name"
+                value={draft.lastName}
+                onChange={(event) => handleDraftChange('lastName', event.target.value)}
+                iconLeft={<UserRound size={ICON_SM} />}
+                disabled={!isEditing || isSaving}
+                error={Boolean(errors.lastName)}
+                hint={errors.lastName}
+                required
+              />
+              <TextInput
+                label="Phone"
+                value={draft.phone}
+                onChange={(event) => handleDraftChange('phone', event.target.value)}
+                iconLeft={<Phone size={ICON_SM} />}
+                inputMode="tel"
+                disabled={!isEditing || isSaving}
+              />
+              <TextInput
+                label="Profile image URL"
+                value={draft.profilePictureUrl}
+                onChange={(event) => handleDraftChange('profilePictureUrl', event.target.value)}
+                iconLeft={<Image size={ICON_SM} />}
+                inputMode="url"
+                disabled={!isEditing || isSaving}
+              />
+            </div>
+          </section>
+
+          {saveError && <p className="profile-page__error">{saveError}</p>}
+          <section className="profile-page__panel">
+            <div className="profile-page__section-head">
+              <div className="profile-page__section-copy">
+                <SectionTitle variant="inline">Security</SectionTitle>
+                <p>Password changes require your current password.</p>
+              </div>
+              <div className="profile-page__details-actions">
+                {isEditingPassword ? (
+                  <>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      iconLeft={<ShieldCheck size={ICON_SM} />}
+                      onClick={handlePasswordSave}
+                      loading={isSavingPassword}
+                    >
+                      Save password
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      iconLeft={<X size={ICON_SM} />}
+                      onClick={handlePasswordCancel}
+                      disabled={isSavingPassword}
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    iconLeft={<Pencil size={ICON_SM} />}
+                    onClick={handlePasswordEdit}
+                  >
+                    Edit password
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {isEditingPassword ? (
+              <>
+                <div className="profile-page__security-grid">
+                  <PasswordInput
+                    label="Current password"
+                    value={pwForm.oldPw}
+                    onChange={(event) => handlePwChange('oldPw', event.target.value)}
+                    iconLeft={<Lock size={ICON_SM} />}
+                    autoComplete="current-password"
+                    disabled={isSavingPassword}
+                  />
+                  <PasswordInput
+                    label="New password"
+                    value={pwForm.newPw}
+                    onChange={(event) => handlePwChange('newPw', event.target.value)}
+                    iconLeft={<Lock size={ICON_SM} />}
+                    autoComplete="new-password"
+                    disabled={isSavingPassword}
+                  />
+                  <PasswordInput
+                    label="Confirm new password"
+                    value={pwForm.confirmPw}
+                    onChange={(event) => handlePwChange('confirmPw', event.target.value)}
+                    iconLeft={<Lock size={ICON_SM} />}
+                    autoComplete="new-password"
+                    disabled={isSavingPassword}
+                  />
+                </div>
+                {pwError && <p className="profile-page__error">{pwError}</p>}
+              </>
+            ) : (
+              <div className="profile-page__security-summary">
+                <div className="profile-page__security-icon">
+                  <Lock size={ICON_SM} aria-hidden="true" />
+                </div>
+                <div>
+                  <strong>Password protected</strong>
+                  <p>Your password is hidden. Use edit password to update it securely.</p>
+                </div>
+              </div>
+            )}
+
+            {pwSaved && <p className="profile-page__success">Password updated.</p>}
+          </section>
+        </main>
 
         <aside className="profile-page__sidebar">
-          {profileCard}
-          {personalInfoCard}
-          {securityCard}
-          {accountCard}
-        </aside>
-      </div>
+          <div className="profile-page__card">
+            <SectionTitle variant="inline">Permissions</SectionTitle>
+            <p className="profile-page__role-copy">
+              {roleConfig?.label || 'Viewer'} access controls what you can create, edit, and review.
+            </p>
+            <div className="profile-page__permissions">
+              {roleConfig?.permissions.map((permission) => (
+                <span key={permission} className="profile-page__perm-tag">
+                  {permission.replace(/_/g, ' ')}
+                </span>
+              ))}
+            </div>
+          </div>
 
-      <div className="profile-page__mobile-shell">
-        <div className="profile-page__mobile-content">
-          {entityCard}
-          {profileCard}
-          {personalInfoCard}
-          {securityCard}
-          {accountCard}
-          {activitySection}
-        </div>
+          <div className="profile-page__card">
+            <SectionTitle variant="inline">Sessions</SectionTitle>
+            <p className="profile-page__session-copy">
+              End your current session or sign out everywhere if this account was used on another
+              device.
+            </p>
+            <div className="profile-page__action-list">
+              <Button
+                variant="secondary"
+                size="sm"
+                iconLeft={<LogOut size={ICON_SM} />}
+                onClick={handleSignOut}
+                loading={accountAction === 'sign-out'}
+              >
+                Sign out
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                iconLeft={<ShieldAlert size={ICON_SM} />}
+                onClick={handleSignOutAll}
+                loading={accountAction === 'all-devices'}
+              >
+                Sign out all devices
+              </Button>
+            </div>
+            {accountError && <p className="profile-page__error">{accountError}</p>}
+          </div>
+        </aside>
       </div>
     </div>
   );

@@ -63,6 +63,7 @@ export const RadarChart = memo(function RadarChart({
   title,
   stats = EMPTY_STATS,
   className = '',
+  density = 'default',
   animated = true,
 }) {
   const [activeLabel, setActiveLabel] = useState(null);
@@ -79,7 +80,11 @@ export const RadarChart = memo(function RadarChart({
   const handleMouseLeave = useCallback(() => setActiveLabel(null), []);
 
   return (
-    <div className={['radar-chart', className].filter(Boolean).join(' ')}>
+    <div
+      className={['radar-chart', density === 'compact' && 'radar-chart--compact', className]
+        .filter(Boolean)
+        .join(' ')}
+    >
       {title && <h3 className="radar-chart__title">{title}</h3>}
       {title && <div className="radar-chart__divider" />}
       <div className="radar-chart__body">
@@ -139,5 +144,6 @@ RadarChart.propTypes = {
     })
   ),
   className: PropTypes.string,
+  density: PropTypes.oneOf(['default', 'compact']),
   animated: PropTypes.bool,
 };

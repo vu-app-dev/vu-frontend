@@ -17,6 +17,7 @@ export const RadialBarChart = memo(function RadialBarChart({
   data = EMPTY_DATA,
   colors = DEFAULT_COLORS,
   className = '',
+  density = 'default',
   animated = true,
 }) {
   const [activeIndex, setActiveIndex] = useState(null);
@@ -43,7 +44,15 @@ export const RadialBarChart = memo(function RadialBarChart({
   }, [activeIndex, chartData]);
 
   return (
-    <div className={['radial-bar-chart', className].filter(Boolean).join(' ')}>
+    <div
+      className={[
+        'radial-bar-chart',
+        density === 'compact' && 'radial-bar-chart--compact',
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
       {title && <h3 className="radial-bar-chart__title">{title}</h3>}
       {title && <div className="radial-bar-chart__divider" />}
 
@@ -136,5 +145,6 @@ RadialBarChart.propTypes = {
   ),
   colors: PropTypes.arrayOf(PropTypes.string),
   className: PropTypes.string,
+  density: PropTypes.oneOf(['default', 'compact']),
   animated: PropTypes.bool,
 };

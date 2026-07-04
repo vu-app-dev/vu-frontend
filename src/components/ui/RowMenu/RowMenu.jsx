@@ -6,9 +6,9 @@ import './RowMenu.css';
 
 const DEFAULT_OPTIONS = [
   { id: 'accept', label: 'Accept', icon: Check, variant: 'success' },
-  { id: 'shortlist', label: 'Shortlist', icon: ListFilter, variant: 'info' },
+  { id: 'shortlist', label: 'Shortlisted', icon: ListFilter, variant: 'info' },
   { id: 'reject', label: 'Reject', icon: X, variant: 'danger' },
-  { id: 'view', label: 'View Details', icon: Eye, variant: 'default' },
+  { id: 'view', label: 'View details', icon: Eye, variant: 'default' },
 ];
 
 export const RowMenu = memo(function RowMenu({
@@ -57,7 +57,10 @@ export const RowMenu = memo(function RowMenu({
   }, [open, onClose]);
 
   const handleOptionClick = useCallback(
-    (optionId) => {
+    (event, option) => {
+      event.stopPropagation();
+      if (option.disabled) return;
+      const optionId = option.id;
       onSelect?.(optionId);
       onClose?.();
     },
@@ -71,20 +74,24 @@ export const RowMenu = memo(function RowMenu({
       role="menu"
       style={{ top: pos.top, left: pos.left }}
     >
-      {options.map(({ id, label, icon: Icon, variant = 'default', separator }) => (
-        <div key={id}>
-          {separator && <div className="row-menu__separator" />}
-          <button
-            type="button"
-            role="menuitem"
-            className={`row-menu__item row-menu__item--${variant}`}
-            onClick={() => handleOptionClick(id)}
-          >
-            {Icon && <Icon size={16} className="row-menu__icon" />}
-            <span className="row-menu__label">{label}</span>
-          </button>
-        </div>
-      ))}
+      {options.filter((option) => !option.hidden).map((option) => {
+        const { id, label, icon: Icon, variant = 'default', separator, disabled } = option;
+        return (
+          <div key={id}>
+            {separator && <div className="row-menu__separator" />}
+            <button
+              type="button"
+              role="menuitem"
+              className={`row-menu__item row-menu__item--${variant}`}
+              onClick={(event) => handleOptionClick(event, option)}
+              disabled={disabled}
+            >
+              {Icon && <Icon size={16} className="row-menu__icon" />}
+              <span className="row-menu__label">{label}</span>
+            </button>
+          </div>
+        );
+      })}
     </div>,
     document.body
   );
@@ -98,6 +105,8 @@ RowMenu.propTypes = {
       icon: PropTypes.elementType,
       variant: PropTypes.oneOf(['default', 'success', 'info', 'danger']),
       separator: PropTypes.bool,
+      disabled: PropTypes.bool,
+      hidden: PropTypes.bool,
     })
   ),
   onSelect: PropTypes.func,

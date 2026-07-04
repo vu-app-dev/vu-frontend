@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Info } from 'lucide-react';
 import { MockConfigForm } from '../MockConfigForm';
+import { ConfirmDialog } from '../../../../components/ui/Dialog';
 import { getMockById, getMockForm, getMockStatus, updateMock, useBackendData } from '../../../../api';
 
 /**
@@ -8,6 +9,7 @@ import { getMockById, getMockForm, getMockStatus, updateMock, useBackendData } f
  */
 export function EditMockConfig({ mockId, onSaved }) {
   const { dataVersion } = useBackendData();
+  const [error, setError] = useState('');
   const mock = getMockById(mockId);
   const formData = useMemo(() => {
     void dataVersion;
@@ -21,7 +23,7 @@ export function EditMockConfig({ mockId, onSaved }) {
       const saved = await updateMock(mock.id, form);
       onSaved?.(saved?.id || mock.id);
     } catch (error) {
-      window.alert(error.message || 'Unable to update mock.');
+      setError(error.message || 'Unable to update mock.');
     }
   };
 
@@ -47,11 +49,22 @@ export function EditMockConfig({ mockId, onSaved }) {
   }
 
   return (
-    <MockConfigForm
-      mode="edit"
-      initialData={formData}
-      isActive={isActive}
-      onSaveChanges={handleSaveChanges}
-    />
+    <>
+      <MockConfigForm
+        mode="edit"
+        initialData={formData}
+        isActive={isActive}
+        onSaveChanges={handleSaveChanges}
+      />
+      <ConfirmDialog
+        isOpen={Boolean(error)}
+        title="Unable to update mock"
+        description={error}
+        confirmLabel="Close"
+        showCancel={false}
+        onConfirm={() => setError('')}
+        onClose={() => setError('')}
+      />
+    </>
   );
 }

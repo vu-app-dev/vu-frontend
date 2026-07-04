@@ -4,11 +4,16 @@ import { Shortcuts } from '../../../components/layout/Shortcuts';
 import { Tabs } from '../../../components/ui/Tabs';
 import { TableHeader, TableRow, TableCell } from '../../../components/ui/Tables';
 import { Badge } from '../../../components/ui/Badge';
+import { Button } from '../../../components/ui/Button';
+import { ConfirmDialog } from '../../../components/ui/Dialog';
 import { Pagination } from '../../../components/ui/Pagination';
 import { FilterOverlay } from '../../../components/ui/FilterOverlay';
+import { SidePanel } from '../../../components/ui/SidePanel';
+import { AppliedFilterChips } from '../../../components/ui/AppliedFilterChips';
 import { QuickInfoCard, InfoCard } from '../../../components/ui/Cards';
 import { EmptyState } from '../../../components/ui/EmptyState';
-import { RadarChart, RadialBarChart, AreaChart, BarChart } from '../../../components/ui/Charts';
+import { AreaChart, BarChart } from '../../../components/ui/Charts';
+import { CHART_BRAND, CHART_SUCCESS } from '../../../components/ui/Charts/chartTokens';
 import { SectionTitle } from '../../../components/ui/SectionTitle';
 import {
   CANDIDATES,
@@ -21,13 +26,13 @@ import {
 import {
   ArrowRight,
   Users,
-  CheckCircle,
   Award,
   Clock,
   Check,
   ListFilter,
   X,
   Eye,
+  AlertTriangle,
 } from 'lucide-react';
 import { useResponsiveItemsPerPage } from '../../../hooks';
 import './Pipeline.css';
@@ -37,16 +42,42 @@ const TABLE_COLUMNS = [
   { key: 'job', label: 'Job', sortable: true, fr: 1.2 },
   { key: 'score', label: 'Score', sortable: true, fr: 1.5 },
   { key: 'date', label: 'Date', sortable: true, fr: 1 },
-  { key: 'antiCheat', label: 'Anti-cheat', sortable: false, fr: 1 },
+  { key: 'antiCheat', label: 'Integrity', sortable: false, fr: 1 },
   { key: 'status', label: 'Status', sortable: false, fr: 1 },
 ];
 
-const getScoreColor = (score) => {
-  const t = Math.max(0, Math.min(1, (score - 40) / 60)); // 0 at 40, 1 at 100
-  const h = Math.round(14 * t);
-  const s = Math.round(100 * t);
-  const l = Math.round(30 + 30 * t);
-  return `hsl(${h}, ${s}%, ${l}%)`;
+const STATUS_LABELS = {
+  accepted: 'Accepted',
+  rejected: 'Rejected',
+  shortlist: 'Shortlisted',
+  shortlisted: 'Shortlisted',
+  pending: 'Pending',
+};
+
+const INTEGRITY_LABELS = {
+  clean: 'Clean',
+  flagged: 'Flagged',
+  critical: 'Critical',
+};
+
+const ACTION_LABELS = {
+  accept: 'Accept',
+  reject: 'Reject',
+  shortlist: 'Shortlist',
+};
+
+function clampScore(score) {
+  const value = Number(score || 0);
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+const getScoreTone = (score) => {
+  const value = clampScore(score);
+  if (value >= 85) return 'strong';
+  if (value >= 70) return 'good';
+  if (value >= 50) return 'watch';
+  return 'risk';
 };
 
 // Layout constants
@@ -60,45 +91,18 @@ const SHORTCUTS_CONFIG = {
 };
 
 // Overlay filter definitions
-const STATUS_OPTIONS = ['Shortlist', 'Pending', 'Accepted', 'Rejected'];
+const STATUS_OPTIONS = ['Shortlisted', 'Pending', 'Accepted', 'Rejected'];
 const BASE_OVERLAY_FILTERS = [
   { key: 'status', label: 'Status', type: 'multiselect', options: STATUS_OPTIONS },
   { key: 'score', label: 'Score', type: 'range', minLabel: 'Min', maxLabel: 'Max' },
-  { key: 'flaggedOnly', label: 'Anti-cheat', type: 'toggle', toggleLabel: 'Show flagged only' },
+  { key: 'flaggedOnly', label: 'Integrity', type: 'toggle', toggleLabel: 'Show flagged only' },
 ];
 const INITIAL_OVERLAY = { status: [], job: '', score: { min: '', max: '' }, flaggedOnly: false };
-
-const PERFORMANCE_METRIC_KEYS = [
-  { key: 'communication', label: 'Communication' },
-  { key: 'problemSolving', label: 'Problem Solving' },
-  { key: 'technical', label: 'Technical Skills' },
-  { key: 'confidence', label: 'Confidence' },
-  { key: 'clarityOfExplanation', label: 'Explanation Clarity' },
-];
 
 function average(values) {
   const numbers = values.map(Number).filter((value) => Number.isFinite(value));
   if (!numbers.length) return 0;
   return Math.round(numbers.reduce((sum, value) => sum + value, 0) / numbers.length);
-}
-
-function buildCandidateScoreData(candidates) {
-  const buckets = [
-    { label: 'Excellent (90-100)', value: 0 },
-    { label: 'High (70-89)', value: 0 },
-    { label: 'Moderate (50-69)', value: 0 },
-    { label: 'Low (0-49)', value: 0 },
-  ];
-
-  candidates.forEach((candidate) => {
-    const score = Number(candidate.score || 0);
-    if (score >= 90) buckets[0].value += 1;
-    else if (score >= 70) buckets[1].value += 1;
-    else if (score >= 50) buckets[2].value += 1;
-    else buckets[3].value += 1;
-  });
-
-  return buckets;
 }
 
 function buildApplicationTrendData(candidates) {
@@ -112,10 +116,10 @@ function buildApplicationTrendData(candidates) {
     const label = Number.isNaN(date.getTime())
       ? key
       : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const bucket = buckets.get(key) || { key, week: label, applications: 0, mocks: 0 };
+    const bucket = buckets.get(key) || { key, week: label, applications: 0, accepted: 0 };
 
     bucket.applications += 1;
-    bucket.mocks += candidate.questions?.length || 0;
+    bucket.accepted += candidate.status === 'accepted' ? 1 : 0;
     buckets.set(key, bucket);
   });
 
@@ -138,15 +142,9 @@ function buildScoreByRoleData(candidates) {
     .slice(0, 6);
 }
 
-function buildPerformanceMetrics(candidates) {
-  return PERFORMANCE_METRIC_KEYS.map((metric) => ({
-    label: metric.label,
-    value: average(candidates.map((candidate) => candidate.performance?.[metric.key])),
-  }));
-}
-
 function buildInsights(candidates, jobs) {
   const flaggedCount = candidates.filter((candidate) => candidate.antiCheat !== 'clean').length;
+  const pendingCount = candidates.filter((candidate) => candidate.status === 'pending').length;
   const applicationsByJob = new Map();
   candidates.forEach((candidate) => {
     const key = candidate.jobId || candidate.job;
@@ -161,18 +159,26 @@ function buildInsights(candidates, jobs) {
 
   return [
     {
-      title: 'Candidate Volume',
+      title: 'Role demand',
       description: topJob
-        ? `${topJob.title} has ${topJob.filteredTotal || 0} candidate application(s).`
-        : 'No candidate applications have been loaded yet.',
+        ? `${topJob.title} has ${topJob.filteredTotal || 0} application(s) in the current view.`
+        : 'Applications will appear here when candidates enter the pipeline.',
     },
     {
-      title: 'Assessment Quality',
+      title: 'Score health',
       description: `${averageScore}% is the current average candidate score across loaded applications.`,
     },
     {
-      title: 'Integrity Signals',
-      description: `${flaggedCount} candidate(s) currently have anti-cheat signals above clean.`,
+      title: 'Integrity review',
+      description: flaggedCount
+        ? `${flaggedCount} candidate(s) need integrity review before a final decision.`
+        : 'No integrity flags are visible in the current candidate set.',
+    },
+    {
+      title: 'Review workload',
+      description: pendingCount
+        ? `${pendingCount} candidate(s) are still waiting for a first review.`
+        : 'There are no pending candidates in the current view.',
     },
   ];
 }
@@ -247,7 +253,63 @@ const JOB_PERF_GRID = JOB_PERFORMANCE_COLUMNS.map((col) =>
 
 const SELECTED_CANDIDATE_STORAGE_KEY = 'pipeline:lastSelectedCandidateId';
 
-const VIEW_OPTION = { id: 'view', label: 'View Details', icon: Eye, variant: 'default' };
+const VIEW_OPTION = { id: 'view', label: 'View details', icon: Eye, variant: 'default' };
+
+function getCandidateStatusLabel(status) {
+  return STATUS_LABELS[status] || STATUS_LABELS[String(status || '').toLowerCase()] || 'Pending';
+}
+
+function getIntegrityLabel(integrity) {
+  return (
+    INTEGRITY_LABELS[integrity] ||
+    INTEGRITY_LABELS[String(integrity || '').toLowerCase()] ||
+    'Clean'
+  );
+}
+
+function getCandidateInitials(name) {
+  return String(name || '')
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function getTopEvidence(candidate) {
+  const questionEvidence = (candidate.questions || [])
+    .filter((question) => question.aiFeedback || question.answer)
+    .slice(0, 2)
+    .map((question, index) => ({
+      id: question.id || index,
+      title: question.question || `Interview response ${index + 1}`,
+      description: question.aiFeedback || question.answer,
+    }));
+
+  if (questionEvidence.length) return questionEvidence;
+  if (candidate.analysis?.summary) {
+    return [
+      { id: 'resume-summary', title: 'Resume summary', description: candidate.analysis.summary },
+    ];
+  }
+  if (candidate.analysis?.skills?.length) {
+    return [
+      {
+        id: 'resume-skills',
+        title: 'Resume skills',
+        description: candidate.analysis.skills.slice(0, 6).join(', '),
+      },
+    ];
+  }
+  return [
+    {
+      id: 'no-evidence',
+      title: 'Evidence pending',
+      description: 'Interview and resume evidence will appear here when available.',
+    },
+  ];
+}
 
 function getCandidateMenuOptions(candidate, canChangeCandidateStatus = true) {
   if (!canChangeCandidateStatus) return [VIEW_OPTION];
@@ -308,6 +370,9 @@ export const Pipeline = memo(function Pipeline() {
   const [lastSelectedId, setLastSelectedId] = useState(() => initialSelectedId);
   const [searchValue, setSearchValue] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [pendingCandidateAction, setPendingCandidateAction] = useState(null);
+  const [actionError, setActionError] = useState('');
   const initialOverlayFilters = useMemo(
     () => overlayFromSearch(location.search),
     [location.search]
@@ -330,12 +395,23 @@ export const Pipeline = memo(function Pipeline() {
     return canCurrentUser('change_candidate_status');
   }, [dataVersion]);
 
+  const selectedCandidate = useMemo(() => {
+    void dataVersion;
+    if (!lastSelectedId) return null;
+    return CANDIDATES.find((candidate) => candidate.id === lastSelectedId) || null;
+  }, [lastSelectedId, dataVersion]);
+
   const filteredCandidates = useMemo(() => {
     void dataVersion;
     const q = searchValue.trim() ? searchValue.toLowerCase() : null;
     const { status, job, score, flaggedOnly } = overlayFilters;
     const normalizedStatuses = status.length
-      ? new Set(status.map((candidateStatus) => candidateStatus.toLowerCase()))
+      ? new Set(
+          status.flatMap((candidateStatus) => {
+            const normalized = candidateStatus.toLowerCase();
+            return normalized === 'shortlisted' ? ['shortlisted', 'shortlist'] : [normalized];
+          })
+        )
       : null;
     const scoreMin = score.min !== '' ? Number(score.min) : null;
     const scoreMax = score.max !== '' ? Number(score.max) : null;
@@ -374,19 +450,15 @@ export const Pipeline = memo(function Pipeline() {
       activeJobsCount: visibleJobs.filter((job) => job.status === 'active').length,
       stats: {
         totalCandidates: candidates.length,
-        answeredQuestions: candidates.reduce(
-          (total, candidate) => total + (candidate.questions?.length || 0),
-          0
-        ),
+        needsReview: candidates.filter((candidate) => candidate.status === 'pending').length,
         averageScore: average(candidates.map((candidate) => candidate.score)),
         shortlisted: candidates.filter((candidate) =>
           ['shortlist', 'shortlisted'].includes(candidate.status)
         ).length,
+        flagged: candidates.filter((candidate) => candidate.antiCheat !== 'clean').length,
       },
       applicationTrend: buildApplicationTrendData(candidates),
-      performanceMetrics: buildPerformanceMetrics(candidates),
       scoreByRole: buildScoreByRoleData(candidates),
-      scoreDistribution: buildCandidateScoreData(candidates),
       insights: buildInsights(candidates, visibleJobs),
       jobPerformance: buildJobPerformanceData(visibleJobs, candidates, !filtersApplied),
     };
@@ -401,18 +473,54 @@ export const Pipeline = memo(function Pipeline() {
     return count;
   }, [overlayFilters]);
 
+  const activeFilterChips = useMemo(() => {
+    void dataVersion;
+    const chips = [];
+    if (overlayFilters.status.length) {
+      chips.push({
+        key: 'status',
+        label: `Status: ${overlayFilters.status.join(', ')}`,
+      });
+    }
+    if (overlayFilters.job) {
+      const job = JOBS.find((item) => item.id === overlayFilters.job);
+      chips.push({ key: 'job', label: `Job: ${job?.title || overlayFilters.job}` });
+    }
+    if (overlayFilters.score.min || overlayFilters.score.max) {
+      const min = overlayFilters.score.min || '0';
+      const max = overlayFilters.score.max || '100';
+      chips.push({ key: 'score', label: `Score: ${min}-${max}%` });
+    }
+    if (overlayFilters.flaggedOnly) {
+      chips.push({ key: 'flaggedOnly', label: 'Integrity flagged' });
+    }
+    return chips;
+  }, [overlayFilters, dataVersion]);
+
+  const clearAllOverlayFilters = useCallback(() => {
+    setOverlayFilters(INITIAL_OVERLAY);
+    setCurrentPage(1);
+  }, []);
+
   const handleSearchChange = useCallback((e) => {
     setSearchValue(e.target.value);
     setCurrentPage(1);
   }, []);
 
-  // Clear row selection when clicking anywhere outside a table row
+  // Clear row selection when clicking anywhere outside a table row.
   const handleDocumentClick = useCallback(
     (e) => {
-      // If a menu is open, let it close first — don't deselect on this click
       if (openMenuId !== null) return;
+      if (
+        e.target.closest('.side-panel') ||
+        e.target.closest('.confirm-dialog') ||
+        e.target.closest('.filter-overlay')
+      ) {
+        return;
+      }
       if (!e.target.closest('.table-row') && !e.target.closest('.row-menu')) {
         setLastSelectedId(null);
+        setIsPreviewOpen(false);
       }
     },
     [openMenuId]
@@ -432,7 +540,7 @@ export const Pipeline = memo(function Pipeline() {
     window.sessionStorage.setItem(SELECTED_CANDIDATE_STORAGE_KEY, String(lastSelectedId));
   }, [lastSelectedId]);
 
-  const handleCandidateSelect = useCallback(
+  const openCandidateDetails = useCallback(
     (candidate) => {
       setLastSelectedId(candidate.id);
       navigate(`/candidates/${toSlug(candidate.name, candidate.id)}`, {
@@ -442,27 +550,41 @@ export const Pipeline = memo(function Pipeline() {
     [navigate]
   );
 
+  const handleCandidateSelect = useCallback((candidate) => {
+    setLastSelectedId(candidate.id);
+    setIsPreviewOpen(true);
+  }, []);
+
+  const executeCandidateStatusAction = useCallback(async (candidate, action) => {
+    try {
+      await updateCandidateStatus(candidate.id, action);
+      setOpenMenuId(null);
+    } catch (error) {
+      setActionError(error.message || 'Unable to update candidate.');
+    }
+  }, []);
+
   const handleCandidateAction = useCallback(
     async (candidate, action) => {
       if (action === 'view') {
-        handleCandidateSelect(candidate);
+        openCandidateDetails(candidate);
         return;
       }
-      if (
-        ['accept', 'reject'].includes(action) &&
-        !window.confirm('This decision is permanent and cannot be changed. Continue?')
-      ) {
+      if (['accept', 'reject'].includes(action)) {
+        setPendingCandidateAction({ candidate, action });
         return;
       }
-      try {
-        await updateCandidateStatus(candidate.id, action);
-        setOpenMenuId(null);
-      } catch (error) {
-        window.alert(error.message || 'Unable to update candidate.');
-      }
+      await executeCandidateStatusAction(candidate, action);
     },
-    [handleCandidateSelect]
+    [executeCandidateStatusAction, openCandidateDetails]
   );
+
+  const confirmCandidateAction = useCallback(async () => {
+    if (!pendingCandidateAction) return;
+    const { candidate, action } = pendingCandidateAction;
+    setPendingCandidateAction(null);
+    await executeCandidateStatusAction(candidate, action);
+  }, [executeCandidateStatusAction, pendingCandidateAction]);
 
   const handleTabChange = useCallback((tab) => {
     setActiveTab(tab);
@@ -551,25 +673,34 @@ export const Pipeline = memo(function Pipeline() {
     ],
     [activeTab, handleTabChange]
   );
+
+  const selectedCandidateEvidence = useMemo(
+    () => (selectedCandidate ? getTopEvidence(selectedCandidate) : []),
+    [selectedCandidate]
+  );
+
+  const selectedCandidateActions = useMemo(
+    () =>
+      selectedCandidate
+        ? getCandidateMenuOptions(selectedCandidate, canChangeCandidateStatus).filter(
+            (option) => option.id !== 'view'
+          )
+        : [],
+    [selectedCandidate, canChangeCandidateStatus]
+  );
+
   const isInitialLoading = isLoading && dataVersion === 0;
 
   return (
     <div className={`pipeline-page${activeTab === 'overview' ? ' pipeline-page--overview' : ''}`}>
       <Shortcuts
         filterLabel={SHORTCUTS_CONFIG.filterLabel}
-        filterCount={
-          activeFilterCount
-            ? [
-                overlayFilters.status.length && 'Status',
-                overlayFilters.job && 'Job',
-                (overlayFilters.score.min || overlayFilters.score.max) && 'Score',
-                overlayFilters.flaggedOnly && 'Anti-cheat',
-              ]
-                .filter(Boolean)
-                .join(' · ')
-            : 'No filters'
-        }
         onFilterClick={() => setIsFilterOpen(true)}
+        filterSlot={
+          activeFilterCount ? (
+            <AppliedFilterChips chips={activeFilterChips} onClearAll={clearAllOverlayFilters} />
+          ) : null
+        }
         searchValue={searchValue}
         onSearchChange={handleSearchChange}
         searchPlaceholder="Search candidates..."
@@ -585,102 +716,132 @@ export const Pipeline = memo(function Pipeline() {
           <Tabs items={tabs} />
 
           {activeTab === 'pipeline' && (
-            <div className="pipeline-page__table" ref={tableRef}>
-              <TableHeader
-                className="pipeline-page__header"
-                columns={columnsWithSortState}
-                onSort={handleSort}
-                gridTemplateColumns={GRID_TEMPLATE}
-                showMenu
-              />
-
-              <div className="pipeline-page__rows">
-                {paginatedCandidates.length > 0 ? (
-                  paginatedCandidates.map((candidate) => (
-                    <TableRow
-                      className="pipeline-page__row"
-                      key={candidate.id}
-                      showMenu
-                      selected={candidate.id === lastSelectedId}
-                      onMouseDown={() => setLastSelectedId(candidate.id)}
-                      onMenuClick={() => {
-                        setLastSelectedId(candidate.id);
-                        setOpenMenuId(openMenuId === candidate.id ? null : candidate.id);
-                      }}
-                      onMenuSelect={(action) => {
-                        handleCandidateAction(candidate, action);
-                        setOpenMenuId(null);
-                      }}
-                      menuOptions={getCandidateMenuOptions(candidate, canChangeCandidateStatus)}
-                      menuOpen={openMenuId === candidate.id}
-                      onMenuClose={() => setOpenMenuId(null)}
-                      onClick={() => handleCandidateSelect(candidate)}
-                      gridTemplateColumns={GRID_TEMPLATE}
-                    >
-                      <TableCell
-                        color="tertiary"
-                        icon={
-                          <span className="pipeline-page__avatar">
-                            {candidate.name
-                              .split(' ')
-                              .map((n) => n[0])
-                              .join('')}
-                          </span>
-                        }
-                      >
-                        {candidate.name}
-                      </TableCell>
-                      <TableCell color="secondary">{candidate.job}</TableCell>
-                      <TableCell className="pipeline-page__score-cell">
-                        <span className="pipeline-page__score">
-                          <span className="pipeline-page__score-bar">
-                            <span
-                              className="pipeline-page__score-fill"
-                              style={{
-                                width: `${candidate.score}%`,
-                                backgroundColor: getScoreColor(candidate.score),
-                              }}
-                            />
-                          </span>
-                          <span className="pipeline-page__score-value">{candidate.score}</span>
-                        </span>
-                      </TableCell>
-                      <TableCell color="tertiary">{candidate.date}</TableCell>
-                      <TableCell>
-                        <Badge type="cheatingFlag" variant={candidate.antiCheat} iconLeft outline />
-                      </TableCell>
-                      <TableCell>
-                        <Badge type="candidateState" variant={candidate.status} />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : !isInitialLoading ? (
-                  <div className="pipeline-page__empty">
-                    <EmptyState
-                      icon={<Users size={24} />}
-                      title={CANDIDATES.length ? 'No matching candidates' : 'No candidates yet'}
-                      description={
-                        CANDIDATES.length
-                          ? 'Adjust the search or filters to show more candidates.'
-                          : 'Candidate applications will appear here once people apply to active jobs.'
-                      }
-                    />
-                  </div>
-                ) : null}
+            <>
+              <div className="pipeline-page__summary-strip" aria-label="Pipeline summary">
+                <div className="pipeline-page__summary-item">
+                  <span>Total</span>
+                  <strong>{overviewData.stats.totalCandidates}</strong>
+                </div>
+                <div className="pipeline-page__summary-item">
+                  <span>Needs review</span>
+                  <strong>{overviewData.stats.needsReview}</strong>
+                </div>
+                <div className="pipeline-page__summary-item">
+                  <span>Shortlisted</span>
+                  <strong>{overviewData.stats.shortlisted}</strong>
+                </div>
+                <div className="pipeline-page__summary-item">
+                  <span>Flagged</span>
+                  <strong>{overviewData.stats.flagged}</strong>
+                </div>
+                <div className="pipeline-page__summary-item">
+                  <span>Avg. score</span>
+                  <strong>{overviewData.stats.averageScore}%</strong>
+                </div>
               </div>
 
-              {sortedCandidates.length > 0 && (
-                <div className="pipeline-page__pagination">
-                  <Pagination
-                    currentPage={safePage}
-                    totalPages={totalPages}
-                    totalItems={sortedCandidates.length}
-                    itemsPerPage={itemsPerPage}
-                    onPageChange={setCurrentPage}
-                  />
+              <div className="pipeline-page__table" ref={tableRef}>
+                <TableHeader
+                  className="pipeline-page__header"
+                  columns={columnsWithSortState}
+                  onSort={handleSort}
+                  gridTemplateColumns={GRID_TEMPLATE}
+                  showMenu
+                />
+
+                <div className="pipeline-page__rows">
+                  {paginatedCandidates.length > 0 ? (
+                    paginatedCandidates.map((candidate) => {
+                      const score = clampScore(candidate.score);
+                      return (
+                        <TableRow
+                          className="pipeline-page__row"
+                          key={candidate.id}
+                          showMenu
+                          selected={candidate.id === lastSelectedId}
+                          onMouseDown={() => setLastSelectedId(candidate.id)}
+                          onMenuClick={() => {
+                            setLastSelectedId(candidate.id);
+                            setOpenMenuId(openMenuId === candidate.id ? null : candidate.id);
+                          }}
+                          onMenuSelect={(action) => {
+                            handleCandidateAction(candidate, action);
+                            setOpenMenuId(null);
+                          }}
+                          menuOptions={getCandidateMenuOptions(candidate, canChangeCandidateStatus)}
+                          menuOpen={openMenuId === candidate.id}
+                          onMenuClose={() => setOpenMenuId(null)}
+                          onClick={() => handleCandidateSelect(candidate)}
+                          gridTemplateColumns={GRID_TEMPLATE}
+                        >
+                          <TableCell
+                            color="tertiary"
+                            icon={
+                              <span className="pipeline-page__avatar">
+                                {getCandidateInitials(candidate.name)}
+                              </span>
+                            }
+                          >
+                            {candidate.name}
+                          </TableCell>
+                          <TableCell color="secondary">{candidate.job}</TableCell>
+                          <TableCell className="pipeline-page__score-cell">
+                            <span className="pipeline-page__score">
+                              <span className="pipeline-page__score-bar">
+                                <span
+                                  className={[
+                                    'pipeline-page__score-fill',
+                                    `pipeline-page__score-fill--${getScoreTone(score)}`,
+                                  ].join(' ')}
+                                  style={{ width: `${score}%` }}
+                                />
+                              </span>
+                              <span className="pipeline-page__score-value">{score}%</span>
+                            </span>
+                          </TableCell>
+                          <TableCell color="tertiary">{candidate.date}</TableCell>
+                          <TableCell>
+                            <Badge
+                              type="cheatingFlag"
+                              variant={candidate.antiCheat}
+                              iconLeft
+                              outline
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Badge type="candidateState" variant={candidate.status} />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : !isInitialLoading ? (
+                    <div className="pipeline-page__empty">
+                      <EmptyState
+                        icon={<Users size={24} />}
+                        title={CANDIDATES.length ? 'No matching candidates' : 'No candidates yet'}
+                        description={
+                          CANDIDATES.length
+                            ? 'Adjust the search or filters to show more candidates.'
+                            : 'Candidate applications will appear here once people apply to active jobs.'
+                        }
+                      />
+                    </div>
+                  ) : null}
                 </div>
-              )}
-            </div>
+
+                {sortedCandidates.length > 0 && (
+                  <div className="pipeline-page__pagination">
+                    <Pagination
+                      currentPage={safePage}
+                      totalPages={totalPages}
+                      totalItems={sortedCandidates.length}
+                      itemsPerPage={itemsPerPage}
+                      onPageChange={setCurrentPage}
+                    />
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
           {activeTab === 'overview' && (
@@ -689,76 +850,34 @@ export const Pipeline = memo(function Pipeline() {
                 <QuickInfoCard
                   icon={<Users />}
                   number={overviewData.stats.totalCandidates}
-                  title="Total Candidates"
-                  animated={true}
-                />
-                <QuickInfoCard
-                  icon={<CheckCircle />}
-                  number={overviewData.stats.answeredQuestions}
-                  title="Answered Questions"
-                  animated={true}
-                />
-                <QuickInfoCard
-                  icon={<Award />}
-                  number={overviewData.stats.averageScore}
-                  title="Average Score"
-                  animated={true}
+                  title="Total candidates"
+                  density="compact"
+                  animated={false}
                 />
                 <QuickInfoCard
                   icon={<Clock />}
-                  number={overviewData.stats.shortlisted}
-                  title="Shortlisted"
-                  animated={true}
+                  number={overviewData.stats.needsReview}
+                  title="Needs review"
+                  density="compact"
+                  animated={false}
+                />
+                <QuickInfoCard
+                  icon={<Award />}
+                  number={`${overviewData.stats.averageScore}%`}
+                  title="Average score"
+                  density="compact"
+                  animated={false}
+                />
+                <QuickInfoCard
+                  icon={<AlertTriangle />}
+                  number={overviewData.stats.flagged}
+                  title="Integrity flags"
+                  density="compact"
+                  animated={false}
                 />
               </div>
 
-              <div className="overview__charts-section">
-                <SectionTitle>Performance Overview</SectionTitle>
-                <div className="overview__charts">
-                  <AreaChart
-                    title="Application & Mock Trend"
-                    data={overviewData.applicationTrend}
-                    xKey="week"
-                    dataKeys={[
-                      { key: 'applications', label: 'Applications', color: '#e64f28' },
-                      { key: 'mocks', label: 'Answered Questions', color: '#0057b5' },
-                    ]}
-                    animated={true}
-                  />
-                  <RadarChart
-                    title="Avg. Performance Metrics"
-                    stats={overviewData.performanceMetrics}
-                    animated={true}
-                  />
-                  <BarChart
-                    title="Avg. Score by Role"
-                    data={overviewData.scoreByRole}
-                    dataKeys={[{ key: 'value', label: 'Avg Score' }]}
-                    animated={true}
-                  />
-                  <RadialBarChart
-                    title="Candidate Score Distribution"
-                    data={overviewData.scoreDistribution}
-                    animated={true}
-                  />
-                </div>
-              </div>
-
-              <div className="overview__insights">
-                <SectionTitle>AI Insights</SectionTitle>
-                <div className="overview__insights-grid">
-                  {overviewData.insights.map((insight) => (
-                    <InfoCard
-                      key={insight.title}
-                      title={insight.title}
-                      description={insight.description}
-                      animated={true}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="overview__table-section">
+              <div className="overview__table-section overview__table-section--anchor">
                 <SectionTitle>Job Performance</SectionTitle>
                 <div className="overview__table-container">
                   <TableHeader
@@ -779,7 +898,7 @@ export const Pipeline = memo(function Pipeline() {
                           {job.job}
                         </TableCell>
                         <TableCell color="tertiary" className="overview__table-cell--value">
-                          {job.avgScore}
+                          {job.avgScore}%
                         </TableCell>
                         <TableCell color="tertiary" className="overview__table-cell--value">
                           {job.accepted}
@@ -798,10 +917,174 @@ export const Pipeline = memo(function Pipeline() {
                   </div>
                 </div>
               </div>
+
+              <div className="overview__charts-section">
+                <SectionTitle>Pipeline Health</SectionTitle>
+                <div className="overview__charts">
+                  <AreaChart
+                    title="Candidate volume trend"
+                    data={overviewData.applicationTrend}
+                    xKey="week"
+                    dataKeys={[
+                      { key: 'applications', label: 'Applications', color: CHART_BRAND },
+                      { key: 'accepted', label: 'Accepted', color: CHART_SUCCESS },
+                    ]}
+                    density="compact"
+                    animated={false}
+                  />
+                  <BarChart
+                    title="Average score by role"
+                    data={overviewData.scoreByRole}
+                    dataKeys={[{ key: 'value', label: 'Average score' }]}
+                    density="compact"
+                    animated={false}
+                  />
+                </div>
+              </div>
+
+              <div className="overview__insights">
+                <SectionTitle>Hiring Signals</SectionTitle>
+                <div className="overview__insights-grid">
+                  {overviewData.insights.map((insight) => (
+                    <InfoCard
+                      key={insight.title}
+                      title={insight.title}
+                      description={insight.description}
+                      density="compact"
+                      animated={false}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      {selectedCandidate && (
+        <SidePanel
+          isOpen={isPreviewOpen}
+          title={selectedCandidate.name}
+          subtitle={selectedCandidate.job}
+          size="md"
+          onClose={() => setIsPreviewOpen(false)}
+          footer={
+            <>
+              <Button variant="ghost" size="sm" onClick={() => setIsPreviewOpen(false)}>
+                Close
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                iconRight={<ArrowRight size={14} />}
+                onClick={() => openCandidateDetails(selectedCandidate)}
+              >
+                Open full details
+              </Button>
+            </>
+          }
+        >
+          <div className="pipeline-preview">
+            <section className="pipeline-preview__score-card" aria-label="Candidate score">
+              <div className="pipeline-preview__score-header">
+                <span>Overall score</span>
+                <strong>{clampScore(selectedCandidate.score)}%</strong>
+              </div>
+              <span className="pipeline-preview__score-bar">
+                <span
+                  className={[
+                    'pipeline-preview__score-fill',
+                    `pipeline-page__score-fill--${getScoreTone(selectedCandidate.score)}`,
+                  ].join(' ')}
+                  style={{ width: `${clampScore(selectedCandidate.score)}%` }}
+                />
+              </span>
+            </section>
+
+            <section className="pipeline-preview__section">
+              <h3 className="pipeline-preview__section-title">Decision state</h3>
+              <div className="pipeline-preview__badges">
+                <Badge type="candidateState" variant={selectedCandidate.status}>
+                  {getCandidateStatusLabel(selectedCandidate.status)}
+                </Badge>
+                <Badge type="cheatingFlag" variant={selectedCandidate.antiCheat} iconLeft outline>
+                  {getIntegrityLabel(selectedCandidate.antiCheat)}
+                </Badge>
+              </div>
+              <div className="pipeline-preview__meta-grid">
+                <div>
+                  <span>Applied</span>
+                  <strong>{selectedCandidate.date}</strong>
+                </div>
+                <div>
+                  <span>Integrity</span>
+                  <strong>{getIntegrityLabel(selectedCandidate.antiCheat)}</strong>
+                </div>
+                <div>
+                  <span>Email</span>
+                  <strong>{selectedCandidate.email || 'Not provided'}</strong>
+                </div>
+                <div>
+                  <span>Resume</span>
+                  {selectedCandidate.cvUrl ? (
+                    <a href={selectedCandidate.cvUrl} target="_blank" rel="noreferrer">
+                      Open resume
+                    </a>
+                  ) : (
+                    <strong>{selectedCandidate.resumeName || 'Not provided'}</strong>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            <section className="pipeline-preview__section">
+              <h3 className="pipeline-preview__section-title">Top evidence</h3>
+              <div className="pipeline-preview__evidence-list">
+                {selectedCandidateEvidence.map((evidence) => (
+                  <article key={evidence.id} className="pipeline-preview__evidence">
+                    <h4>{evidence.title}</h4>
+                    <p>{evidence.description}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="pipeline-preview__section">
+              <h3 className="pipeline-preview__section-title">Actions</h3>
+              {selectedCandidateActions.length > 0 ? (
+                <div className="pipeline-preview__actions">
+                  {selectedCandidateActions.map((action) => {
+                    const ActionIcon = action.icon;
+                    return (
+                      <Button
+                        key={action.id}
+                        variant={
+                          action.id === 'accept'
+                            ? 'success'
+                            : action.id === 'reject'
+                              ? 'danger'
+                              : 'secondary'
+                        }
+                        size="sm"
+                        iconLeft={<ActionIcon size={14} />}
+                        onClick={() => handleCandidateAction(selectedCandidate, action.id)}
+                      >
+                        {ACTION_LABELS[action.id] || action.label}
+                      </Button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="pipeline-preview__read-only">
+                  {canChangeCandidateStatus
+                    ? 'This candidate already has a final decision.'
+                    : 'Decision actions are read-only for your role.'}
+                </p>
+              )}
+            </section>
+          </div>
+        </SidePanel>
+      )}
 
       <FilterOverlay
         isOpen={isFilterOpen}
@@ -812,6 +1095,30 @@ export const Pipeline = memo(function Pipeline() {
           setOverlayFilters(v);
           setCurrentPage(1);
         }}
+      />
+
+      <ConfirmDialog
+        isOpen={Boolean(pendingCandidateAction)}
+        title={`Confirm ${ACTION_LABELS[pendingCandidateAction?.action] || 'decision'}`}
+        description={
+          pendingCandidateAction
+            ? `This decision is permanent. Continue with ${pendingCandidateAction.candidate.name}?`
+            : ''
+        }
+        confirmLabel={ACTION_LABELS[pendingCandidateAction?.action] || 'Confirm'}
+        confirmVariant={pendingCandidateAction?.action === 'reject' ? 'danger' : 'primary'}
+        onConfirm={confirmCandidateAction}
+        onClose={() => setPendingCandidateAction(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={Boolean(actionError)}
+        title="Unable to update candidate"
+        description={actionError}
+        confirmLabel="Close"
+        showCancel={false}
+        onConfirm={() => setActionError('')}
+        onClose={() => setActionError('')}
       />
     </div>
   );

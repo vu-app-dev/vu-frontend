@@ -94,7 +94,7 @@
 
 .tags__tag-remove:hover {
   background-color: var(--status-error-bg);
-  color: var(--red-400);
+  color: var(--status-error-text);
   transform: scale(1.15);
 }
 

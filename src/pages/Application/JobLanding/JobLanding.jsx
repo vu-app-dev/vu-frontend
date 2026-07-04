@@ -36,6 +36,7 @@ export const JobLanding = memo(function JobLanding({ onApply }) {
     : isClosed
       ? 'Closed'
       : `Active - closes ${job.deadline}`;
+  const jobContext = [company.name, job.location, job.locationType].filter(Boolean).join(' · ');
 
   return (
     <div className="job-landing">
@@ -45,12 +46,12 @@ export const JobLanding = memo(function JobLanding({ onApply }) {
           <EntityCard
             showAvatar={false}
             userName={job.title}
-            userEmail={`${company.name} · ${job.location} · ${job.jobType} · ${job.locationType}`}
+            userEmail={jobContext}
             showBadge
             badgeType="jobStatus"
             badgeVariant={job.status || 'active'}
             caption={availabilityLabel}
-            colLeft={{ icon: Briefcase, title: job.department, subtitle: 'Department' }}
+            colLeft={{ icon: Briefcase, title: job.jobType, subtitle: 'Job type' }}
             colMid={{ icon: GraduationCap, title: job.seniority, subtitle: 'Seniority' }}
             colRight={{ icon: Clock, title: durationLabel, subtitle: 'Total Duration' }}
             animated={false}

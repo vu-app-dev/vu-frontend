@@ -30,8 +30,24 @@
   box-shadow: 0 var(--size-0-5) var(--size-3) var(--black-a20);
 }
 
+.info-card--compact {
+  gap: var(--gap-xs);
+  padding: var(--padding-md) var(--padding-lg);
+  border-radius: var(--radius-sm);
+  transform: none;
+  transition:
+    opacity var(--transition-base),
+    border-color var(--transition-base),
+    background-color var(--transition-base);
+}
+
+.info-card--compact:hover {
+  box-shadow: none;
+}
+
 .info-card--clickable {
   cursor: pointer;
+  -webkit-user-select: none;
   user-select: none;
 }
 
@@ -54,6 +70,10 @@
   color: var(--text-primary);
 }
 
+.info-card--compact .info-card__title {
+  font-size: var(--text-sm);
+}
+
 /* Description */
 .info-card__description {
   font-family: var(--font-sans);
@@ -67,4 +87,9 @@
 
 .info-card:hover .info-card__description {
   color: var(--text-secondary);
+}
+
+.info-card--compact .info-card__description {
+  font-size: var(--text-xs);
+  line-height: 1.55;
 }

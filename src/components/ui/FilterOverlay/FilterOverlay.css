@@ -155,7 +155,7 @@
 }
 
 .filter-overlay__toggle-row .toggle__track {
-  background: var(--bg-base);
+  background: var(--bg-subcard);
 }
 
 .filter-overlay__toggle-label {

@@ -1,5 +1,5 @@
 ﻿import { useState, useCallback, useMemo, useRef, useEffect, memo } from 'react';
-import { ArrowLeft, ArrowRight, Rocket, CheckCircle, Info } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Info } from 'lucide-react';
 import { Stepper } from '../../../components/ui/Stepper';
 import { Button } from '../../../components/ui/Button';
 import { StepBasicInfoSkills, StepEvaluation, StepReview } from './steps';
@@ -13,6 +13,20 @@ import './MockConfigForm.css';
 
 const MIN_TITLE_LENGTH = 3;
 const MIN_DESCRIPTION_LENGTH = 10;
+const STEP_COPY = [
+  {
+    title: 'Basics',
+    description: 'Define how this assessment appears and which skills it covers.',
+  },
+  {
+    title: 'Scoring',
+    description: 'Set score categories, interview questions, and their evaluation weights.',
+  },
+  {
+    title: 'Review',
+    description: 'Confirm the assessment setup before creating or saving it.',
+  },
+];
 
 function validateMockBasics(form) {
   const errors = {};
@@ -36,6 +50,14 @@ export const MockConfigForm = memo(function MockConfigForm({
 }) {
   const isEdit = mode === 'edit';
   const STEPS = isEdit ? STEPS_EDIT : STEPS_CREATE;
+  const displaySteps = useMemo(
+    () =>
+      STEPS.map((step, index) => ({
+        ...step,
+        label: ['Basics', 'Scoring', isEdit ? 'Review & save' : 'Review'][index],
+      })),
+    [STEPS, isEdit]
+  );
 
   const [activeStep, setActiveStep] = useState(0);
   const [form, setForm] = useState(initialData ?? INITIAL_MOCK_FORM);
@@ -223,7 +245,7 @@ export const MockConfigForm = memo(function MockConfigForm({
     }
 
     return {
-      items: totalItems > 0 ? '' : 'Add at least one topic or question.',
+      items: totalItems > 0 ? '' : 'Add at least one score category or interview question.',
       totalWeight: totalWeight === 100 ? '' : 'Total weight must equal 100%.',
       topics: topicErrors,
       questions: questionErrors,
@@ -268,7 +290,7 @@ export const MockConfigForm = memo(function MockConfigForm({
   );
 
   useEffect(() => {
-    pageScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    pageScrollRef.current?.scrollTo({ top: 0 });
   }, [activeStep]);
 
   /* -- Render steps -- */
@@ -319,7 +341,7 @@ export const MockConfigForm = memo(function MockConfigForm({
         {/* Stepper */}
         <div className="create-mock__stepper">
           <Stepper
-            steps={STEPS}
+            steps={displaySteps}
             activeStep={activeStep}
             onStepClick={setActiveStep}
             stepValidity={stepValidity}
@@ -346,6 +368,11 @@ export const MockConfigForm = memo(function MockConfigForm({
         )}
         {/* Step body */}
         <div className="create-mock__body" key={activeStep}>
+          <div className="create-mock__step-header">
+            <span>Step {activeStep + 1}</span>
+            <h1>{STEP_COPY[activeStep]?.title}</h1>
+            <p>{STEP_COPY[activeStep]?.description}</p>
+          </div>
           {renderStep()}
         </div>
 
@@ -366,21 +393,19 @@ export const MockConfigForm = memo(function MockConfigForm({
             ) : isEdit ? (
               <Button
                 variant="primary"
-                iconLeft={<CheckCircle size={16} />}
                 onClick={() => onSaveChanges?.(form)}
                 disabled={!stepValidity[2]}
               >
-                Save Changes
+                Save changes
               </Button>
             ) : (
               <>
                 <Button
                   variant="primary"
-                  iconLeft={<Rocket size={16} />}
                   onClick={() => onPublish?.(form)}
                   disabled={!stepValidity[2]}
                 >
-                  Create Mock
+                  Create mock
                 </Button>
               </>
             )}

@@ -40,11 +40,6 @@
     color var(--transition-base);
 }
 
-.empty-state:hover .empty-state__icon {
-  border-color: var(--brand-900);
-  color: var(--brand-default);
-}
-
 /* Title */
 .empty-state__title {
   font-family: var(--font-sans);

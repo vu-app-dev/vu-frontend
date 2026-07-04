@@ -284,15 +284,6 @@ export const LOCATION_TYPE_OPTIONS = [
   option('hybrid', 'Hybrid'),
 ];
 
-export const DEPARTMENT_OPTIONS = [
-  option('Engineering'),
-  option('Design'),
-  option('Product'),
-  option('Data'),
-  option('Human Resources'),
-  option('Operations'),
-];
-
 export const MOCK_LIBRARY = [];
 
 export const EMAIL_TRIGGERS = [
@@ -311,7 +302,6 @@ export const EMAIL_TRIGGERS = [
 
 export const INITIAL_JOB_FORM = {
   title: '',
-  department: '',
   jobType: '',
   seniority: '',
   description: '',
@@ -430,22 +420,6 @@ function syncMockLibrary() {
   );
 }
 
-function syncDepartmentOptions() {
-  const departments = [
-    ...new Set(
-      JOBS.flatMap((job) => job.departments || [])
-        .concat(COMPANY.departments || [])
-        .filter(Boolean)
-    ),
-  ].sort();
-
-  if (!departments.length) return;
-  replaceArray(
-    DEPARTMENT_OPTIONS,
-    departments.map((department) => option(department))
-  );
-}
-
 export function setBackendData({
   user,
   company,
@@ -497,7 +471,6 @@ export function setBackendData({
   CURRENT_USER_ID = normalizeId(user?.id || user?.userId || user?._id) || null;
 
   syncMockLibrary();
-  syncDepartmentOptions();
   notify();
 }
 
@@ -513,7 +486,6 @@ export function upsertJob(job) {
   const idx = JOBS.findIndex((item) => normalizeId(item.id) === normalizeId(nextJob.id));
   if (idx >= 0) JOBS[idx] = nextJob;
   else JOBS.unshift(nextJob);
-  syncDepartmentOptions();
   notify();
   return nextJob;
 }
@@ -667,7 +639,6 @@ export function getDatastoreSnapshot() {
       jobTypeOptions: JOB_TYPE_OPTIONS,
       seniorityOptions: SENIORITY_OPTIONS,
       locationTypeOptions: LOCATION_TYPE_OPTIONS,
-      departmentOptions: DEPARTMENT_OPTIONS,
       mockLibrary: MOCK_LIBRARY,
       emailTriggers: EMAIL_TRIGGERS,
       initialJobForm: INITIAL_JOB_FORM,

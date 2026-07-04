@@ -35,10 +35,6 @@
   transition: border-color var(--transition-base);
 }
 
-.cv-analysis__match-card:hover {
-  border-color: var(--border-default);
-}
-
 .cv-analysis__match-title {
   font-family: var(--font-sans);
   font-size: var(--text-sm);
@@ -67,15 +63,15 @@
 }
 
 .cv-analysis__match-verdict--strong {
-  color: var(--green-600);
+  color: var(--score-strong);
 }
 
 .cv-analysis__match-verdict--partial {
-  color: var(--yellow-500);
+  color: var(--score-watch);
 }
 
 .cv-analysis__match-verdict--weak {
-  color: var(--red-500);
+  color: var(--score-risk);
 }
 
 /* Progress bar — subtle, thin, doesn't compete with the number */
@@ -92,7 +88,7 @@
 .cv-analysis__match-bar-fill {
   height: 100%;
   border-radius: var(--radius-full);
-  background: var(--brand-default);
+  background: var(--score-good);
   opacity: 0.5;
   transition: width 800ms cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -118,7 +114,9 @@
   border-radius: var(--radius-md);
   border: var(--border-sm) solid;
   cursor: default;
+  -webkit-user-select: none;
   user-select: none;
+  -webkit-tap-highlight-color: none;
   transition:
     background-color var(--transition-base),
     border-color var(--transition-base);
@@ -176,7 +174,7 @@
 
 .cv-analysis__gap-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: var(--gap-xl);
 }
 
@@ -194,11 +192,11 @@
 }
 
 .cv-analysis__gap-heading--strengths {
-  color: var(--green-500);
+  color: var(--status-success-text);
 }
 
 .cv-analysis__gap-heading--gaps {
-  color: var(--red-400);
+  color: var(--status-error-text);
 }
 
 .cv-analysis__gap-list {
@@ -275,10 +273,6 @@
   border: var(--border-sm) solid var(--border-subtle);
   border-radius: var(--radius-md);
   transition: border-color var(--transition-base);
-}
-
-.cv-analysis__cv-inner:hover {
-  border-color: var(--border-default);
 }
 
 .cv-analysis__cv-text {

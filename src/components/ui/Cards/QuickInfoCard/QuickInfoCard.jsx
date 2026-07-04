@@ -8,6 +8,7 @@ export const QuickInfoCard = memo(function QuickInfoCard({
   number,
   title,
   className = '',
+  density = 'default',
   animated = true,
 }) {
   const { ref: cardRef, isVisible } = useEntranceAnimation(animated);
@@ -15,7 +16,12 @@ export const QuickInfoCard = memo(function QuickInfoCard({
   return (
     <div
       ref={cardRef}
-      className={['quick-info-card', isVisible && 'quick-info-card--visible', className]
+      className={[
+        'quick-info-card',
+        density === 'compact' && 'quick-info-card--compact',
+        isVisible && 'quick-info-card--visible',
+        className,
+      ]
         .filter(Boolean)
         .join(' ')}
     >
@@ -37,5 +43,6 @@ QuickInfoCard.propTypes = {
   number: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
   title: PropTypes.string.isRequired,
   className: PropTypes.string,
+  density: PropTypes.oneOf(['default', 'compact']),
   animated: PropTypes.bool,
 };

@@ -5,6 +5,10 @@
 export const CHART_BRAND = 'var(--chart-brand)';
 export const CHART_BRAND_SOFT = 'var(--chart-brand-soft)';
 export const CHART_BRAND_STRONG = 'var(--chart-brand-strong)';
+export const CHART_SUCCESS = 'var(--chart-success)';
+export const CHART_WARNING = 'var(--chart-warning)';
+export const CHART_DANGER = 'var(--chart-danger)';
+export const CHART_INFO = 'var(--chart-info)';
 
 export const CHART_PALETTE = [
   'var(--chart-brand-1)',

@@ -6,7 +6,6 @@ import { JOB_TYPE_OPTIONS, SENIORITY_OPTIONS, LOCATION_TYPE_OPTIONS } from '../.
 export function StepJobInfo({
   form,
   updateField,
-  departmentOptions,
   addTechnology,
   removeTechnology,
   validationErrors = {},
@@ -17,11 +16,14 @@ export function StepJobInfo({
   return (
     <>
       <section className="create-job__section">
-        <SectionTitle variant="inline" description="Enter the core details for this job posting">
-          Basic Information
+        <SectionTitle
+          variant="inline"
+          description="Set the role fields candidates and reviewers will see."
+        >
+          Role setup
         </SectionTitle>
         <TextInput
-          label="Job Title"
+          label="Job title"
           placeholder="e.g. Senior Software Engineer"
           required
           value={form.title}
@@ -31,20 +33,9 @@ export function StepJobInfo({
           hint={showFieldError?.('title') ? validationErrors.title : ''}
           disabled={disabled}
         />
-        <div className="create-job__row create-job__row--3">
+        <div className="create-job__row create-job__row--2">
           <DropdownInput
-            label="Department"
-            placeholder="Select department"
-            required
-            options={departmentOptions}
-            value={form.department}
-            onChange={(v) => updateField('department', v)}
-            onBlur={() => markTouched?.('department')}
-            error={Boolean(showFieldError?.('department'))}
-            disabled={disabled}
-          />
-          <DropdownInput
-            label="Job Type"
+            label="Job type"
             placeholder="Select type"
             required
             options={JOB_TYPE_OPTIONS}
@@ -55,7 +46,7 @@ export function StepJobInfo({
             disabled={disabled}
           />
           <DropdownInput
-            label="Seniority Level"
+            label="Seniority level"
             placeholder="Select level"
             required
             options={SENIORITY_OPTIONS}
@@ -66,37 +57,37 @@ export function StepJobInfo({
             disabled={disabled}
           />
         </div>
-      </section>
 
-      <section className="create-job__section">
-        <SectionTitle variant="inline" description="Add technologies candidates should have">
-          Technologies
-        </SectionTitle>
-        <Tags
-          tags={form.technologies}
-          variant={disabled ? 'readonly' : 'editable'}
-          showTitle={false}
-          onAdd={addTechnology}
-          onRemove={removeTechnology}
-        />
-        {(showFieldError?.('technologies') || form.technologies.length === 0) && (
-          <p className="create-job__hint">
-            {showFieldError?.('technologies') ? validationErrors.technologies : ''}
-          </p>
-        )}
+        <div className="create-job__row create-job__row--2">
+          <DropdownInput
+            label="Work arrangement"
+            placeholder="Select arrangement"
+            options={LOCATION_TYPE_OPTIONS}
+            value={form.locationType}
+            onChange={(v) => updateField('locationType', v)}
+            disabled={disabled}
+          />
+          <TextInput
+            label="City / country"
+            placeholder="e.g. San Francisco, CA"
+            value={form.location}
+            onChange={(e) => updateField('location', e.target.value)}
+            disabled={disabled}
+          />
+        </div>
       </section>
 
       <section className="create-job__section">
         <SectionTitle
           variant="inline"
-          description="Describe the role, responsibilities, and expectations"
+          description="Describe responsibilities, expectations, and what the role actually does."
         >
-          Job Description
+          Job description
         </SectionTitle>
         <Textarea
           label="Description"
           showLabel={false}
-          placeholder="Describe the role, responsibilities, and what a typical day looks like..."
+          placeholder="Describe the role, responsibilities, and what strong candidates should understand..."
           rows={5}
           maxLength={2000}
           showCounter
@@ -110,26 +101,22 @@ export function StepJobInfo({
       </section>
 
       <section className="create-job__section">
-        <SectionTitle variant="inline" description="Where will this role be based?">
-          Location
+        <SectionTitle
+          variant="inline"
+          description="Add skills used for matching, filtering, and reviewer context."
+        >
+          Skills
         </SectionTitle>
-        <div className="create-job__row create-job__row--2">
-          <DropdownInput
-            label="Work Arrangement"
-            placeholder="Select arrangement"
-            options={LOCATION_TYPE_OPTIONS}
-            value={form.locationType}
-            onChange={(v) => updateField('locationType', v)}
-            disabled={disabled}
-          />
-          <TextInput
-            label="City / Country"
-            placeholder="e.g. San Francisco, CA"
-            value={form.location}
-            onChange={(e) => updateField('location', e.target.value)}
-            disabled={disabled}
-          />
-        </div>
+        <Tags
+          tags={form.technologies}
+          variant={disabled ? 'readonly' : 'editable'}
+          showTitle={false}
+          onAdd={addTechnology}
+          onRemove={removeTechnology}
+        />
+        {showFieldError?.('technologies') && (
+          <p className="create-job__hint">{validationErrors.technologies}</p>
+        )}
       </section>
     </>
   );

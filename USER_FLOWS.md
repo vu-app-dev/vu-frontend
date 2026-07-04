@@ -18,14 +18,14 @@ The goal is to make the full product journey understandable without reading code
 
 ## Product Roles
 
-| Person | What they care about | What they can do |
-| --- | --- | --- |
-| Company owner | Running the hiring workspace | Manage jobs, mocks, candidates, company settings, members, and access requests. |
-| Editor | Helping manage hiring work | Create and edit jobs and mocks, review candidates, and make candidate decisions. |
-| Viewer | Observing hiring work | Read jobs, mocks, and candidate information without changing anything. |
-| Candidate | Applying for a job | Read the job, submit personal details/CV, complete assessments, and finish the application. |
-| Join requester | Joining an existing company workspace | Request access, verify email, then wait for the owner to approve. |
-| Pending member | Waiting for access | Sign in only after company approval is complete. |
+| Person         | What they care about                  | What they can do                                                                            |
+| -------------- | ------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Company owner  | Running the hiring workspace          | Manage jobs, mocks, candidates, company settings, members, and access requests.             |
+| Editor         | Helping manage hiring work            | Create and edit jobs and mocks, review candidates, and make candidate decisions.            |
+| Viewer         | Observing hiring work                 | Read jobs, mocks, and candidate information without changing anything.                      |
+| Candidate      | Applying for a job                    | Read the job, submit personal details/CV, complete assessments, and finish the application. |
+| Join requester | Joining an existing company workspace | Request access, verify email, then wait for the owner to approve.                           |
+| Pending member | Waiting for access                    | Sign in only after company approval is complete.                                            |
 
 ## UX Flow Format
 
@@ -42,15 +42,15 @@ Each flow is written as a user journey:
 
 These rules should stay consistent across the whole app.
 
-| Situation | UX expectation |
-| --- | --- |
-| User is waiting | Show a loading or saving state so the user knows the app is working. |
-| User makes a mistake | Point to the exact field or action that needs fixing. |
-| User is not allowed to do something | Hide or disable the action, and keep them in a place where they can still do useful work. |
-| User is about to make a final decision | Ask for confirmation before accepting, rejecting, or deleting. |
-| Something cannot be loaded | Show a clear recovery option, usually retry or return to a safe page. |
-| A page breaks | Show a page-level recovery screen instead of losing the whole app. |
-| User changes filters or pages | Keep the experience fast and predictable, with no surprising reset of their current task. |
+| Situation                              | UX expectation                                                                            |
+| -------------------------------------- | ----------------------------------------------------------------------------------------- |
+| User is waiting                        | Show a loading or saving state so the user knows the app is working.                      |
+| User makes a mistake                   | Point to the exact field or action that needs fixing.                                     |
+| User is not allowed to do something    | Hide or disable the action, and keep them in a place where they can still do useful work. |
+| User is about to make a final decision | Ask for confirmation before accepting, rejecting, or deleting.                            |
+| Something cannot be loaded             | Show a clear recovery option, usually retry or return to a safe page.                     |
+| A page breaks                          | Show a page-level recovery screen instead of losing the whole app.                        |
+| User changes filters or pages          | Keep the experience fast and predictable, with no surprising reset of their current task. |
 
 ## Authentication And Access
 
@@ -273,7 +273,7 @@ Starting moment: The owner chooses to create a job.
 
 Main path:
 
-1. The owner enters job details such as title, description, department, and type.
+1. The owner enters job details such as title, type, seniority, location, description, and skills.
 2. The owner attaches one or more mock assessments.
 3. The owner sets weights or requirements for the assessments.
 4. The owner configures scheduling and candidate communication options.
@@ -421,7 +421,7 @@ Starting moment: The owner opens company settings.
 Main path:
 
 1. The owner edits company profile information.
-2. The owner adjusts candidate status options or departments.
+2. The owner adjusts candidate status options.
 3. The owner saves the changes.
 4. VU confirms that the settings were saved.
 
@@ -1144,7 +1144,7 @@ Starting moment: The user opens a team member from the company area.
 Main path:
 
 1. The member profile appears.
-2. The user reviews identity, role, department, and activity information.
+2. The user reviews identity, role, joined date, contact, and activity information.
 3. The user returns to the company area.
 
 Blocked states:

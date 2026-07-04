@@ -2,7 +2,7 @@
 
 .stepper {
   width: 100%;
-  padding: var(--padding-md) 0;
+  padding: var(--padding-sm) 0;
 }
 
 .stepper__list {
@@ -36,7 +36,7 @@
 }
 
 .stepper__connector--filled {
-  background-color: var(--brand-default);
+  background-color: var(--border-default);
 }
 
 /* Button wrapper for each step */
@@ -60,7 +60,7 @@
 
 .stepper__step--completed .stepper__button:hover,
 .stepper__step--reachable .stepper__button:hover {
-  background-color: var(--white-a5);
+  background-color: var(--bg-hover);
 }
 
 .stepper__button:disabled {
@@ -94,16 +94,16 @@
 
 /* Active */
 .stepper__step--active .stepper__indicator {
-  background-color: var(--brand-default);
-  color: var(--white);
-  border: var(--border-sm) solid var(--brand-600);
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  border: var(--border-sm) solid var(--brand-default);
 }
 
 /* Completed */
 .stepper__step--completed .stepper__indicator {
-  background-color: var(--status-success-bg);
+  background-color: var(--bg-card);
   color: var(--status-success-text);
-  border: var(--border-sm) solid transparent;
+  border: var(--border-sm) solid var(--status-success-border);
 }
 
 /* Reachable (future but valid to click) */

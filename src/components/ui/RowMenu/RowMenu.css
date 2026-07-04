@@ -14,7 +14,7 @@
     0 1px 3px var(--shadow-sm);
   overflow: hidden;
   opacity: 0;
-  transform: translateY(-4px) scale(0.97);
+  transform: translateY(-2px);
   pointer-events: none;
   transition:
     opacity var(--transition-fast),
@@ -23,7 +23,7 @@
 
 .row-menu--open {
   opacity: 1;
-  transform: translateY(0) scale(1);
+  transform: translateY(0);
   pointer-events: auto;
 }
 
@@ -59,6 +59,16 @@
 
 .row-menu__item:active {
   background: var(--white-a10);
+}
+
+.row-menu__item:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.row-menu__item:disabled:hover {
+  background: transparent;
+  color: var(--text-secondary);
 }
 
 .row-menu__item:focus-visible {

@@ -20,7 +20,7 @@
 
 .input-label__required {
   margin-left: var(--size-0-5);
-  color: var(--red-400);
+  color: var(--status-error-text);
   font-weight: var(--font-medium);
 }
 

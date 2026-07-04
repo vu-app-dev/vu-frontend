@@ -1,38 +1,53 @@
-import { memo, useMemo, useCallback, useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import PropTypes from 'prop-types';
 import {
-  Building2,
   CalendarDays,
-  UserX,
-  Activity,
   CheckCircle2,
-  XCircle,
-  Phone,
-  MapPin,
+  Clock,
   Mail,
+  MapPin,
+  Phone,
+  UserX,
+  XCircle,
 } from 'lucide-react';
-import { EntityCard } from '../../../components/ui/Cards';
+import { Badge, RoleBadge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
-import { Badge } from '../../../components/ui/Badge';
-import { RoleBadge } from '../../../components/ui/Badge';
+import { ConfirmDialog } from '../../../components/ui/Dialog';
 import { SectionTitle } from '../../../components/ui/SectionTitle';
 import {
-  getMemberById,
-  getMemberActivities,
-  removeMember,
-  acceptJoinRequest,
-  declineJoinRequest,
   CURRENT_USER_ID,
   ROLES,
+  acceptJoinRequest,
+  declineJoinRequest,
+  getMemberById,
+  removeMember,
 } from '../../../api';
 import './MemberDetails.css';
 
-/* ── Consistent activity icon for every action ── */
-const ACTIVITY_ICON = Activity;
-
 const ICON_SM = 14;
 
-/* ── Component ── */
+function getInitials(name = '') {
+  return (
+    String(name)
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase() || 'VU'
+  );
+}
+
+function statusVariant(status) {
+  if (status === 'accepted') return 'accepted';
+  if (status === 'declined' || status === 'rejected') return 'rejected';
+  return 'pending';
+}
+
+function permissionLabel(permission) {
+  return String(permission || '').replace(/_/g, ' ');
+}
+
 export const MemberDetails = memo(function MemberDetails({
   memberId,
   request,
@@ -41,214 +56,157 @@ export const MemberDetails = memo(function MemberDetails({
   onDeclined,
 }) {
   const [assignRole, setAssignRole] = useState('viewer');
+  const [actionError, setActionError] = useState('');
+  const [busyAction, setBusyAction] = useState('');
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
 
   const member = memberId ? getMemberById(memberId) : null;
-  const isCurrentUser = memberId === CURRENT_USER_ID;
-  const isOwner = getMemberById(CURRENT_USER_ID)?.role === 'owner';
-
-  const activities = useMemo(
-    () => (member ? getMemberActivities(memberId) : []),
-    [member, memberId]
-  );
+  const currentUser = getMemberById(CURRENT_USER_ID);
+  const isCurrentUser = String(memberId) === String(CURRENT_USER_ID);
+  const isOwner = currentUser?.role === 'owner';
+  const roleConfig = member ? ROLES[member.role] : ROLES[assignRole];
 
   const handleRemove = useCallback(async () => {
-    if (isCurrentUser) return;
-    const removed = await removeMember(memberId);
-    if (removed) onRemoved?.();
+    if (isCurrentUser || !memberId) return;
+    setBusyAction('remove');
+    setActionError('');
+    try {
+      const removed = await removeMember(memberId);
+      if (removed) onRemoved?.();
+    } catch (error) {
+      setActionError(error.message || 'Member could not be removed.');
+    } finally {
+      setBusyAction('');
+      setRemoveDialogOpen(false);
+    }
   }, [memberId, isCurrentUser, onRemoved]);
 
   const handleAcceptRequest = useCallback(async () => {
     if (!request) return;
-    const newMember = await acceptJoinRequest(request.id, assignRole);
-    if (newMember) onAccepted?.(newMember.id);
+    setBusyAction('accept');
+    setActionError('');
+    try {
+      const newMember = await acceptJoinRequest(request.id, assignRole);
+      if (newMember) onAccepted?.(newMember.id);
+    } catch (error) {
+      setActionError(error.message || 'Request could not be accepted.');
+    } finally {
+      setBusyAction('');
+    }
   }, [request, assignRole, onAccepted]);
 
   const handleDeclineRequest = useCallback(async () => {
     if (!request) return;
-    await declineJoinRequest(request.id);
-    onDeclined?.();
+    setBusyAction('decline');
+    setActionError('');
+    try {
+      await declineJoinRequest(request.id);
+      onDeclined?.();
+    } catch (error) {
+      setActionError(error.message || 'Request could not be declined.');
+    } finally {
+      setBusyAction('');
+    }
   }, [request, onDeclined]);
 
-  /* ── Request Mode ── */
   if (request) {
-    const requestDesktop = (
-      <div className="member-details__desktop-layout">
-        <div className="member-details__main">
-          <div className="member-details__scroll">
-            <EntityCard
-              showAvatar
-              userName={request.name}
-              userEmail={request.email}
-              showBadge
-              badgeType="candidateState"
-              badgeVariant="pending"
-              colLeft={{ icon: Building2, title: request.department, subtitle: 'Department' }}
-              colMid={{ icon: CalendarDays, title: request.submittedDate, subtitle: 'Submitted' }}
-              animated={false}
-            />
-
-            {request.message && (
-              <section className="member-details__section">
-                <SectionTitle variant="inline">Message</SectionTitle>
-                <p className="member-details__request-message">{request.message}</p>
-              </section>
-            )}
-          </div>
-        </div>
-
-        <aside className="member-details__sidebar">
-          <div className="member-details__card">
-            <SectionTitle variant="inline">Actions</SectionTitle>
-            <div className="member-details__action-list">
-              <div className="member-details__role-section">
-                <span className="member-details__label">Assign Role</span>
-                <RoleBadge value={assignRole} onChange={setAssignRole} />
-              </div>
-              <Button
-                variant="primary"
-                size="sm"
-                iconLeft={<CheckCircle2 size={ICON_SM} />}
-                onClick={handleAcceptRequest}
-              >
-                Accept
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                iconLeft={<XCircle size={ICON_SM} />}
-                onClick={handleDeclineRequest}
-              >
-                Decline
-              </Button>
-            </div>
-          </div>
-
-          <div className="member-details__card">
-            <SectionTitle variant="inline">Request Info</SectionTitle>
-
-            <div className="member-details__info-row">
-              <Mail size={14} className="member-details__info-icon" />
-              <div className="member-details__info-group">
-                <span className="member-details__info-label">Email</span>
-                <span className="member-details__info-value">{request.email}</span>
-              </div>
-            </div>
-
-            <div className="member-details__divider" />
-
-            <div className="member-details__info-row">
-              <Building2 size={14} className="member-details__info-icon" />
-              <div className="member-details__info-group">
-                <span className="member-details__info-label">Department</span>
-                <span className="member-details__info-value">{request.department}</span>
-              </div>
-            </div>
-
-            <div className="member-details__divider" />
-
-            <div className="member-details__info-row">
-              <CalendarDays size={14} className="member-details__info-icon" />
-              <div className="member-details__info-group">
-                <span className="member-details__info-label">Submitted</span>
-                <span className="member-details__info-value">{request.submittedDate}</span>
-              </div>
-            </div>
-          </div>
-        </aside>
-      </div>
-    );
-
-    const requestMobile = (
-      <div className="member-details__mobile-shell">
-        <div className="member-details__mobile-content">
-          <EntityCard
-            showAvatar
-            userName={request.name}
-            userEmail={request.email}
-            showBadge
-            badgeType="candidateState"
-            badgeVariant="pending"
-            colLeft={{ icon: Building2, title: request.department, subtitle: 'Department' }}
-            colMid={{ icon: CalendarDays, title: request.submittedDate, subtitle: 'Submitted' }}
-            animated={false}
-          />
-
-          <div className="member-details__card">
-            <SectionTitle variant="inline">Actions</SectionTitle>
-            <div className="member-details__action-list">
-              <div className="member-details__role-section">
-                <RoleBadge value={assignRole} onChange={setAssignRole} />
-              </div>
-              <Button
-                variant="primary"
-                size="sm"
-                iconLeft={<CheckCircle2 size={ICON_SM} />}
-                onClick={handleAcceptRequest}
-              >
-                Accept
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                iconLeft={<XCircle size={ICON_SM} />}
-                onClick={handleDeclineRequest}
-              >
-                Decline
-              </Button>
-            </div>
-          </div>
-
-          <div className="member-details__card">
-            <SectionTitle variant="inline">Request Info</SectionTitle>
-
-            <div className="member-details__info-row">
-              <Mail size={14} className="member-details__info-icon" />
-              <div className="member-details__info-group">
-                <span className="member-details__info-label">Email</span>
-                <span className="member-details__info-value">{request.email}</span>
-              </div>
-            </div>
-
-            <div className="member-details__divider" />
-
-            <div className="member-details__info-row">
-              <Building2 size={14} className="member-details__info-icon" />
-              <div className="member-details__info-group">
-                <span className="member-details__info-label">Department</span>
-                <span className="member-details__info-value">{request.department}</span>
-              </div>
-            </div>
-
-            <div className="member-details__divider" />
-
-            <div className="member-details__info-row">
-              <CalendarDays size={14} className="member-details__info-icon" />
-              <div className="member-details__info-group">
-                <span className="member-details__info-label">Submitted</span>
-                <span className="member-details__info-value">{request.submittedDate}</span>
-              </div>
-            </div>
-          </div>
-
-          {request.message && (
-            <section className="member-details__section">
-              <SectionTitle variant="inline">Message</SectionTitle>
-              <p className="member-details__request-message">{request.message}</p>
-            </section>
-          )}
-        </div>
-      </div>
-    );
+    const isPending = request.status === 'pending';
 
     return (
       <div className="member-details">
-        <div className="member-details__desktop-layout">{requestDesktop}</div>
-        {requestMobile}
+        <div className="member-details__layout">
+          <main className="member-details__main">
+            <section className="member-details__header">
+              <div className="member-details__identity">
+                <div className="member-details__avatar" aria-hidden="true">
+                  {getInitials(request.name)}
+                </div>
+                <div className="member-details__identity-copy">
+                  <span className="member-details__eyebrow">Access request</span>
+                  <h1>{request.name}</h1>
+                  <p>{request.email}</p>
+                </div>
+                <Badge type="candidateState" variant={statusVariant(request.status)} />
+              </div>
+
+              <div className="member-details__meta-strip">
+                <div>
+                  <Mail size={ICON_SM} aria-hidden="true" />
+                  <span>Email</span>
+                  <strong>{request.email}</strong>
+                </div>
+                <div>
+                  <CalendarDays size={ICON_SM} aria-hidden="true" />
+                  <span>Submitted</span>
+                  <strong>{request.submittedDate || 'Recently'}</strong>
+                </div>
+              </div>
+            </section>
+
+            <section className="member-details__section">
+              <SectionTitle variant="inline">Request context</SectionTitle>
+              {request.message ? (
+                <p className="member-details__request-message">{request.message}</p>
+              ) : (
+                <p className="member-details__empty-text">
+                  The request does not include a note from the applicant.
+                </p>
+              )}
+            </section>
+          </main>
+
+          <aside className="member-details__sidebar">
+            <div className="member-details__card">
+              <SectionTitle variant="inline">Actions</SectionTitle>
+              {isPending ? (
+                <div className="member-details__action-list">
+                  <div className="member-details__role-section">
+                    <span className="member-details__label">Assigned role</span>
+                    <RoleBadge value={assignRole} onChange={setAssignRole} />
+                  </div>
+                  <Button
+                    variant="success"
+                    size="sm"
+                    iconLeft={<CheckCircle2 size={ICON_SM} />}
+                    onClick={handleAcceptRequest}
+                    loading={busyAction === 'accept'}
+                  >
+                    Accept request
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    iconLeft={<XCircle size={ICON_SM} />}
+                    onClick={handleDeclineRequest}
+                    loading={busyAction === 'decline'}
+                  >
+                    Decline request
+                  </Button>
+                </div>
+              ) : (
+                <p className="member-details__self-note">
+                  This request has already been processed.
+                </p>
+              )}
+              {actionError && <p className="member-details__error">{actionError}</p>}
+            </div>
+
+            <div className="member-details__card">
+              <SectionTitle variant="inline">Role preview</SectionTitle>
+              <div className="member-details__permissions">
+                {(ROLES[assignRole]?.permissions || []).map((permission) => (
+                  <span key={permission} className="member-details__perm-tag">
+                    {permissionLabel(permission)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </div>
       </div>
     );
   }
 
-  /* ── Member Mode ── */
   if (!member) {
     return (
       <div className="member-details member-details--empty">
@@ -257,310 +215,137 @@ export const MemberDetails = memo(function MemberDetails({
     );
   }
 
-  const roleConfig = ROLES[member.role];
+  return (
+    <div className="member-details">
+      <div className="member-details__layout">
+        <main className="member-details__main">
+          <section className="member-details__header">
+            <div className="member-details__identity">
+              <div className="member-details__avatar" aria-hidden="true">
+                {getInitials(member.name)}
+              </div>
+              <div className="member-details__identity-copy">
+                <span className="member-details__eyebrow">Team member</span>
+                <h1>{member.name}</h1>
+                <p>{member.email}</p>
+              </div>
+              <Badge type="role" variant={member.role} />
+            </div>
 
-  const memberDesktop = (
-    <div className="member-details__desktop-layout">
-      {/* ── MAIN ── */}
-      <div className="member-details__main">
-        <div className="member-details__scroll">
-          {/* Entity Card — editable badge if owner */}
-          <EntityCard
-            showAvatar={true}
-            userName={member.name}
-            userEmail={member.email}
-            showBadge
-            badgeType="role"
-            badgeVariant={member.role}
-            colLeft={{ icon: Building2, title: member.department, subtitle: 'Department' }}
-            colMid={{ icon: CalendarDays, title: member.joinedDate, subtitle: 'Joined' }}
-            colRight={{ icon: Activity, title: member.lastActivity, subtitle: 'Last Active' }}
-            animated={false}
-          />
+            <div className="member-details__meta-strip">
+              <div>
+                <Mail size={ICON_SM} aria-hidden="true" />
+                <span>Email</span>
+                <strong>{member.email}</strong>
+              </div>
+              <div>
+                <Phone size={ICON_SM} aria-hidden="true" />
+                <span>Phone</span>
+                <strong>{member.phone || 'Not provided'}</strong>
+              </div>
+              <div>
+                <CalendarDays size={ICON_SM} aria-hidden="true" />
+                <span>Joined</span>
+                <strong>{member.joinedDate || 'Not provided'}</strong>
+              </div>
+              <div>
+                <Clock size={ICON_SM} aria-hidden="true" />
+                <span>Last active</span>
+                <strong>{member.lastActivity || 'Not recorded'}</strong>
+              </div>
+            </div>
+          </section>
 
-          {/* Activity Timeline */}
           <section className="member-details__section">
-            <SectionTitle variant="inline">Activity</SectionTitle>
-            <div className="member-details__timeline">
-              {activities.length === 0 && (
-                <p className="member-details__empty-text">No activity recorded yet.</p>
-              )}
-              {activities.map((act) => (
-                <div key={act.id} className="member-details__activity-item">
-                  <div className="member-details__activity-icon">
-                    <ACTIVITY_ICON size={14} />
-                  </div>
-                  <div className="member-details__activity-content">
-                    <span className="member-details__activity-action">{act.action}</span>
-                    <span className="member-details__activity-target">{act.target}</span>
-                  </div>
-                  <div className="member-details__activity-time">
-                    <span className="member-details__activity-date">{act.date}</span>
-                    <span className="member-details__activity-hour">{act.time}</span>
-                  </div>
-                </div>
+            <SectionTitle variant="inline">Permissions</SectionTitle>
+            <div className="member-details__permissions">
+              {(roleConfig?.permissions || []).map((permission) => (
+                <span key={permission} className="member-details__perm-tag">
+                  {permissionLabel(permission)}
+                </span>
               ))}
             </div>
           </section>
-        </div>
-      </div>
+        </main>
 
-      {/* ── SIDEBAR ── */}
-      <aside className="member-details__sidebar">
-        {/* Actions — visible to owner */}
-        {isOwner && (
+        <aside className="member-details__sidebar">
+          {isOwner && (
+            <div className="member-details__card">
+              <SectionTitle variant="inline">Actions</SectionTitle>
+              <div className="member-details__action-list">
+                {!isCurrentUser ? (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    iconLeft={<UserX size={ICON_SM} />}
+                    onClick={() => setRemoveDialogOpen(true)}
+                  >
+                    Remove member
+                  </Button>
+                ) : (
+                  <p className="member-details__self-note">
+                    This is your account. You cannot remove yourself from the workspace.
+                  </p>
+                )}
+              </div>
+              {actionError && <p className="member-details__error">{actionError}</p>}
+            </div>
+          )}
+
           <div className="member-details__card">
-            <SectionTitle variant="inline">Actions</SectionTitle>
-            <div className="member-details__action-list">
-              {/* Remove member */}
-              {!isCurrentUser && (
-                <Button
-                  variant="danger"
-                  size="sm"
-                  iconLeft={<UserX size={ICON_SM} />}
-                  onClick={handleRemove}
-                >
-                  Remove Member
-                </Button>
-              )}
-
-              {isCurrentUser && (
-                <p className="member-details__self-note">
-                  This is your account. You cannot remove yourself.
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Member Info */}
-        <div className="member-details__card">
-          <SectionTitle variant="inline">Member Info</SectionTitle>
-
-          <div className="member-details__info-row">
-            <Mail size={14} className="member-details__info-icon" />
-            <div className="member-details__info-group">
-              <span className="member-details__info-label">Email</span>
-              <span className="member-details__info-value">{member.email}</span>
-            </div>
-          </div>
-
-          {member.phone && (
-            <>
-              <div className="member-details__divider" />
-              <div className="member-details__info-row">
-                <Phone size={14} className="member-details__info-icon" />
-                <div className="member-details__info-group">
-                  <span className="member-details__info-label">Phone</span>
-                  <span className="member-details__info-value">{member.phone}</span>
-                </div>
+            <SectionTitle variant="inline">Contact</SectionTitle>
+            <div className="member-details__info-row">
+              <Mail size={ICON_SM} className="member-details__info-icon" />
+              <div className="member-details__info-group">
+                <span className="member-details__info-label">Email</span>
+                <span className="member-details__info-value">{member.email}</span>
               </div>
-            </>
-          )}
-
-          {member.location && (
-            <>
-              <div className="member-details__divider" />
-              <div className="member-details__info-row">
-                <MapPin size={14} className="member-details__info-icon" />
-                <div className="member-details__info-group">
-                  <span className="member-details__info-label">Location</span>
-                  <span className="member-details__info-value">{member.location}</span>
-                </div>
+            </div>
+            <div className="member-details__divider" />
+            <div className="member-details__info-row">
+              <Phone size={ICON_SM} className="member-details__info-icon" />
+              <div className="member-details__info-group">
+                <span className="member-details__info-label">Phone</span>
+                <span className="member-details__info-value">{member.phone || 'Not provided'}</span>
               </div>
-            </>
-          )}
-
-          <div className="member-details__divider" />
-
-          <div className="member-details__info-row">
-            <Building2 size={14} className="member-details__info-icon" />
-            <div className="member-details__info-group">
-              <span className="member-details__info-label">Department</span>
-              <span className="member-details__info-value">{member.department}</span>
             </div>
-          </div>
-
-          <div className="member-details__divider" />
-
-          <div className="member-details__info-row">
-            <CalendarDays size={14} className="member-details__info-icon" />
-            <div className="member-details__info-group">
-              <span className="member-details__info-label">Joined</span>
-              <span className="member-details__info-value">{member.joinedDate}</span>
-            </div>
-          </div>
-
-          <div className="member-details__divider" />
-
-          <div className="member-details__info-group">
-            <span className="member-details__info-label">Permissions</span>
-            <div className="member-details__permissions">
-              {roleConfig?.permissions.map((perm) => (
-                <span key={perm} className="member-details__perm-tag">
-                  {perm.replace(/_/g, ' ')}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </aside>
-    </div>
-  );
-
-  const memberMobile = (
-    <div className="member-details__mobile-shell">
-      <div className="member-details__mobile-content">
-        <EntityCard
-          showAvatar={true}
-          userName={member.name}
-          userEmail={member.email}
-          showBadge
-          badgeType="role"
-          badgeVariant={member.role}
-          colLeft={{ icon: Building2, title: member.department, subtitle: 'Department' }}
-          colMid={{ icon: CalendarDays, title: member.joinedDate, subtitle: 'Joined' }}
-          colRight={{ icon: Activity, title: member.lastActivity, subtitle: 'Last Active' }}
-          animated={false}
-        />
-
-        {isOwner && (
-          <div className="member-details__card">
-            <SectionTitle variant="inline">Actions</SectionTitle>
-            <div className="member-details__action-list">
-              {!isCurrentUser && (
-                <Button
-                  variant="danger"
-                  size="sm"
-                  iconLeft={<UserX size={ICON_SM} />}
-                  onClick={handleRemove}
-                >
-                  Remove Member
-                </Button>
-              )}
-
-              {isCurrentUser && (
-                <p className="member-details__self-note">
-                  This is your account. You cannot remove yourself.
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="member-details__card">
-          <SectionTitle variant="inline">Member Info</SectionTitle>
-
-          <div className="member-details__info-row">
-            <Mail size={14} className="member-details__info-icon" />
-            <div className="member-details__info-group">
-              <span className="member-details__info-label">Email</span>
-              <span className="member-details__info-value">{member.email}</span>
-            </div>
-          </div>
-
-          {member.phone && (
-            <>
-              <div className="member-details__divider" />
-              <div className="member-details__info-row">
-                <Phone size={14} className="member-details__info-icon" />
-                <div className="member-details__info-group">
-                  <span className="member-details__info-label">Phone</span>
-                  <span className="member-details__info-value">{member.phone}</span>
+            {member.location && (
+              <>
+                <div className="member-details__divider" />
+                <div className="member-details__info-row">
+                  <MapPin size={ICON_SM} className="member-details__info-icon" />
+                  <div className="member-details__info-group">
+                    <span className="member-details__info-label">Location</span>
+                    <span className="member-details__info-value">{member.location}</span>
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
-
-          {member.location && (
-            <>
-              <div className="member-details__divider" />
-              <div className="member-details__info-row">
-                <MapPin size={14} className="member-details__info-icon" />
-                <div className="member-details__info-group">
-                  <span className="member-details__info-label">Location</span>
-                  <span className="member-details__info-value">{member.location}</span>
-                </div>
-              </div>
-            </>
-          )}
-
-          <div className="member-details__divider" />
-
-          <div className="member-details__info-row">
-            <Building2 size={14} className="member-details__info-icon" />
-            <div className="member-details__info-group">
-              <span className="member-details__info-label">Department</span>
-              <span className="member-details__info-value">{member.department}</span>
-            </div>
-          </div>
-
-          <div className="member-details__divider" />
-
-          <div className="member-details__info-row">
-            <CalendarDays size={14} className="member-details__info-icon" />
-            <div className="member-details__info-group">
-              <span className="member-details__info-label">Joined</span>
-              <span className="member-details__info-value">{member.joinedDate}</span>
-            </div>
-          </div>
-
-          <div className="member-details__divider" />
-
-          <div className="member-details__info-group">
-            <span className="member-details__info-label">Permissions</span>
-            <div className="member-details__permissions">
-              {roleConfig?.permissions.map((perm) => (
-                <span key={perm} className="member-details__perm-tag">
-                  {perm.replace(/_/g, ' ')}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <section className="member-details__section">
-          <SectionTitle variant="inline">Activity</SectionTitle>
-          <div className="member-details__timeline">
-            {activities.length === 0 && (
-              <p className="member-details__empty-text">No activity recorded yet.</p>
+              </>
             )}
-            {activities.map((act) => (
-              <div key={act.id} className="member-details__activity-item">
-                <div className="member-details__activity-icon">
-                  <ACTIVITY_ICON size={14} />
-                </div>
-                <div className="member-details__activity-content">
-                  <span className="member-details__activity-action">{act.action}</span>
-                  <span className="member-details__activity-target">{act.target}</span>
-                </div>
-                <div className="member-details__activity-time">
-                  <span className="member-details__activity-date">{act.date}</span>
-                  <span className="member-details__activity-hour">{act.time}</span>
-                </div>
-              </div>
-            ))}
           </div>
-        </section>
+        </aside>
       </div>
-    </div>
-  );
 
-  return (
-    <div className="member-details">
-      <div className="member-details__desktop-layout">{memberDesktop}</div>
-      {memberMobile}
+      <ConfirmDialog
+        isOpen={removeDialogOpen}
+        title="Remove team member?"
+        description={`${member.name} will lose access to this workspace. Their historical activity will remain visible.`}
+        confirmLabel="Remove member"
+        confirmVariant="danger"
+        isBusy={busyAction === 'remove'}
+        onConfirm={handleRemove}
+        onClose={() => setRemoveDialogOpen(false)}
+      />
     </div>
   );
 });
 
 MemberDetails.propTypes = {
-  memberId: PropTypes.string,
+  memberId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   request: PropTypes.shape({
     id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
     name: PropTypes.string.isRequired,
     email: PropTypes.string.isRequired,
-    department: PropTypes.string,
+    status: PropTypes.string,
     message: PropTypes.string,
     submittedDate: PropTypes.string,
   }),

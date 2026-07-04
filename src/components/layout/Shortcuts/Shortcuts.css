@@ -6,12 +6,15 @@
   gap: var(--gap-lg);
   padding: var(--padding-lg);
   padding-bottom: var(--padding-md);
+  min-width: 0;
 }
 
 .shortcuts__left {
   display: flex;
   align-items: center;
   gap: var(--gap-lg);
+  flex: 1;
+  min-width: 0;
 }
 
 .shortcuts__separator {
@@ -34,6 +37,7 @@
   align-items: center;
   gap: var(--gap-lg);
   margin-left: auto;
+  flex-shrink: 0;
 }
 
 .shortcuts .input-field {
@@ -64,6 +68,12 @@
 /* ── Responsive Shortcuts ── */
 
 @media (max-width: 1023px) {
+  .shortcuts,
+  .shortcuts__left,
+  .shortcuts__right {
+    gap: var(--gap-md);
+  }
+
   .shortcuts .input-field {
     min-width: 12rem;
   }
@@ -78,7 +88,7 @@
   .shortcuts {
     padding: var(--padding-sm) var(--padding-md);
     gap: var(--gap-md);
-    /* Single line — no wrapping */
+    /* Single line, no wrapping */
   }
 
   /* Hide count, separator, and secondary action */
@@ -87,10 +97,23 @@
     display: none;
   }
 
+  .shortcuts__left,
+  .shortcuts__right {
+    gap: var(--gap-sm);
+  }
+
+  .shortcuts__left {
+    overflow: hidden;
+  }
+
   /* Search gets a fixed width instead of filling the container */
   .shortcuts .input-field {
     min-width: 0;
-    width: 9rem;
+    width: 8rem;
     flex: none;
+  }
+
+  .shortcuts__right .btn--primary {
+    padding-inline: var(--padding-sm);
   }
 }

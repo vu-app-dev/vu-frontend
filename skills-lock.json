@@ -1,11 +1,83 @@
 {
   "version": 1,
   "skills": {
+    "accessibility-review": {
+      "source": "anthropics/knowledge-work-plugins",
+      "sourceType": "github",
+      "skillPath": "design/skills/accessibility-review/SKILL.md",
+      "computedHash": "80af1f666ac32630ecdfe223370b9006d4459f5459846c208872f9169600aa0d"
+    },
+    "design-critique": {
+      "source": "anthropics/knowledge-work-plugins",
+      "sourceType": "github",
+      "skillPath": "design/skills/design-critique/SKILL.md",
+      "computedHash": "ef158c069ebac6747cfb9cefabdd3daaedbffd1cff1c359c46bcf303358cbb1e"
+    },
+    "design-handoff": {
+      "source": "anthropics/knowledge-work-plugins",
+      "sourceType": "github",
+      "skillPath": "design/skills/design-handoff/SKILL.md",
+      "computedHash": "5a35acb79a946b2b6ab2b01784f8eeef8f72827fcfc8fd23f2a0377a585f5801"
+    },
+    "design-system": {
+      "source": "anthropics/knowledge-work-plugins",
+      "sourceType": "github",
+      "skillPath": "design/skills/design-system/SKILL.md",
+      "computedHash": "12497053dd5456ed6a80e51826d17c584d422584a1d2f653b4038170e4a3348f"
+    },
     "documentation-writer": {
       "source": "github/awesome-copilot",
       "sourceType": "github",
       "skillPath": "skills/documentation-writer/SKILL.md",
       "computedHash": "ee53d65b163cd7eb953a930c95841cfe398cc2c0bd24c06508bbaa07c432be35"
+    },
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/find-skills/SKILL.md",
+      "computedHash": "781bd6d3f9b19f8c9af6b53d8d0e4876d0183841b565db34ca7092ffa412d111"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "93f53fd1c0352d3d7ec17b8f73d7351bf76f4821e55d123c9d2abc2c53ba48e4"
+    },
+    "product-brainstorming": {
+      "source": "anthropics/knowledge-work-plugins",
+      "sourceType": "github",
+      "skillPath": "product-management/skills/product-brainstorming/SKILL.md",
+      "computedHash": "595e6cc5bb85da6b67b35c24d4d3906c6bac42a1fe4ecbe71fa154176d724c1b"
+    },
+    "research-synthesis": {
+      "source": "anthropics/knowledge-work-plugins",
+      "sourceType": "github",
+      "skillPath": "design/skills/research-synthesis/SKILL.md",
+      "computedHash": "85bbb7e21bc42e9d5fa05f25d27c5b7d50095f100f1eeef271fc23c81a61fd8d"
+    },
+    "user-research": {
+      "source": "anthropics/knowledge-work-plugins",
+      "sourceType": "github",
+      "skillPath": "design/skills/user-research/SKILL.md",
+      "computedHash": "b7ff89f9fd30167870997f6cba8f0486142fc1b910ef0f5e9365916c55bf3b44"
+    },
+    "ux-copy": {
+      "source": "anthropics/knowledge-work-plugins",
+      "sourceType": "github",
+      "skillPath": "design/skills/ux-copy/SKILL.md",
+      "computedHash": "be952a0ebb04d72c59716a5fc9325c30c88eea0aa2a3075c35fb6a6fa28a07e9"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web-design-guidelines/SKILL.md",
+      "computedHash": "f3bc47f890f42a44db1007ab390709ec368e4b8c089baee6b0007182236ac474"
+    },
+    "write-spec": {
+      "source": "anthropics/knowledge-work-plugins",
+      "sourceType": "github",
+      "skillPath": "product-management/skills/write-spec/SKILL.md",
+      "computedHash": "6ec065dfac46311b9550499997630c62b9748598e3128056ddf58a789162517e"
     }
   }
 }

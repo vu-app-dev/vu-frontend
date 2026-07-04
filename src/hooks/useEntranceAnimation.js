@@ -2,9 +2,25 @@ import { useEffect, useState, useRef } from 'react';
 
 const DEFAULT_THRESHOLD = 0.2;
 
+function prefersReducedMotion() {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+}
+
+function canAnimateEntrance(animated) {
+  return (
+    animated &&
+    !prefersReducedMotion() &&
+    typeof IntersectionObserver !== 'undefined'
+  );
+}
+
 /**
  * Observes an element and flips `isVisible` to true once it enters the viewport.
- * If `animated` is false the element is visible immediately (no observer created).
+ * If `animated` is false or the user prefers reduced motion, the element is visible immediately.
  *
  * @param {boolean} animated  Whether to animate entrance (default true)
  * @param {number}  threshold IntersectionObserver threshold (default 0.2)
@@ -12,10 +28,11 @@ const DEFAULT_THRESHOLD = 0.2;
  */
 export function useEntranceAnimation(animated = true, threshold = DEFAULT_THRESHOLD) {
   const ref = useRef(null);
-  const [isVisible, setIsVisible] = useState(!animated);
+  const shouldAnimate = canAnimateEntrance(animated);
+  const [isVisible, setIsVisible] = useState(() => !shouldAnimate);
 
   useEffect(() => {
-    if (!animated) return;
+    if (!shouldAnimate) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -32,7 +49,7 @@ export function useEntranceAnimation(animated = true, threshold = DEFAULT_THRESH
     }
 
     return () => observer.disconnect();
-  }, [animated, threshold]);
+  }, [shouldAnimate, threshold]);
 
-  return { ref, isVisible };
+  return { ref, isVisible: isVisible || !shouldAnimate };
 }

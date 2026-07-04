@@ -25,6 +25,7 @@ export const ActionCard = memo(function ActionCard({
   descriptionNumber,
   content,
   className = '',
+  density = 'default',
   animated = true,
 }) {
   const { ref: cardRef, isVisible } = useEntranceAnimation(animated);
@@ -32,7 +33,12 @@ export const ActionCard = memo(function ActionCard({
   return (
     <div
       ref={cardRef}
-      className={['action-card', isVisible && 'action-card--visible', className]
+      className={[
+        'action-card',
+        density === 'compact' && 'action-card--compact',
+        isVisible && 'action-card--visible',
+        className,
+      ]
         .filter(Boolean)
         .join(' ')}
     >
@@ -95,5 +101,6 @@ ActionCard.propTypes = {
   descriptionNumber: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   content: PropTypes.string,
   className: PropTypes.string,
+  density: PropTypes.oneOf(['default', 'compact']),
   animated: PropTypes.bool,
 };

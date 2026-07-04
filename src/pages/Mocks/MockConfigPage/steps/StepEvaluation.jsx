@@ -27,24 +27,20 @@ export function StepEvaluation({
         ? 'create-mock__weight-value--over'
         : '';
 
-  const totalItems = form.topics.length + form.questions.length;
-
   return (
     <>
       <section className="create-mock__section">
         <SectionTitle
           variant="inline"
-          description="All topics and questions share a single 100% weight pool. Weights auto-redistribute when items are added."
+          description="Score categories and questions share one 100% weight pool."
         >
-          Evaluation Structure
+          Scoring structure
         </SectionTitle>
 
-        {totalItems > 0 && (
-          <div className="create-mock__weight-bar">
-            <span className="create-mock__weight-label">Total Weight (Topics + Questions)</span>
-            <span className={`create-mock__weight-value ${weightClass}`}>{totalWeight}%</span>
-          </div>
-        )}
+        <div className="create-mock__weight-bar">
+          <span className="create-mock__weight-label">Total weight</span>
+          <span className={`create-mock__weight-value ${weightClass}`}>{totalWeight}%</span>
+        </div>
         {validationErrors?.totalWeight && (
           <p className="create-mock__hint">{validationErrors.totalWeight}</p>
         )}
@@ -53,8 +49,8 @@ export function StepEvaluation({
 
       {/* Topics section */}
       <section className="create-mock__section">
-        <SectionTitle variant="inline" description="Define scoring topics with weights">
-          Scoring Topics
+        <SectionTitle variant="inline" description="Define broad areas reviewers should score.">
+          Score categories
         </SectionTitle>
 
             {form.topics.length > 0 && (
@@ -107,14 +103,14 @@ export function StepEvaluation({
         )}
 
         <Button variant="dashed" iconLeft={<Plus size={16} />} onClick={addTopic} disabled={isActive}>
-          Add Topic
+          Add category
         </Button>
       </section>
 
       {/* Questions section */}
       <section className="create-mock__section">
-        <SectionTitle variant="inline" description="Add individual questions with score weights">
-          Custom Questions
+        <SectionTitle variant="inline" description="Add specific interview questions and their score weight.">
+          Interview questions
         </SectionTitle>
 
         {form.questions.length > 0 && (

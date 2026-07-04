@@ -129,7 +129,7 @@
 
 .job-overview__mock-icon--available {
   background: var(--bg-elevated);
-  color: var(--brand-default);
+  color: var(--text-accent);
 }
 
 .job-overview__mock-icon--in-progress {
@@ -179,7 +179,7 @@
 
 .job-overview__mock-status--available {
   background: var(--bg-elevated);
-  color: var(--brand-default);
+  color: var(--text-accent);
 }
 
 .job-overview__mock-status--in-progress {

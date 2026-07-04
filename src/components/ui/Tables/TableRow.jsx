@@ -29,6 +29,17 @@ export const TableRow = memo(function TableRow({
     [onMenuClick]
   );
 
+  const handleKeyDown = useCallback(
+    (event) => {
+      if (!isClickable) return;
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      if (event.target.closest?.('button, a, input, select, textarea')) return;
+      event.preventDefault();
+      onClick(event);
+    },
+    [isClickable, onClick]
+  );
+
   return (
     <div
       className={[
@@ -41,7 +52,9 @@ export const TableRow = memo(function TableRow({
         .join(' ')}
       onMouseDown={onMouseDown}
       onClick={onClick}
+      onKeyDown={handleKeyDown}
       role="row"
+      tabIndex={isClickable ? 0 : undefined}
       style={gridTemplateColumns ? { display: 'grid', gridTemplateColumns } : undefined}
     >
       {children}

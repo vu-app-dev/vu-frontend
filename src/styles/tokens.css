@@ -371,13 +371,13 @@
   --brand-subtle: rgba(255, 93, 49, 0.08);
 
   /* Text */
-  --text-primary: var(--white-a90);
-  --text-secondary: var(--white-a70);
-  --text-tertiary: var(--white-a50);
-  --text-subtle: var(--white-a30);
+  --text-primary: rgba(255, 255, 255, 0.92);
+  --text-secondary: rgba(255, 255, 255, 0.78);
+  --text-tertiary: rgba(255, 255, 255, 0.64);
+  --text-subtle: rgba(255, 255, 255, 0.5);
   --text-accent: var(--brand-default);
   --text-inverse: var(--black-a90);
-  --text-disabled: var(--white-a20);
+  --text-disabled: rgba(255, 255, 255, 0.28);
 
   /* Background hierarchy */
   --bg-outer: #121212;
@@ -407,12 +407,16 @@
   --border-reverse: rgba(255, 255, 255, 0.3);
   --border-focus: rgba(230, 79, 40, 0.6);
   --border-error: rgba(255, 65, 54, 0.75);
+  --focus-outline: var(--border-md) solid var(--border-focus);
+  --focus-outline-offset: var(--size-0-5);
+  --focus-ring: 0 0 0 var(--size-0-5) var(--bg-base), 0 0 0 var(--size-1) var(--border-focus);
 
   /* Buttons */
-  --btn-primary-text: var(--text-primary);
-  --btn-primary-bg: var(--brand-600);
-  --btn-primary-hover: var(--brand-700);
-  --btn-primary-active: var(--brand-800);
+  --btn-primary-text: var(--white);
+  --btn-primary-bg: var(--brand-700);
+  --btn-primary-hover: var(--brand-800);
+  --btn-primary-active: var(--brand-900);
+  --btn-primary-border: var(--brand-800);
   --btn-primary-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
   --btn-primary-shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 
@@ -444,7 +448,7 @@
   --status-success-bg: rgba(52, 199, 89, 0.12);
   --status-success-hover: rgba(52, 199, 89, 0.2);
 
-  --status-error-text: var(--red-400);
+  --status-error-text: var(--red-300);
   --status-error-bg: rgba(255, 59, 48, 0.12);
   --status-error-hover: rgba(255, 59, 48, 0.2);
 
@@ -453,11 +457,11 @@
   --status-warning-hover: rgba(255, 204, 0, 0.2);
   --status-warning-border: rgba(255, 204, 0, 0.3);
 
-  --status-danger-text: var(--red-400);
+  --status-danger-text: var(--red-300);
   --status-danger-bg: rgba(255, 59, 48, 0.12);
   --status-danger-hover: rgba(255, 59, 48, 0.2);
 
-  --status-info-text: var(--blue-400);
+  --status-info-text: var(--blue-300);
   --status-info-bg: rgba(0, 122, 255, 0.12);
   --status-info-hover: rgba(0, 122, 255, 0.2);
 
@@ -490,6 +494,10 @@
   --chart-brand: var(--brand-default);
   --chart-brand-soft: rgba(255, 93, 49, 0.25);
   --chart-brand-strong: rgba(255, 93, 49, 0.4);
+  --chart-success: var(--green-400);
+  --chart-warning: var(--yellow-400);
+  --chart-danger: var(--red-300);
+  --chart-info: var(--blue-300);
   --chart-brand-1: #ff5d31;
   --chart-brand-2: #ff7d5a;
   --chart-brand-3: #ff9e83;
@@ -501,6 +509,12 @@
   --chart-axis-x: rgba(255, 255, 255, 0.45);
   --chart-axis-y: rgba(255, 255, 255, 0.35);
   --chart-cursor: rgba(255, 255, 255, 0.08);
+
+  /* Score scale */
+  --score-strong: var(--status-success-text);
+  --score-good: var(--brand-default);
+  --score-watch: var(--status-warning-text);
+  --score-risk: var(--status-danger-text);
 
   /* ========================================
      TRANSITIONS
@@ -525,8 +539,8 @@
   --bp-laptop-max: 79.9375rem; /* 1279px */
   --bp-desktop-min: 80rem; /* 1280px */
 
-  --sidebar-width: 12.875rem;
-  --sidebar-collapsed-width: 4.25rem;
+  --sidebar-width: 15rem;
+  --sidebar-collapsed-width: 4.75rem;
 }
 
 :root,
@@ -556,7 +570,7 @@
   --text-primary: rgba(15, 23, 42, 0.95);
   --text-secondary: rgba(15, 23, 42, 0.85);
   --text-tertiary: rgba(15, 23, 42, 0.72);
-  --text-subtle: rgba(15, 23, 42, 0.58);
+  --text-subtle: rgba(15, 23, 42, 0.64);
   --text-accent: var(--brand-700);
   --text-inverse: var(--white);
   --text-disabled: rgba(15, 23, 42, 0.45);
@@ -564,8 +578,8 @@
   --bg-outer: #edf1f5;
   --bg-base: #f6f8fb;
   --bg-surface: #ffffff;
-  --bg-card: #ffffff;
-  --bg-subcard: #f2f5f9;
+  --bg-card: #f8fafc;
+  --bg-subcard: #eef3f8;
   --bg-elevated: #ffffff;
   --bg-hover: #edf2f8;
   --bg-press: #e4ebf3;
@@ -586,14 +600,18 @@
   --border-reverse: rgba(15, 23, 42, 0.35);
   --border-focus: rgba(230, 79, 40, 0.52);
   --border-error: rgba(255, 59, 48, 0.5);
+  --focus-outline: var(--border-md) solid var(--border-focus);
+  --focus-outline-offset: var(--size-0-5);
+  --focus-ring: 0 0 0 var(--size-0-5) var(--bg-base), 0 0 0 var(--size-1) var(--border-focus);
 
   --btn-primary-text: var(--white);
-  --btn-primary-bg: var(--brand-default);
-  --btn-primary-hover: var(--brand-600);
-  --btn-primary-active: var(--brand-700);
-  --btn-primary-shadow: 0 1px 2px rgba(15, 23, 42, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  --btn-primary-bg: var(--brand-600);
+  --btn-primary-hover: var(--brand-default);
+  --btn-primary-active: var(--brand-600);
+  --btn-primary-border: var(--brand-700);
+  --btn-primary-shadow: 0 1px 2px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.28);
   --btn-primary-shadow-hover:
-    0 2px 6px rgba(15, 23, 42, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    0 2px 5px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.32);
 
   --btn-secondary-text: var(--text-secondary);
   --btn-secondary-bg: var(--bg-subcard);
@@ -661,9 +679,13 @@
   --shadow-window: 0 0 0 1px var(--border-subtle), 0 24px 48px -12px rgba(15, 23, 42, 0.22);
   --shadow-card: 0 6px 18px -10px rgba(15, 23, 42, 0.22), 0 3px 8px -4px rgba(15, 23, 42, 0.12);
 
-  --chart-brand: var(--brand-600);
+  --chart-brand: var(--brand-700);
   --chart-brand-soft: rgba(230, 79, 40, 0.24);
   --chart-brand-strong: rgba(230, 79, 40, 0.38);
+  --chart-success: var(--green-700);
+  --chart-warning: var(--yellow-800);
+  --chart-danger: var(--red-700);
+  --chart-info: var(--blue-700);
   --chart-brand-1: #e64f28;
   --chart-brand-2: #ef6e49;
   --chart-brand-3: #f48d6b;
@@ -675,6 +697,11 @@
   --chart-axis-x: rgba(15, 23, 42, 0.58);
   --chart-axis-y: rgba(15, 23, 42, 0.45);
   --chart-cursor: rgba(15, 23, 42, 0.08);
+
+  --score-strong: var(--status-success-text);
+  --score-good: var(--brand-700);
+  --score-watch: var(--status-warning-text);
+  --score-risk: var(--status-danger-text);
 }
 
 /* ========================================

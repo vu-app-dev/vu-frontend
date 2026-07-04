@@ -24,8 +24,27 @@
   transform: translateY(0);
 }
 
+.entity-card--compact {
+  gap: var(--gap-md);
+  padding: var(--padding-md) var(--padding-lg);
+  transform: none;
+  contain-intrinsic-size: 0 118px;
+  transition:
+    opacity var(--transition-base),
+    border-color var(--transition-base),
+    background-color var(--transition-base);
+}
+
 .entity-card--clickable {
   cursor: pointer;
+}
+
+.entity-card--clickable:focus-visible {
+  outline: none;
+  border-color: var(--brand-default);
+  box-shadow:
+    0 0 0 var(--size-0-5) var(--bg-base),
+    0 0 0 var(--size-1) var(--brand-default);
 }
 
 .entity-card:hover {
@@ -76,7 +95,7 @@
   font-size: var(--text-lg);
   font-weight: var(--font-semibold);
   color: var(--text-primary);
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   line-height: 1.4;
   white-space: nowrap;
   overflow: hidden;
@@ -147,6 +166,7 @@
 }
 
 .entity-card:hover .entity-card__menu-trigger,
+.entity-card--menu-visible .entity-card__menu-trigger,
 .entity-card__menu-trigger:focus-visible {
   opacity: 1;
 }
@@ -184,6 +204,10 @@
   gap: var(--padding-xl);
   flex: 1;
   min-width: 0;
+}
+
+.entity-card--compact .entity-card__cols-content {
+  gap: var(--gap-lg);
 }
 
 /* Individual column */
@@ -278,10 +302,48 @@
   align-items: center;
   justify-content: center;
   font-family: var(--font-mono);
-  font-size: var(--text-base);
+  font-size: var(--text-xs);
   font-weight: var(--font-bold, 700);
   color: var(--text-primary);
   line-height: 1;
+}
+
+.entity-card__score-block--bar {
+  min-width: 10rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gap-xs);
+}
+
+.entity-card__score-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  width: 100%;
+}
+
+.entity-card__score-bar {
+  flex: 1;
+  height: var(--size-0-5);
+  min-width: var(--size-20);
+  overflow: hidden;
+  background: var(--white-a5);
+  border-radius: var(--radius-full);
+}
+
+.entity-card__score-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--brand-default);
+  border-radius: var(--radius-full);
+}
+
+.entity-card__score-value--bar {
+  position: static;
+  inset: auto;
+  min-width: 3ch;
+  color: var(--text-secondary);
+  text-align: right;
 }
 
 /* Description section */
@@ -320,6 +382,11 @@
   background: transparent;
   border-color: transparent;
   font-weight: var(--font-medium);
+}
+
+.entity-card--compact .entity-card__tag {
+  padding: 1px var(--padding-sm);
+  border-radius: var(--radius-sm);
 }
 
 .entity-card__description-title {

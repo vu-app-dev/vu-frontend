@@ -376,7 +376,6 @@ export function mapBackendJob(job, mockLookup = new Map()) {
     [job?.jobMocks, job?.mockJobs, job?.mocks].find(
       (items) => Array.isArray(items) && items.length
     ) || [];
-  const departments = normalizeArray(job?.departments);
   const backendStatus = job?.status || JobStatusEnum.ACTIVE;
   const candidates = Array.isArray(job?.candidates)
     ? job.candidates.map((candidate, index) => mapBackendCandidate(candidate, new Map(), index))
@@ -385,8 +384,6 @@ export function mapBackendJob(job, mockLookup = new Map()) {
     id,
     companyId: normalizeId(job?.companyId || job?.company?.id),
     title: job?.title || 'Untitled job',
-    department: departments[0] || 'General', // no departments concept yet
-    departments,
     jobType: JOB_TYPE_LABELS[job?.type] || titleCase(job?.type || JobTypeEnum.FULL_TIME),
     jobTypeValue: job?.type || JobTypeEnum.FULL_TIME,
     status: JOB_STATUS_TO_UI[backendStatus] || 'active',
@@ -530,7 +527,7 @@ export function mapBackendCandidate(candidate, jobLookup = new Map(), rowIndex =
 }
 
 export function mapBackendCompany(company, jobs = []) {
-  const departments = uniqueCompact(jobs.flatMap((job) => job.departments || []));
+  void jobs;
   return {
     id: normalizeId(company?.id),
     managerId: normalizeId(company?.managerId) || '050b0046-c822-4fb4-8d57-ddeefd89bd80',
@@ -545,7 +542,6 @@ export function mapBackendCompany(company, jobs = []) {
     defaultCandidateStatuses: ['Pending', 'Shortlist', 'Accepted', 'Rejected'],
     isActive: company?.isActive !== false,
     createdDate: formatDate(company?.createdAt),
-    departments: departments.length ? departments : ['General'],
     raw: company,
   };
 }
@@ -557,7 +553,6 @@ export function mapBackendUserToMember(user, companyUser = user?.companyUser) {
     companyId: normalizeId(companyUser?.companyId),
     name: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Team member',
     email: user?.email || '',
-    department: user?.jobTitle || 'General',
     role: ROLE_TO_UI[companyUser?.type] || 'viewer',
     roleValue: companyUser?.type || CompanyUserTypeEnum.VIEWER,
     approved: companyUser?.approved !== false,
@@ -618,7 +613,6 @@ export function mapBackendJoinRequest(request) {
     name: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Team member',
     email: user?.email || '',
     phone: user?.phone || '',
-    department: user?.jobTitle || 'General',
     role: ROLE_TO_UI[request?.type] || 'viewer',
     roleValue: request?.type || CompanyUserTypeEnum.VIEWER,
     status: approved ? 'accepted' : declined ? 'declined' : 'pending',
@@ -672,7 +666,6 @@ export function formToBackendJobInput(form) {
     title: requireText(form.title, 'Job title', 3, 30),
     description: requireText(form.description, 'Description', 10, 255),
     type: form.jobType || form.type || JobTypeEnum.FULL_TIME,
-    departments: uniqueCompact([form.department, ...(form.departments || [])]).slice(0, 10),
     requirements: requireText(
       uniqueCompact(form.technologies || []).join(', '),
       'Technologies',
@@ -750,8 +743,6 @@ export function jobToForm(job) {
         : splitRequirementTags(job.technologies || job.requirements);
   return {
     title: job.title || '',
-    department: job.departments?.[0] || job.department || '',
-    departments: [...(job.departments || [])],
     jobType: job.jobTypeValue || JobTypeEnum.FULL_TIME,
     seniority: job.seniority || '',
     description: job.description || '',

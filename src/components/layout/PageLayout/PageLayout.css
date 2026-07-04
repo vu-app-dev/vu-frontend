@@ -2,11 +2,11 @@
 
 .page-layout {
   display: flex;
-  gap: var(--gap-lg);
-  padding-top: var(--padding-lg);
+  gap: 0;
+  padding: var(--padding-md) 0 var(--padding-md) 0;
   min-height: 100vh;
   height: 100vh;
-  background-color: transparent;
+  background-color: var(--bg-outer);
   overflow: hidden;
 }
 
@@ -14,7 +14,7 @@
 .page-layout__sidebar {
   width: var(--sidebar-width);
   flex-shrink: 0;
-  height: calc(100vh - var(--padding-lg));
+  height: calc(100vh - (var(--padding-md) * 2));
   contain: layout style;
   transition: width var(--transition-base);
 }
@@ -25,9 +25,10 @@
   display: flex;
   flex-direction: column;
   background-color: var(--bg-base);
-  border-radius: var(--radius-xl) 0 0 0;
-  border-top: var(--border-sm) solid var(--border-subtle);
-  border-left: var(--border-sm) solid var(--border-subtle);
+  border: var(--border-sm) solid var(--border-subtle);
+  border-right: none;
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  box-shadow: inset 1px 0 0 var(--border-subtle);
   overflow: hidden;
   min-width: 0;
 }
@@ -50,7 +51,7 @@
 
 @media (max-width: 1023px) {
   .page-layout {
-    gap: var(--gap-sm);
+    padding-left: var(--padding-sm);
   }
 
   .page-layout__sidebar {
@@ -63,7 +64,7 @@
 @media (max-width: 767px) {
   .page-layout {
     gap: 0;
-    padding-top: 0;
+    padding: 0;
   }
 
   /* Sidebar is fixed, so wrapper takes no layout space */
@@ -79,7 +80,7 @@
   /* Main fills full width with no border/radius */
   .page-layout__main {
     border-radius: 0;
-    border-top: none;
-    border-left: none;
+    border: none;
+    box-shadow: none;
   }
 }

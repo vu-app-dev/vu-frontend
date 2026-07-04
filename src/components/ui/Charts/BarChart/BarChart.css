@@ -20,6 +20,19 @@
   box-shadow: 0 var(--size-0-5) var(--size-3) var(--black-a20);
 }
 
+.bar-chart--compact {
+  gap: var(--gap-md);
+  padding: var(--padding-lg);
+  border-radius: var(--radius-sm);
+  transition:
+    border-color var(--transition-base),
+    background-color var(--transition-base);
+}
+
+.bar-chart--compact:hover {
+  box-shadow: none;
+}
+
 .bar-chart__title {
   font-family: var(--font-sans);
   font-size: var(--text-base);
@@ -31,6 +44,10 @@
 
 .bar-chart:hover .bar-chart__title {
   color: var(--text-primary);
+}
+
+.bar-chart--compact .bar-chart__title {
+  font-size: var(--text-sm);
 }
 
 .bar-chart__divider {

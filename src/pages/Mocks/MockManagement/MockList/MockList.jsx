@@ -2,17 +2,14 @@ import { useState, useMemo, useCallback, memo } from 'react';
 import PropTypes from 'prop-types';
 import {
   Pencil,
-  Eye,
   Plus,
-  Clock,
   Trash2,
-  Briefcase,
-  Zap,
   PlayCircle,
   FileText,
 } from 'lucide-react';
 import { Shortcuts } from '../../../../components/layout/Shortcuts';
 import { EntityCard } from '../../../../components/ui/Cards';
+import { AppliedFilterChips } from '../../../../components/ui/AppliedFilterChips';
 import { Pagination } from '../../../../components/ui/Pagination';
 import { FilterOverlay } from '../../../../components/ui/FilterOverlay';
 import { Button } from '../../../../components/ui/Button';
@@ -31,14 +28,14 @@ import './MockList.css';
 /* Menu options */
 
 function getMockMenuOptions(mock, canEditMock) {
-  const options = [{ id: 'view', label: 'View Details', icon: Eye, variant: 'default' }];
+  const options = [];
 
   if (canEditMock && mock.firstJobId) {
-    options.push({ id: 'test', label: 'Test Mock', icon: PlayCircle, variant: 'default' });
+    options.push({ id: 'test', label: 'Test mock', icon: PlayCircle, variant: 'default' });
   }
 
   if (canEditMock && mock.computedStatus !== 'active') {
-    options.push({ id: 'edit', label: 'Edit Mock', icon: Pencil, variant: 'default' });
+    options.push({ id: 'edit', label: 'Edit mock', icon: Pencil, variant: 'default' });
     options.push({
       id: 'delete',
       label: 'Delete',
@@ -101,13 +98,13 @@ const OVERLAY_FILTERS = [
   },
   {
     key: 'enableFollowUpQuestions',
-    label: 'Follow-up Questions',
+    label: 'Follow-up questions',
     type: 'toggle',
     toggleLabel: 'Enabled only',
   },
   {
     key: 'enableRecordReplay',
-    label: 'Record Replay',
+    label: 'Replay recording',
     type: 'toggle',
     toggleLabel: 'Enabled only',
   },
@@ -150,6 +147,37 @@ export const MockList = memo(function MockList({
     return count;
   }, [overlayFilters]);
 
+  const activeFilterChips = useMemo(() => {
+    const chips = [];
+    const type = MOCK_TYPE_OPTIONS.find((option) => option.value === overlayFilters.typeQuick);
+    const difficulty = DIFFICULTY_OPTIONS.find(
+      (option) => option.value === overlayFilters.difficultyQuick
+    );
+    const sort = SORT_OPTIONS.find((option) => option.value === overlayFilters.sortQuick);
+    if (type) chips.push({ key: 'typeQuick', label: `Type: ${type.label}` });
+    if (difficulty) chips.push({ key: 'difficultyQuick', label: `Difficulty: ${difficulty.label}` });
+    if (sort && sort.value !== DEFAULT_SORT) chips.push({ key: 'sortQuick', label: `Sort: ${sort.label}` });
+    if (overlayFilters.enableFollowUpQuestions) {
+      chips.push({ key: 'enableFollowUpQuestions', label: 'Follow-up questions' });
+    }
+    if (overlayFilters.enableRecordReplay) {
+      chips.push({ key: 'enableRecordReplay', label: 'Replay recording' });
+    }
+    return chips;
+  }, [overlayFilters]);
+
+  const applyOverlayState = useCallback((next) => {
+    setOverlayFilters(next);
+    setTypeFilter(next.typeQuick || '');
+    setDifficultyFilter(next.difficultyQuick || '');
+    setSortBy(next.sortQuick || DEFAULT_SORT);
+    setCurrentPage(1);
+  }, []);
+
+  const clearAllOverlayFilters = useCallback(() => {
+    applyOverlayState({ ...INITIAL_OVERLAY });
+  }, [applyOverlayState]);
+
   const handleSearchChange = useCallback((e) => {
     setSearchValue(e.target.value);
     setCurrentPage(1);
@@ -169,6 +197,16 @@ export const MockList = memo(function MockList({
       };
     });
   }, [dataVersion]);
+
+  const summary = useMemo(() => {
+    const inUse = enrichedMocks.filter((mock) => mock.computedStatus === 'active').length;
+    const available = enrichedMocks.length - inUse;
+    const scored = enrichedMocks.map((mock) => Number(mock.avgScore)).filter(Number.isFinite);
+    const avgScore = scored.length
+      ? Math.round(scored.reduce((sum, score) => sum + score, 0) / scored.length)
+      : 0;
+    return { total: enrichedMocks.length, inUse, available, avgScore };
+  }, [enrichedMocks]);
 
   const filteredMocks = useMemo(() => {
     const typeValue = typeFilter || null;
@@ -218,12 +256,11 @@ export const MockList = memo(function MockList({
 
   const handleMenuSelect = useCallback(
     (mock, action) => {
-      if (action === 'view') onViewMock?.(mock.id);
-      else if (action === 'edit') onEditMock?.(mock.id);
+      if (action === 'edit') onEditMock?.(mock.id);
       else if (action === 'test') onTestMock?.(mock);
       else if (action === 'delete') onDeleteMock?.(mock);
     },
-    [onViewMock, onEditMock, onTestMock, onDeleteMock]
+    [onEditMock, onTestMock, onDeleteMock]
   );
   const isInitialLoading = isLoading && dataVersion === 0;
 
@@ -234,6 +271,7 @@ export const MockList = memo(function MockList({
         ? {
             label: 'Create mock',
             icon: Plus,
+            iconPosition: 'left',
             onClick: () => onCreateMock?.(),
           }
         : undefined,
@@ -245,8 +283,15 @@ export const MockList = memo(function MockList({
     <div className="mock-list">
       <Shortcuts
         filterLabel={shortcutsConfig.filterLabel}
-        filterCount={activeFilterCount ? `${activeFilterCount} active` : undefined}
         onFilterClick={() => setIsFilterOpen(true)}
+        filterSlot={
+          activeFilterCount ? (
+            <AppliedFilterChips
+              chips={activeFilterChips}
+              onClearAll={clearAllOverlayFilters}
+            />
+          ) : null
+        }
         searchValue={searchValue}
         onSearchChange={handleSearchChange}
         searchPlaceholder="Search mocks..."
@@ -254,51 +299,74 @@ export const MockList = memo(function MockList({
       />
 
       <div className="mock-list__content">
+        <div className="mock-list__summary-strip" aria-label="Mocks summary">
+          <div className="mock-list__summary-item">
+            <span>Total mocks</span>
+            <strong>{summary.total}</strong>
+          </div>
+          <div className="mock-list__summary-item">
+            <span>In use</span>
+            <strong>{summary.inUse}</strong>
+          </div>
+          <div className="mock-list__summary-item">
+            <span>Available</span>
+            <strong>{summary.available}</strong>
+          </div>
+          <div className="mock-list__summary-item">
+            <span>Avg. score</span>
+            <strong>{summary.avgScore}%</strong>
+          </div>
+        </div>
+
         <div className="mock-list__cards">
           {paginatedMocks.length > 0 ? (
-            paginatedMocks.map((mock) => (
+            paginatedMocks.map((mock) => {
+              const mockMenuOptions = getMockMenuOptions(mock, canEditMock);
+              return (
               <EntityCard
                 key={mock.id}
                 className="mock-list__card"
                 userName={mock.title}
                 userEmail={`${mock.type} \u00B7 ${DIFFICULTY_META[mock.difficulty] || mock.difficulty}`}
+                caption={mock.computedStatus === 'active' ? 'In use' : 'Available'}
                 showAvatar={false}
                 showBadge
-                badgeType="jobStatus"
-                badgeVariant={mock.computedStatus}
-                showMenu
-                menuOptions={getMockMenuOptions(mock, canEditMock)}
+                badgeType="mockStatus"
+                badgeVariant={mock.computedStatus === 'active' ? 'inUse' : 'available'}
+                showMenu={mockMenuOptions.length > 0}
+                menuOptions={mockMenuOptions}
                 onMenuSelect={(action) => handleMenuSelect(mock, action)}
                 onClick={() => onViewMock?.(mock.id)}
                 score={mock.avgScore}
-                scoreLabel="Avg Score"
+                scoreLabel="Avg. score"
+                scoreDisplay="bar"
+                density="compact"
+                menuAlwaysVisible
                 colLeft={{
-                  icon: Zap,
                   title: String(mock.technologies.length),
-                  subtitle: 'Technologies',
+                  subtitle: 'Skills covered',
                 }}
                 colMid={{
-                  icon: Briefcase,
                   title: String(mock.usedInJobs),
-                  subtitle: 'Used in Jobs',
+                  subtitle: 'Used in jobs',
                 }}
                 colRight={{
-                  icon: Clock,
                   title: mock.duration,
                   subtitle: 'Duration',
                 }}
                 tags={mock.technologies}
                 tagsLimit={3}
-                animated
+                animated={false}
               />
-            ))
+              );
+            })
           ) : !isInitialLoading ? (
             <EmptyState
               icon={<FileText size={24} />}
               title={enrichedMocks.length ? 'No matching mocks' : 'No mocks yet'}
               description={
                 enrichedMocks.length
-                  ? 'Adjust the search or supported backend filters to see more mocks.'
+                  ? 'Adjust search or filters to show more mocks.'
                   : 'Create a mock interview before publishing your first job.'
               }
               action={
@@ -331,11 +399,7 @@ export const MockList = memo(function MockList({
         filters={OVERLAY_FILTERS}
         values={overlayFilters}
         onApply={(v) => {
-          setOverlayFilters(v);
-          setTypeFilter(v.typeQuick || '');
-          setDifficultyFilter(v.difficultyQuick || '');
-          setSortBy(v.sortQuick || DEFAULT_SORT);
-          setCurrentPage(1);
+          applyOverlayState(v);
         }}
       />
     </div>

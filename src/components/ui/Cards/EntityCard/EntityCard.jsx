@@ -13,7 +13,7 @@ const ICON_SIZE_MD = 20;
 const SCORE_RADIUS = 20;
 const SCORE_STROKE = 2.5;
 const SCORE_CIRCUMFERENCE = 2 * Math.PI * SCORE_RADIUS;
-const SCORE_RING_COLOR = 'rgba(255, 255, 255, 0.25)';
+const SCORE_RING_COLOR = 'var(--chart-brand-strong)';
 
 export const EntityCard = memo(function EntityCard({
   // User section
@@ -51,6 +51,9 @@ export const EntityCard = memo(function EntityCard({
   tags,
   tagsLimit = 3,
   className = '',
+  density = 'default',
+  scoreDisplay = 'ring',
+  menuAlwaysVisible = false,
   animated = true,
   onClick,
 }) {
@@ -79,19 +82,38 @@ export const EntityCard = memo(function EntityCard({
     [onMenuSelect]
   );
 
+  const handleCardKeyDown = useCallback(
+    (event) => {
+      if (!onClick || event.target !== event.currentTarget) return;
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      onClick(event);
+    },
+    [onClick]
+  );
+
+  const handleTopAction = useCallback((event, callback) => {
+    event.stopPropagation();
+    callback?.(event);
+  }, []);
+
   return (
     <div
       ref={cardRef}
       className={[
         'entity-card',
+        density === 'compact' && 'entity-card--compact',
         isVisible && 'entity-card--visible',
         onClick && 'entity-card--clickable',
+        menuAlwaysVisible && 'entity-card--menu-visible',
         className,
       ]
         .filter(Boolean)
         .join(' ')}
       onClick={onClick}
+      onKeyDown={handleCardKeyDown}
       role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
     >
       {/* Top section - User, Caption, Badge, Button, Save */}
       <div className="entity-card__top">
@@ -119,12 +141,19 @@ export const EntityCard = memo(function EntityCard({
           {caption && <span className="entity-card__caption">{caption}</span>}
           {showBadge && showAvatar && <Badge type={badgeType} variant={badgeVariant} />}
           {showButton && (
-            <Button className="entity-card__button" onClick={onButtonClick}>
+            <Button
+              className="entity-card__button"
+              onClick={(event) => handleTopAction(event, onButtonClick)}
+            >
               {buttonText}
             </Button>
           )}
           {showSave && (
-            <button className="entity-card__save" onClick={onSave} aria-label="Save">
+            <button
+              className="entity-card__save"
+              onClick={(event) => handleTopAction(event, onSave)}
+              aria-label="Save"
+            >
               <Bookmark size={ICON_SIZE_MD} />
             </button>
           )}
@@ -135,6 +164,8 @@ export const EntityCard = memo(function EntityCard({
               className="entity-card__menu-trigger"
               onClick={handleMenuToggle}
               aria-label="More actions"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
             >
               <MoreVertical size={ICON_SIZE_MD} />
             </button>
@@ -198,34 +229,55 @@ export const EntityCard = memo(function EntityCard({
               </div>
             )}
           </div>
-          {score != null && (
-            <div className="entity-card__score-block">
+          {score != null && scoreDisplay !== 'none' && (
+            <div
+              className={[
+                'entity-card__score-block',
+                scoreDisplay === 'bar' && 'entity-card__score-block--bar',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            >
               <span className="entity-card__score-title">{scoreLabel}</span>
-              <div className="entity-card__score" aria-label={`Score ${score}`}>
-                <svg className="entity-card__score-ring" viewBox="0 0 48 48">
-                  <circle
-                    className="entity-card__score-track"
-                    cx="24"
-                    cy="24"
-                    r={SCORE_RADIUS}
-                    fill="none"
-                    strokeWidth={SCORE_STROKE}
-                  />
-                  <circle
-                    className="entity-card__score-fill"
-                    cx="24"
-                    cy="24"
-                    r={SCORE_RADIUS}
-                    fill="none"
-                    strokeWidth={SCORE_STROKE}
-                    strokeDasharray={SCORE_CIRCUMFERENCE}
-                    strokeDashoffset={scoreOffset}
-                    stroke={SCORE_RING_COLOR}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <span className="entity-card__score-value">{Math.round(score)}</span>
-              </div>
+              {scoreDisplay === 'bar' ? (
+                <div className="entity-card__score-bar-wrap" aria-label={`Score ${score}%`}>
+                  <span className="entity-card__score-bar">
+                    <span
+                      className="entity-card__score-bar-fill"
+                      style={{ width: `${Math.max(0, Math.min(100, score))}%` }}
+                    />
+                  </span>
+                  <span className="entity-card__score-value entity-card__score-value--bar">
+                    {Math.round(score)}%
+                  </span>
+                </div>
+              ) : (
+                <div className="entity-card__score" aria-label={`Score ${score}%`}>
+                  <svg className="entity-card__score-ring" viewBox="0 0 48 48">
+                    <circle
+                      className="entity-card__score-track"
+                      cx="24"
+                      cy="24"
+                      r={SCORE_RADIUS}
+                      fill="none"
+                      strokeWidth={SCORE_STROKE}
+                    />
+                    <circle
+                      className="entity-card__score-fill"
+                      cx="24"
+                      cy="24"
+                      r={SCORE_RADIUS}
+                      fill="none"
+                      strokeWidth={SCORE_STROKE}
+                      strokeDasharray={SCORE_CIRCUMFERENCE}
+                      strokeDashoffset={scoreOffset}
+                      stroke={SCORE_RING_COLOR}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <span className="entity-card__score-value">{Math.round(score)}%</span>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -301,6 +353,9 @@ EntityCard.propTypes = {
   tags: PropTypes.arrayOf(PropTypes.string),
   tagsLimit: PropTypes.number,
   className: PropTypes.string,
+  density: PropTypes.oneOf(['default', 'compact']),
+  scoreDisplay: PropTypes.oneOf(['ring', 'bar', 'none']),
+  menuAlwaysVisible: PropTypes.bool,
   animated: PropTypes.bool,
   onClick: PropTypes.func,
 };

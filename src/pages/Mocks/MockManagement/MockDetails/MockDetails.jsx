@@ -1,17 +1,7 @@
-import { memo, useMemo, useCallback, useState, useRef } from 'react';
-import {
-  Pencil,
-  Clock,
-  Zap,
-  Briefcase,
-  Target,
-  TrendingUp,
-  CalendarDays,
-  Users,
-  Lock,
-  Eye,
-} from 'lucide-react';
-import { EntityCard, QuickInfoCard } from '../../../../components/ui/Cards';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { Briefcase, Lock } from 'lucide-react';
+import PropTypes from 'prop-types';
+import { QuickInfoCard } from '../../../../components/ui/Cards';
 import { Button } from '../../../../components/ui/Button';
 import { Badge } from '../../../../components/ui/Badge';
 import { BarChart } from '../../../../components/ui/Charts';
@@ -19,19 +9,20 @@ import { EmptyState } from '../../../../components/ui/EmptyState';
 import { SectionTitle } from '../../../../components/ui/SectionTitle';
 import { Tabs } from '../../../../components/ui/Tabs';
 import {
+  getCandidatesPerJob,
+  getJobsUsingMock,
   getMockById,
   getMockStatus,
-  getJobsUsingMock,
-  getCandidatesPerJob,
   useBackendData,
 } from '../../../../api';
 import './MockDetails.css';
 
-const ICON_SM = 14;
+const JOB_STATUS_LABELS = {
+  active: 'Active',
+  scheduled: 'Scheduled',
+  closed: 'Closed',
+};
 
-/* -------------------------------------------------
-   MockDetails
-   ------------------------------------------------- */
 export const MockDetails = memo(function MockDetails({
   mockId,
   onEdit,
@@ -48,10 +39,12 @@ export const MockDetails = memo(function MockDetails({
     return getMockStatus(mockId);
   }, [mockId, dataVersion]);
   const isActive = status === 'active';
+
   const jobsUsing = useMemo(() => {
     void dataVersion;
     return mock ? getJobsUsingMock(mock.title) : [];
   }, [mock, dataVersion]);
+
   const chartData = useMemo(() => {
     void dataVersion;
     return mock ? getCandidatesPerJob(mock.title) : [];
@@ -84,88 +77,85 @@ export const MockDetails = memo(function MockDetails({
   }
 
   const technologies = Array.isArray(mock.technologies) ? mock.technologies : [];
-  // `topics` is an array of topic objects: { id, name, weight }
   const topics = Array.isArray(mock.topics) ? mock.topics : [];
   const questions = Array.isArray(mock.questions) ? mock.questions : [];
-
   const totalWeight =
-    topics.reduce((s, c) => s + Number(c.weight || 0), 0) +
-    questions.reduce((s, q) => s + Number(q.weight || 0), 0);
+    topics.reduce((sum, topic) => sum + Number(topic.weight || 0), 0) +
+    questions.reduce((sum, question) => sum + Number(question.weight || 0), 0);
+  const canTest = Boolean(jobsUsing[0]?.id);
+  const mockStatusVariant = isActive ? 'inUse' : 'available';
 
   const analysisPanel = (
     <div className="mock-details__panel mock-details__panel--analysis">
-      <EntityCard
-        showAvatar={false}
-        userName={mock.title}
-        userEmail={`${mock.type} · ${mock.difficulty}`}
-        showBadge
-        badgeType="jobStatus"
-        badgeVariant={status}
-        colLeft={{ icon: Clock, title: mock.duration, subtitle: 'Duration' }}
-        colMid={{ icon: Zap, title: String(technologies.length), subtitle: 'Technologies' }}
-        colRight={{
-          icon: Briefcase,
-          title: String(jobsUsing.length),
-          subtitle: 'Used in Jobs',
-        }}
-        tags={technologies}
-        tagsLimit={6}
-        showDescription
-        descriptionTitle="Description"
-        descriptionContent={mock.description}
-        animated={false}
-      />
+      <section className="mock-details__summary-band">
+        <div className="mock-details__summary-heading">
+          <div>
+            <h1>{mock.title}</h1>
+            <p>Assessment configuration and usage</p>
+          </div>
+          <div className="mock-details__summary-actions">
+            <Badge type="mockStatus" variant={mockStatusVariant} />
+          </div>
+        </div>
+        <div className="mock-details__summary-meta">
+          <div>
+            <span>Type</span>
+            <strong>{mock.type}</strong>
+          </div>
+          <div>
+            <span>Difficulty</span>
+            <strong>{mock.difficulty}</strong>
+          </div>
+          <div>
+            <span>Duration</span>
+            <strong>{mock.duration}</strong>
+          </div>
+          <div>
+            <span>Skills</span>
+            <strong>{technologies.length ? technologies.slice(0, 3).join(', ') : 'Not set'}</strong>
+          </div>
+        </div>
+      </section>
 
       <div className="mock-details__stats">
         <QuickInfoCard
-          icon={<Users />}
           number={mock.totalSessions}
-          title="Total Sessions"
+          title="Sessions"
+          density="compact"
           animated={false}
         />
         <QuickInfoCard
-          icon={<Target />}
           number={`${mock.avgScore}%`}
-          title="Avg Score"
+          title="Avg. score"
+          density="compact"
           animated={false}
         />
         <QuickInfoCard
-          icon={<TrendingUp />}
           number={`${mock.passRate}%`}
-          title="Pass Rate"
+          title="Pass rate"
+          density="compact"
           animated={false}
         />
         <QuickInfoCard
-          icon={<CalendarDays />}
-          number={mock.createdDate}
-          title="Created"
+          number={jobsUsing.length}
+          title="Used in jobs"
+          density="compact"
           animated={false}
         />
       </div>
 
-      {chartData.length > 0 && (
-        <section className="mock-details__section">
-          <BarChart
-            title={`Candidates per Job (${jobsUsing.length})`}
-            data={chartData}
-            dataKeys={[{ key: 'candidates', label: 'Candidates' }]}
-            xKey="label"
-          />
-        </section>
-      )}
-
       <section className="mock-details__section">
-        <SectionTitle variant="inline">Used in Jobs ({jobsUsing.length})</SectionTitle>
+        <SectionTitle variant="inline">Used in jobs</SectionTitle>
         {jobsUsing.length > 0 ? (
           <div className="mock-details__jobs-list">
             {jobsUsing.map((job) => (
               <div key={job.id} className="mock-details__job-row">
-                <Briefcase size={14} />
                 <span className="mock-details__job-title">{job.title}</span>
-                <span className="mock-details__job-dept">{job.department}</span>
-                <Badge type="jobStatus" variant={job.status} />
+                <span className="mock-details__job-meta">
+                  {JOB_STATUS_LABELS[job.status] || 'Status not set'}
+                </span>
                 <span className="mock-details__job-candidates">
-                  <Users size={12} /> {job.totalApplied}
+                  {job.totalApplied} applications
                 </span>
               </div>
             ))}
@@ -174,34 +164,74 @@ export const MockDetails = memo(function MockDetails({
           <EmptyState
             icon={<Briefcase size={24} />}
             title="No jobs use this mock yet"
-            description="Attach this mock to a scheduled job when you are ready to start collecting applications."
+            description="Attach this mock to a job before candidates can complete it."
           />
         )}
       </section>
+
+      <section className="mock-details__section">
+        <SectionTitle variant="inline">Scoring structure</SectionTitle>
+        <div className="mock-details__formula">
+          {topics.map((topic) => (
+            <div key={topic.id} className="mock-details__formula-row">
+              <span className="mock-details__formula-name">{topic.name}</span>
+              <span className="mock-details__formula-pct">{topic.weight}%</span>
+            </div>
+          ))}
+          {questions.map((question, index) => (
+            <div key={question.id} className="mock-details__formula-row">
+              <span className="mock-details__formula-name">
+                Q{index + 1}: {question.title}
+              </span>
+              <span className="mock-details__formula-pct">{question.weight}%</span>
+            </div>
+          ))}
+          <div className="mock-details__formula-row mock-details__formula-row--total">
+            <span className="mock-details__formula-name">Total</span>
+            <span className="mock-details__formula-pct">{totalWeight}%</span>
+          </div>
+        </div>
+      </section>
+
+      {chartData.length > 0 && (
+        <section className="mock-details__section">
+          <SectionTitle variant="inline">Performance</SectionTitle>
+          <BarChart
+            title={`Candidates per job (${jobsUsing.length})`}
+            data={chartData}
+            dataKeys={[{ key: 'candidates', label: 'Candidates' }]}
+            xKey="label"
+          />
+        </section>
+      )}
     </div>
   );
 
   const actionsPanel = (
     <div className="mock-details__panel mock-details__panel--actions">
       <div className="mock-details__card">
+        <SectionTitle variant="inline">Actions</SectionTitle>
         <div className="mock-details__action-list">
           {canEditMock && (
             <Button
               variant="secondary"
               size="sm"
-              iconLeft={<Eye size={ICON_SM} />}
-              onClick={() => jobsUsing[0]?.id && onTestMock?.(jobsUsing[0].id)}
-              disabled={!jobsUsing[0]?.id}
+              onClick={() => canTest && onTestMock?.(jobsUsing[0].id)}
+              disabled={!canTest}
+              title={canTest ? 'Preview mock' : 'Attach this mock to a job before previewing'}
             >
-              Test Mock
+              Test mock
             </Button>
+          )}
+          {!canTest && (
+            <p className="mock-details__read-only">Attach this mock to a job before previewing.</p>
           )}
           {isActive && (
             <div className="mock-details__active-notice">
               <Lock size={12} />
               <span>
-                Active in {jobsUsing.filter((j) => j.status === 'active').length} job(s) and locked
-                for editing
+                In use by {jobsUsing.filter((job) => job.status === 'active').length} active job(s)
+                and locked for editing.
               </span>
             </div>
           )}
@@ -209,72 +239,54 @@ export const MockDetails = memo(function MockDetails({
             <Button
               variant="ghost"
               size="sm"
-              iconLeft={<Pencil size={ICON_SM} />}
               onClick={handleEdit}
               disabled={isActive}
-              title={isActive ? 'Active mocks cannot be edited' : 'Edit mock'}
+              title={isActive ? 'Mocks in use cannot be edited' : 'Edit mock'}
             >
-              Edit Mock
+              Edit mock
             </Button>
           )}
         </div>
       </div>
 
       <div className="mock-details__card">
-        <SectionTitle variant="inline">Mock Info</SectionTitle>
-
-        <div className="mock-details__info-group">
-          <span className="mock-details__info-label">Details</span>
-          <div className="mock-details__formula">
-            <div className="mock-details__formula-row">
-              <span className="mock-details__formula-name">Type</span>
-              <span className="mock-details__formula-pct">{mock.type}</span>
-            </div>
-            <div className="mock-details__formula-row">
-              <span className="mock-details__formula-name">Difficulty</span>
-              <span className="mock-details__formula-pct">{mock.difficulty}</span>
-            </div>
-            <div className="mock-details__formula-row">
-              <span className="mock-details__formula-name">Duration</span>
-              <span className="mock-details__formula-pct">{mock.duration}</span>
-            </div>
-            <div className="mock-details__formula-row">
-              <span className="mock-details__formula-name">Status</span>
-              <span className="mock-details__formula-pct">
-                {status.charAt(0).toUpperCase() + status.slice(1)}
-              </span>
-            </div>
+        <SectionTitle variant="inline">Assessment setup</SectionTitle>
+        <div className="mock-details__formula">
+          <div className="mock-details__formula-row">
+            <span className="mock-details__formula-name">Type</span>
+            <span className="mock-details__formula-pct">{mock.type}</span>
+          </div>
+          <div className="mock-details__formula-row">
+            <span className="mock-details__formula-name">Difficulty</span>
+            <span className="mock-details__formula-pct">{mock.difficulty}</span>
+          </div>
+          <div className="mock-details__formula-row">
+            <span className="mock-details__formula-name">Duration</span>
+            <span className="mock-details__formula-pct">{mock.duration}</span>
+          </div>
+          <div className="mock-details__formula-row">
+            <span className="mock-details__formula-name">Skills covered</span>
+            <span className="mock-details__formula-pct">{technologies.length}</span>
           </div>
         </div>
+      </div>
 
-        {(topics.length > 0 || questions.length > 0) && (
-          <>
-            <div className="mock-details__divider" />
-            <div className="mock-details__info-group">
-              <span className="mock-details__info-label">Evaluation Structure</span>
-              <div className="mock-details__formula">
-                {topics.map((c) => (
-                  <div key={c.id} className="mock-details__formula-row">
-                    <span className="mock-details__formula-name">{c.name}</span>
-                    <span className="mock-details__formula-pct">{c.weight}%</span>
-                  </div>
-                ))}
-                {questions.map((q, idx) => (
-                  <div key={q.id} className="mock-details__formula-row">
-                    <span className="mock-details__formula-name">
-                      Q{idx + 1}: {q.title}
-                    </span>
-                    <span className="mock-details__formula-pct">{q.weight}%</span>
-                  </div>
-                ))}
-                <div className="mock-details__formula-row mock-details__formula-row--total">
-                  <span className="mock-details__formula-name">Total</span>
-                  <span className="mock-details__formula-pct">{totalWeight}%</span>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
+      <div className="mock-details__card">
+        <SectionTitle variant="inline">Session options</SectionTitle>
+        <div className="mock-details__formula">
+          <div className="mock-details__formula-row">
+            <span className="mock-details__formula-name">Follow-up questions</span>
+            <span className="mock-details__formula-pct">
+              {mock.enableFollowUpQuestions ? 'Enabled' : 'Disabled'}
+            </span>
+          </div>
+          <div className="mock-details__formula-row">
+            <span className="mock-details__formula-name">Replay recording</span>
+            <span className="mock-details__formula-pct">
+              {mock.enableRecordReplay ? 'Enabled' : 'Disabled'}
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -298,3 +310,10 @@ export const MockDetails = memo(function MockDetails({
     </div>
   );
 });
+
+MockDetails.propTypes = {
+  mockId: PropTypes.string,
+  onEdit: PropTypes.func,
+  onTestMock: PropTypes.func,
+  canEditMock: PropTypes.bool,
+};

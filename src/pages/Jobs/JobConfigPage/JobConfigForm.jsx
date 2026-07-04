@@ -1,5 +1,5 @@
 ﻿import { useState, useCallback, useMemo, useRef, useEffect, memo } from 'react';
-import { ArrowLeft, ArrowRight, Rocket } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Stepper } from '../../../components/ui/Stepper';
 import { Button } from '../../../components/ui/Button';
 import { EditBanner } from './edit/EditBanner';
@@ -7,7 +7,6 @@ import { StepJobInfo, StepMocks, StepScheduling, StepReview, EditFooterActions }
 import {
   JOB_STEPS_CREATE as STEPS_CREATE,
   JOB_STEPS_EDIT as STEPS_EDIT,
-  DEPARTMENT_OPTIONS,
   EMAIL_TRIGGERS,
   INITIAL_JOB_FORM as INITIAL_FORM,
   parseDurationMin,
@@ -17,6 +16,24 @@ import './JobConfigForm.css';
 
 const MIN_TITLE_LENGTH = 3;
 const MIN_DESCRIPTION_LENGTH = 10;
+const STEP_COPY = [
+  {
+    title: 'Role basics',
+    description: 'Define the role, location, description, and skills candidates should match.',
+  },
+  {
+    title: 'Assessments',
+    description: 'Attach the mocks candidates will complete and balance their scoring weights.',
+  },
+  {
+    title: 'Publishing rules',
+    description: 'Set candidate emails, opening rules, close date, and application limits.',
+  },
+  {
+    title: 'Final review',
+    description: 'Review the candidate-facing setup before publishing or saving changes.',
+  },
+];
 
 function dateInputToTimestamp(dateValue) {
   if (!dateValue) return null;
@@ -74,6 +91,16 @@ export const JobConfigForm = memo(function JobConfigForm({
   const isActiveEdit = isEdit && status === 'active';
 
   const STEPS = isEdit ? STEPS_EDIT : STEPS_CREATE;
+  const displaySteps = useMemo(
+    () =>
+      STEPS.map((step, index) => ({
+        ...step,
+        label: ['Job info', 'Assessments', 'Publishing', isEdit ? 'Review & save' : 'Review'][
+          index
+        ],
+      })),
+    [STEPS, isEdit]
+  );
   const initialForm = useMemo(() => {
     const normalized = normalizeJobForm(initialData ?? INITIAL_FORM);
     return isActiveEdit ? { ...normalized, scheduleMode: 'active', startDate: '' } : normalized;
@@ -120,24 +147,27 @@ export const JobConfigForm = memo(function JobConfigForm({
   );
 
   /* -- Mock management -- */
-  const addMock = useCallback((mock) => {
-    if (isActiveEdit) return;
-    manualWeightIds.current.clear();
-    setForm((p) => {
-      if (p.mocks.some((m) => m.id === mock.id)) return p;
-      const count = p.mocks.length + 1;
-      const base = Math.floor(100 / count);
-      const rem = 100 - base * count;
-      return {
-        ...p,
-        mocks: [
-          ...p.mocks.map((m, i) => ({ ...m, weight: base + (i < rem ? 1 : 0) })),
-          { ...mock, weight: base },
-        ],
-      };
-    });
-    setShowMockLibrary(false);
-  }, [isActiveEdit]);
+  const addMock = useCallback(
+    (mock) => {
+      if (isActiveEdit) return;
+      manualWeightIds.current.clear();
+      setForm((p) => {
+        if (p.mocks.some((m) => m.id === mock.id)) return p;
+        const count = p.mocks.length + 1;
+        const base = Math.floor(100 / count);
+        const rem = 100 - base * count;
+        return {
+          ...p,
+          mocks: [
+            ...p.mocks.map((m, i) => ({ ...m, weight: base + (i < rem ? 1 : 0) })),
+            { ...mock, weight: base },
+          ],
+        };
+      });
+      setShowMockLibrary(false);
+    },
+    [isActiveEdit]
+  );
 
   const removeMock = useCallback(
     (id) => {
@@ -166,29 +196,35 @@ export const JobConfigForm = memo(function JobConfigForm({
   );
 
   /* -- Drag & drop -- */
-  const handleDragStart = useCallback((i) => {
-    if (isActiveEdit) return;
-    dragIndexRef.current = i;
-    setDragIndex(i);
-  }, [isActiveEdit]);
+  const handleDragStart = useCallback(
+    (i) => {
+      if (isActiveEdit) return;
+      dragIndexRef.current = i;
+      setDragIndex(i);
+    },
+    [isActiveEdit]
+  );
   const handleDragEnd = useCallback(() => {
     dragIndexRef.current = null;
     setDragIndex(null);
   }, []);
-  const handleDragOver = useCallback((e, i) => {
-    if (isActiveEdit) return;
-    e.preventDefault();
-    const prev = dragIndexRef.current;
-    if (prev === null || prev === i) return;
-    setForm((f) => {
-      const mocks = [...f.mocks];
-      const [moved] = mocks.splice(prev, 1);
-      mocks.splice(i, 0, moved);
-      return { ...f, mocks };
-    });
-    dragIndexRef.current = i;
-    setDragIndex(i);
-  }, [isActiveEdit]);
+  const handleDragOver = useCallback(
+    (e, i) => {
+      if (isActiveEdit) return;
+      e.preventDefault();
+      const prev = dragIndexRef.current;
+      if (prev === null || prev === i) return;
+      setForm((f) => {
+        const mocks = [...f.mocks];
+        const [moved] = mocks.splice(prev, 1);
+        mocks.splice(i, 0, moved);
+        return { ...f, mocks };
+      });
+      dragIndexRef.current = i;
+      setDragIndex(i);
+    },
+    [isActiveEdit]
+  );
 
   /* -- Derived values -- */
   const totalWeight = useMemo(() => form.mocks.reduce((s, m) => s + m.weight, 0), [form.mocks]);
@@ -206,14 +242,14 @@ export const JobConfigForm = memo(function JobConfigForm({
     const initialEndDate = dateInputToEndTimestamp(initialEndDateInput);
     if (form.title.trim().length < MIN_TITLE_LENGTH)
       errors.title = `Job title must be at least ${MIN_TITLE_LENGTH} characters.`;
-    if (!form.department) errors.department = 'Department is required.';
     if (!form.jobType) errors.jobType = 'Job type is required.';
     if (!form.seniority) errors.seniority = 'Seniority level is required.';
     if (form.description.trim().length < MIN_DESCRIPTION_LENGTH)
       errors.description = `Description must be at least ${MIN_DESCRIPTION_LENGTH} characters.`;
     if (!form.technologies.length) errors.technologies = 'Add at least one technology.';
     if (!form.mocks.length) errors.mocks = 'Add at least one mock interview.';
-    if (form.mocks.length && totalWeight !== 100) errors.mockWeights = 'Mock weights must total 100%.';
+    if (form.mocks.length && totalWeight !== 100)
+      errors.mockWeights = 'Mock weights must total 100%.';
 
     if (scheduleMode === 'scheduled') {
       if (!form.startDate) {
@@ -239,7 +275,6 @@ export const JobConfigForm = memo(function JobConfigForm({
 
     return errors;
   }, [
-    form.department,
     form.description,
     form.endDate,
     form.jobType,
@@ -261,39 +296,34 @@ export const JobConfigForm = memo(function JobConfigForm({
     [fieldErrors, touched, attemptedErrors, activeStep]
   );
 
-  const stepValidity = useMemo(
-    () => {
-      const jobInfoValid =
-        !fieldErrors.title &&
-        !fieldErrors.description &&
-        !fieldErrors.department &&
-        !fieldErrors.jobType &&
-        !fieldErrors.seniority &&
-        !fieldErrors.technologies;
-      const mocksValid = !fieldErrors.mocks && !fieldErrors.mockWeights;
-      const schedulingValid = !fieldErrors.startDate && !fieldErrors.endDate;
+  const stepValidity = useMemo(() => {
+    const jobInfoValid =
+      !fieldErrors.title &&
+      !fieldErrors.description &&
+      !fieldErrors.jobType &&
+      !fieldErrors.seniority &&
+      !fieldErrors.technologies;
+    const mocksValid = !fieldErrors.mocks && !fieldErrors.mockWeights;
+    const schedulingValid = !fieldErrors.startDate && !fieldErrors.endDate;
 
-      return {
-        0: jobInfoValid,
-        1: mocksValid,
-        2: schedulingValid,
-        3: isActiveEdit ? schedulingValid : jobInfoValid && mocksValid && schedulingValid,
-      };
-    },
-    [
-      fieldErrors.department,
-      fieldErrors.description,
-      fieldErrors.endDate,
-      fieldErrors.jobType,
-      fieldErrors.mockWeights,
-      fieldErrors.mocks,
-      fieldErrors.seniority,
-      fieldErrors.startDate,
-      fieldErrors.technologies,
-      fieldErrors.title,
-      isActiveEdit,
-    ]
-  );
+    return {
+      0: jobInfoValid,
+      1: mocksValid,
+      2: schedulingValid,
+      3: isActiveEdit ? schedulingValid : jobInfoValid && mocksValid && schedulingValid,
+    };
+  }, [
+    fieldErrors.description,
+    fieldErrors.endDate,
+    fieldErrors.jobType,
+    fieldErrors.mockWeights,
+    fieldErrors.mocks,
+    fieldErrors.seniority,
+    fieldErrors.startDate,
+    fieldErrors.technologies,
+    fieldErrors.title,
+    isActiveEdit,
+  ]);
 
   const goNext = useCallback(
     () => setActiveStep((s) => Math.min(s + 1, STEPS.length - 1)),
@@ -310,7 +340,7 @@ export const JobConfigForm = memo(function JobConfigForm({
   const goBack = useCallback(() => setActiveStep((s) => Math.max(s - 1, 0)), []);
 
   useEffect(() => {
-    pageScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    pageScrollRef.current?.scrollTo({ top: 0 });
   }, [activeStep]);
 
   const statusPreview = useMemo(() => {
@@ -319,37 +349,24 @@ export const JobConfigForm = memo(function JobConfigForm({
     const now = new Date();
     const start = scheduleMode === 'scheduled' && form.startDate ? new Date(form.startDate) : null;
     const end = form.endDate ? new Date(form.endDate) : null;
-    if (!start || start <= now) lines.push({ color: 'green', text: 'Will be Active immediately' });
+    if (!start || start <= now) lines.push({ color: 'green', text: 'Opens immediately' });
     else
       lines.push({
         color: 'yellow',
-        text: `Will be Scheduled until ${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+        text: `Opens on ${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
       });
     if (end)
       lines.push({
         color: 'red',
-        text: `Will Auto-close on ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+        text: `Closes on ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
       });
     if (form.maxCandidates)
       lines.push({
         color: 'red',
-        text: `Will Auto-close after ${form.maxCandidates} applications`,
+        text: `Closes after ${form.maxCandidates} applications`,
       });
     return lines;
   }, [form.scheduleMode, form.startDate, form.endDate, form.maxCandidates, isActiveEdit]);
-
-  const departmentOptions = useMemo(() => {
-    if (!form.department) return DEPARTMENT_OPTIONS;
-    return DEPARTMENT_OPTIONS.some((o) => o.value === form.department)
-      ? DEPARTMENT_OPTIONS
-      : [
-          ...DEPARTMENT_OPTIONS,
-          {
-            value: form.department,
-            label: form.department.charAt(0).toUpperCase() + form.department.slice(1),
-          },
-        ];
-  }, [form.department]);
 
   const enabledEmailCount = useMemo(
     () => EMAIL_TRIGGERS.filter((t) => form.emails[t.id]).length,
@@ -364,7 +381,6 @@ export const JobConfigForm = memo(function JobConfigForm({
           <StepJobInfo
             form={form}
             updateField={updateField}
-            departmentOptions={departmentOptions}
             addTechnology={addTechnology}
             removeTechnology={removeTechnology}
             validationErrors={fieldErrors}
@@ -429,7 +445,7 @@ export const JobConfigForm = memo(function JobConfigForm({
         {/* Stepper */}
         <div className="create-job__stepper">
           <Stepper
-            steps={STEPS}
+            steps={displaySteps}
             activeStep={activeStep}
             onStepClick={setActiveStep}
             stepValidity={stepValidity}
@@ -449,6 +465,11 @@ export const JobConfigForm = memo(function JobConfigForm({
 
         {/* Step body */}
         <div className="create-job__body" key={activeStep}>
+          <div className="create-job__step-header">
+            <span>Step {activeStep + 1}</span>
+            <h1>{STEP_COPY[activeStep]?.title}</h1>
+            <p>{STEP_COPY[activeStep]?.description}</p>
+          </div>
           {renderStep()}
         </div>
 
@@ -475,11 +496,10 @@ export const JobConfigForm = memo(function JobConfigForm({
             ) : (
               <Button
                 variant="primary"
-                iconLeft={<Rocket size={16} />}
                 onClick={() => onPublish?.(form)}
                 disabled={!stepValidity[3]}
               >
-                Publish Job
+                Publish job
               </Button>
             )}
           </div>

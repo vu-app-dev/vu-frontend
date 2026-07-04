@@ -13,6 +13,7 @@ import { AppLogo } from './components/ui/AppLogo';
 import { RouteErrorBoundary } from './components/layout/RouteErrorBoundary';
 import { Button } from './components/ui/Button';
 import { EmptyState } from './components/ui/EmptyState';
+import { ConfirmDialog } from './components/ui/Dialog';
 import { getJoinRequestById } from './api';
 import { buildApplicationContext, getApplicationSharePath } from './api';
 import { getCandidateById, getCandidateBySlug } from './api';
@@ -29,17 +30,7 @@ import {
 } from './api';
 import { LoginPage } from './pages/Auth/LoginPage';
 import { CompanyJoinPage } from './pages/Auth/CompanyJoinPage';
-import {
-  Users,
-  Briefcase,
-  FileText,
-  Building2,
-  UserCircle2,
-  Settings,
-  Hash,
-  ClipboardCheck,
-  Plus,
-} from 'lucide-react';
+import { Users, Briefcase, FileText, Building2, UserCircle2, Settings, Plus } from 'lucide-react';
 
 // ── Lazy-loaded pages (code-split at route level) ──
 const Pipeline = lazy(() =>
@@ -116,9 +107,7 @@ const SubmissionComplete = lazy(() =>
 const ComponentShowcase = lazy(() =>
   import('./pages/_showcase').then((m) => ({ default: m.ComponentShowcase }))
 );
-const LandingPage = lazy(() =>
-  import('./pages/Landing').then((m) => ({ default: m.LandingPage }))
-);
+const LandingPage = lazy(() => import('./pages/Landing').then((m) => ({ default: m.LandingPage })));
 
 // ── Static config ──
 // ── Route → breadcrumb mapping ──
@@ -138,63 +127,52 @@ function getRouteBreadcrumbs(pathname, navigate) {
     return [{ label: 'Candidates', onClick: () => navigate('/candidates') }, { label: name }];
   }
 
-  if (pathname === '/jobs') return [{ label: 'Job Management' }];
-  if (pathname === '/jobs/create') return [{ label: 'Create Job' }];
+  if (pathname === '/jobs') return [{ label: 'Jobs' }];
+  if (pathname === '/jobs/create') return [{ label: 'Create job' }];
   if (/^\/jobs\/[^/]+$/.test(pathname))
-    return [
-      { label: 'Job Management', onClick: () => navigate('/jobs') },
-      { label: 'Job Details' },
-    ];
+    return [{ label: 'Jobs', onClick: () => navigate('/jobs') }, { label: 'Job details' }];
   if (/^\/jobs\/[^/]+\/edit$/.test(pathname))
-    return [{ label: 'Job Management', onClick: () => navigate('/jobs') }, { label: 'Edit Job' }];
+    return [{ label: 'Jobs', onClick: () => navigate('/jobs') }, { label: 'Edit job' }];
 
-  if (pathname === '/mocks') return [{ label: 'Mock Management' }];
-  if (pathname === '/mocks/create') return [{ label: 'Create Mock' }];
+  if (pathname === '/mocks') return [{ label: 'Mocks' }];
+  if (pathname === '/mocks/create') return [{ label: 'Create mock' }];
   if (/^\/mocks\/[^/]+$/.test(pathname))
-    return [
-      { label: 'Mock Management', onClick: () => navigate('/mocks') },
-      { label: 'Mock Details' },
-    ];
+    return [{ label: 'Mocks', onClick: () => navigate('/mocks') }, { label: 'Mock details' }];
   if (/^\/mocks\/[^/]+\/edit$/.test(pathname))
-    return [
-      { label: 'Mock Management', onClick: () => navigate('/mocks') },
-      { label: 'Edit Mock' },
-    ];
+    return [{ label: 'Mocks', onClick: () => navigate('/mocks') }, { label: 'Edit mock' }];
 
   if (pathname === '/company') return [{ label: 'Overview' }];
   if (/^\/company\/team\/[^/]+$/.test(pathname))
     return [
       { label: 'Overview', onClick: () => navigate('/company') },
-      { label: 'Member Details' },
+      { label: 'Member details' },
     ];
-  if (pathname === '/company/members') return [{ label: 'Add Members' }];
+  if (pathname === '/company/members') return [{ label: 'Invite members' }];
   if (/^\/company\/members\/[^/]+$/.test(pathname))
     return [
-      { label: 'Add Members', onClick: () => navigate('/company/members') },
-      { label: 'Member Details' },
+      { label: 'Invite members', onClick: () => navigate('/company/members') },
+      { label: 'Member details' },
     ];
   if (/^\/company\/requests\/[^/]+$/.test(pathname))
     return [
-      { label: 'Add Members', onClick: () => navigate('/company/members') },
-      { label: 'Request Details' },
+      { label: 'Invite members', onClick: () => navigate('/company/members') },
+      { label: 'Request details' },
     ];
-  if (pathname === '/company/settings') return [{ label: 'Company Settings' }];
+  if (pathname === '/company/settings') return [{ label: 'Company settings' }];
 
-  if (pathname === '/profile') return [{ label: 'My Profile' }];
+  if (pathname === '/profile') return [{ label: 'Profile' }];
   if (pathname === '/settings') return [{ label: 'Settings' }];
-  if (pathname === '/showcase') return [{ label: 'Component Showcase' }];
+  if (pathname === '/showcase') return [{ label: 'Component showcase' }];
 
   return [{ label: 'Candidates' }];
 }
 
 // ── Sidebar nav items derived from current pathname ──
 function buildNavItems(pathname, navigate, can) {
-  const firstJob = JOBS[0];
-  const firstJobPath = firstJob ? getApplyPath(firstJob.companyId, firstJob.id) : '/jobs';
   const jobSubItems = [
     {
       id: 'jobs-list',
-      label: 'Job Management',
+      label: 'All jobs',
       isActive: pathname.startsWith('/jobs') && pathname !== '/jobs/create',
       onClick: () => navigate('/jobs'),
     },
@@ -202,7 +180,7 @@ function buildNavItems(pathname, navigate, can) {
   if (can('create_jobs')) {
     jobSubItems.push({
       id: 'jobs-create',
-      label: 'Create Job',
+      label: 'Create job',
       isActive: pathname === '/jobs/create',
       onClick: () => navigate('/jobs/create'),
     });
@@ -211,7 +189,7 @@ function buildNavItems(pathname, navigate, can) {
   const mockSubItems = [
     {
       id: 'mocks-list',
-      label: 'Mock Management',
+      label: 'All mocks',
       isActive: pathname.startsWith('/mocks') && pathname !== '/mocks/create',
       onClick: () => navigate('/mocks'),
     },
@@ -219,7 +197,7 @@ function buildNavItems(pathname, navigate, can) {
   if (can('create_mocks')) {
     mockSubItems.push({
       id: 'mocks-create',
-      label: 'Create Mock',
+      label: 'Create mock',
       isActive: pathname === '/mocks/create',
       onClick: () => navigate('/mocks/create'),
     });
@@ -236,7 +214,7 @@ function buildNavItems(pathname, navigate, can) {
   if (can('accept_members')) {
     companySubItems.push({
       id: 'company-members',
-      label: 'Add Members',
+      label: 'Invite members',
       isActive: pathname.startsWith('/company/members') || pathname.startsWith('/company/requests'),
       onClick: () => navigate('/company/members'),
     });
@@ -244,7 +222,7 @@ function buildNavItems(pathname, navigate, can) {
   if (can('edit_company')) {
     companySubItems.push({
       id: 'company-settings',
-      label: 'Company Settings',
+      label: 'Company settings',
       isActive: pathname === '/company/settings',
       onClick: () => navigate('/company/settings'),
     });
@@ -298,13 +276,6 @@ function buildNavItems(pathname, navigate, can) {
       onClick: () => navigate('/settings'),
       separator: true,
     },
-    can('edit_jobs') && {
-      id: 'application',
-      icon: ClipboardCheck,
-      label: 'Application',
-      isActive: pathname.startsWith('/apply'),
-      onClick: () => navigate(firstJobPath),
-    },
   ].filter(Boolean);
 }
 
@@ -336,113 +307,16 @@ function copyApplyLink(job) {
 }
 
 function NoMocksGuideDialog({ onCreateMock, onClose }) {
-  const steps = [
-    {
-      icon: FileText,
-      title: 'Create a mock',
-      text: 'Build the interview or assessment candidates will take.',
-    },
-    {
-      icon: Briefcase,
-      title: 'Attach it to a job',
-      text: 'Every job needs at least one mock so applicants have a real flow.',
-    },
-    {
-      icon: ClipboardCheck,
-      title: 'Publish and share',
-      text: 'Once the job is active, candidates can apply through the public link.',
-    },
-  ];
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1000,
-        display: 'grid',
-        placeItems: 'center',
-        padding: 24,
-        background: 'rgba(0, 0, 0, 0.58)',
-      }}
-    >
-      <div
-        style={{
-          width: 'min(100%, 520px)',
-          border: '1px solid var(--border-default)',
-          borderRadius: 8,
-          background: 'var(--bg-surface)',
-          padding: 20,
-          color: 'var(--text-primary)',
-          boxShadow: '0 24px 80px rgba(0, 0, 0, 0.35)',
-        }}
-      >
-        <h2 style={{ margin: 0, fontSize: 'var(--text-xl)' }}>Create a mock first</h2>
-        <p style={{ margin: '8px 0 18px', color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
-          Jobs are published with assessments attached. That keeps the candidate link complete from
-          the first application.
-        </p>
-
-        <div style={{ display: 'grid', gap: 10 }}>
-          {steps.map((step, index) => (
-            <div
-              key={step.title}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '2rem 1fr',
-                gap: 12,
-                alignItems: 'start',
-                padding: 12,
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 8,
-                background: 'var(--bg-card)',
-              }}
-            >
-              <div
-                style={{
-                  display: 'grid',
-                  placeItems: 'center',
-                  width: 32,
-                  height: 32,
-                  borderRadius: 8,
-                  color: 'var(--brand-default)',
-                  background: 'var(--white-a5)',
-                }}
-              >
-                <step.icon size={16} />
-              </div>
-              <div>
-                <strong style={{ display: 'block', fontSize: 'var(--text-sm)' }}>
-                  {index + 1}. {step.title}
-                </strong>
-                <span style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-sm)' }}>
-                  {step.text}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: 8,
-            marginTop: 18,
-            flexWrap: 'wrap',
-          }}
-        >
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button variant="primary" size="sm" iconRight={<Plus size={16} />} onClick={onCreateMock}>
-            Create Mock
-          </Button>
-        </div>
-      </div>
-    </div>
+    <ConfirmDialog
+      isOpen
+      title="Create a mock first"
+      description="Jobs need at least one assessment attached before publishing. Create a mock, then return to publish the job."
+      confirmLabel="Create mock"
+      cancelLabel="Cancel"
+      onConfirm={onCreateMock}
+      onClose={onClose}
+    />
   );
 }
 
@@ -511,7 +385,6 @@ function DashboardLayout() {
     () => ({
       name: currentMember?.name || 'VU User',
       email: currentMember?.email || '',
-      icon: Hash,
     }),
     [currentMember]
   );
@@ -614,7 +487,8 @@ function CandidateDetailsPage() {
   void dataVersion;
   const selectedCandidateId = location.state?.selectedCandidateId;
   const candidate =
-    (selectedCandidateId ? getCandidateById(selectedCandidateId) : null) || getCandidateBySlug(slug);
+    (selectedCandidateId ? getCandidateById(selectedCandidateId) : null) ||
+    getCandidateBySlug(slug);
   if (!candidate) return <Navigate to="/candidates" replace />;
   return <CandidateDetails candidate={candidate} />;
 }
@@ -683,6 +557,9 @@ function JobDetailsPage() {
       onEdit={() => navigate(`/jobs/${id}/edit`)}
       onTest={(path) => navigate(path || `/apply/${id}`)}
       onShowCandidates={() => navigate(getCandidatesPath(id))}
+      onViewCandidate={(slug, selectedCandidateId) =>
+        navigate(`/candidates/${slug}`, { state: { selectedCandidateId } })
+      }
       canEditJob={canEditJob}
     />
   );
@@ -714,7 +591,7 @@ function CreateJobPage() {
             iconRight={<Plus size={16} />}
             onClick={() => navigate('/mocks/create')}
           >
-            Create Mock
+            Create mock
           </Button>
         }
       />
@@ -738,6 +615,9 @@ function EditJobPage() {
 
 function MockListPage() {
   const navigate = useNavigate();
+  const [mockToDelete, setMockToDelete] = useState(null);
+  const [deleteError, setDeleteError] = useState('');
+  const [isDeletingMock, setIsDeletingMock] = useState(false);
   const { dataVersion } = useBackendData();
   const canCreateMock = useMemo(() => {
     void dataVersion;
@@ -748,32 +628,65 @@ function MockListPage() {
     return canCurrentUser('edit_mocks');
   }, [dataVersion]);
   const handleDeleteMock = useCallback(
-    async (mock) => {
+    (mock) => {
       if (!canEditMock) return;
-      if (!window.confirm(`Delete "${mock.title}"? This cannot be undone.`)) return;
-      try {
-        await removeMock(mock.id);
-      } catch (error) {
-        window.alert(error.message || 'Unable to delete mock.');
-      }
+      setMockToDelete(mock);
     },
     [canEditMock]
   );
 
+  const confirmDeleteMock = useCallback(async () => {
+    if (!mockToDelete) return;
+    setIsDeletingMock(true);
+    try {
+      await removeMock(mockToDelete.id);
+      setMockToDelete(null);
+    } catch (error) {
+      setDeleteError(error.message || 'Unable to delete mock.');
+    } finally {
+      setIsDeletingMock(false);
+    }
+  }, [mockToDelete]);
+
   return (
-    <MockList
-      onViewMock={(id) => navigate(`/mocks/${id}`)}
-      onEditMock={(id) => navigate(`/mocks/${id}/edit`)}
-      onCreateMock={() => navigate('/mocks/create')}
-      onTestMock={(mock) => {
-        if (!mock.firstJobId) return;
-        const job = JOBS.find((item) => String(item.id) === String(mock.firstJobId));
-        navigate(`${getApplyPath(job?.companyId, mock.firstJobId)}/mock/${mock.id}`);
-      }}
-      onDeleteMock={handleDeleteMock}
-      canCreateMock={canCreateMock}
-      canEditMock={canEditMock}
-    />
+    <>
+      <MockList
+        onViewMock={(id) => navigate(`/mocks/${id}`)}
+        onEditMock={(id) => navigate(`/mocks/${id}/edit`)}
+        onCreateMock={() => navigate('/mocks/create')}
+        onTestMock={(mock) => {
+          if (!mock.firstJobId) return;
+          const job = JOBS.find((item) => String(item.id) === String(mock.firstJobId));
+          navigate(`${getApplyPath(job?.companyId, mock.firstJobId)}/mock/${mock.id}`);
+        }}
+        onDeleteMock={handleDeleteMock}
+        canCreateMock={canCreateMock}
+        canEditMock={canEditMock}
+      />
+      <ConfirmDialog
+        isOpen={Boolean(mockToDelete)}
+        title="Delete mock?"
+        description={
+          mockToDelete
+            ? `Delete "${mockToDelete.title}"? This cannot be undone.`
+            : 'Delete this mock?'
+        }
+        confirmLabel="Delete"
+        confirmVariant="danger"
+        isBusy={isDeletingMock}
+        onConfirm={confirmDeleteMock}
+        onClose={() => setMockToDelete(null)}
+      />
+      <ConfirmDialog
+        isOpen={Boolean(deleteError)}
+        title="Unable to delete mock"
+        description={deleteError}
+        confirmLabel="Close"
+        showCancel={false}
+        onConfirm={() => setDeleteError('')}
+        onClose={() => setDeleteError('')}
+      />
+    </>
   );
 }
 
@@ -935,10 +848,7 @@ function ApplicationLayout() {
   return (
     <div className="application-shell">
       <div className="application-shell__main">
-        <RouteErrorBoundary
-          scope="Application page"
-          fallbackPath={getApplyPath(companyId, jobId)}
-        >
+        <RouteErrorBoundary scope="Application page" fallbackPath={getApplyPath(companyId, jobId)}>
           <Suspense fallback={<RouteFallback />}>
             <Outlet />
           </Suspense>
@@ -1044,7 +954,14 @@ function AppCompletePage() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Suspense fallback={null}><LandingPage /></Suspense>} />
+      <Route
+        path="/"
+        element={
+          <Suspense fallback={null}>
+            <LandingPage />
+          </Suspense>
+        }
+      />
       <Route
         path="/login"
         element={

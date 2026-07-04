@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { JobConfigForm } from '../JobConfigForm';
+import { ConfirmDialog } from '../../../../components/ui/Dialog';
 import {
   formToBackendJobSchedulePatch,
   getJobById,
@@ -13,6 +14,7 @@ import {
  */
 export function EditConfig({ jobId, onSaved }) {
   const { dataVersion } = useBackendData();
+  const [error, setError] = useState('');
   const job = getJobById(jobId);
   const formData = useMemo(() => {
     void dataVersion;
@@ -26,7 +28,7 @@ export function EditConfig({ jobId, onSaved }) {
       const saved = await updateJob(job.id, patch);
       onSaved?.(saved?.id || job.id);
     } catch (error) {
-      window.alert(error.message || 'Unable to update job.');
+      setError(error.message || 'Unable to update job.');
     }
   };
 
@@ -47,11 +49,22 @@ export function EditConfig({ jobId, onSaved }) {
   }
 
   return (
-    <JobConfigForm
-      mode="edit"
-      initialData={formData}
-      status={job.status}
-      onSaveChanges={handleSaveChanges}
-    />
+    <>
+      <JobConfigForm
+        mode="edit"
+        initialData={formData}
+        status={job.status}
+        onSaveChanges={handleSaveChanges}
+      />
+      <ConfirmDialog
+        isOpen={Boolean(error)}
+        title="Unable to update job"
+        description={error}
+        confirmLabel="Close"
+        showCancel={false}
+        onConfirm={() => setError('')}
+        onClose={() => setError('')}
+      />
+    </>
   );
 }

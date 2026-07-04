@@ -1,74 +1,65 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Pencil,
-  Users,
-  Clock,
-  Briefcase,
-  MapPin,
-  Target,
-  TrendingUp,
-  CalendarDays,
-  Eye,
-  Share2,
-  Check,
-  UserSearch,
-} from 'lucide-react';
-import { EntityCard, QuickInfoCard } from '../../../../components/ui/Cards';
+import { Users } from 'lucide-react';
+import PropTypes from 'prop-types';
+import { QuickInfoCard } from '../../../../components/ui/Cards';
 import { Button } from '../../../../components/ui/Button';
 import { Badge } from '../../../../components/ui/Badge';
 import { EmptyState } from '../../../../components/ui/EmptyState';
 import { SectionTitle } from '../../../../components/ui/SectionTitle';
 import { Tabs } from '../../../../components/ui/Tabs';
 import { TableHeader, TableRow, TableCell } from '../../../../components/ui/Tables';
-import { RadarChart, AreaChart, RadialBarChart } from '../../../../components/ui/Charts';
+import { AreaChart } from '../../../../components/ui/Charts';
+import { CHART_BRAND } from '../../../../components/ui/Charts/chartTokens';
 import {
-  getJobById,
-  getCandidatesByJobId,
   getApplicationSharePath,
+  getCandidatesByJobId,
+  getJobById,
+  toSlug,
   useBackendData,
 } from '../../../../api';
+import { getDisplayJobStatus } from '../../../../utils';
 import './JobDetails.css';
 
-/* -------------------------------------------------
-   Table config — mirrors Pipeline table structure
-   ------------------------------------------------- */
 const TABLE_COLUMNS = [
   { key: 'name', label: 'Name', sortable: true, fr: 1.2 },
   { key: 'score', label: 'Score', sortable: true, fr: 1.5 },
   { key: 'date', label: 'Date', sortable: true, fr: 1 },
-  { key: 'antiCheat', label: 'Anti-cheat', sortable: false, fr: 1 },
+  { key: 'integrity', label: 'Integrity', sortable: false, fr: 1 },
   { key: 'status', label: 'Status', sortable: false, fr: 1 },
 ];
-const GRID_TEMPLATE = TABLE_COLUMNS.map((c) => `${c.fr}fr`).join(' ');
+const GRID_TEMPLATE = TABLE_COLUMNS.map((column) => `${column.fr}fr`).join(' ');
+function getScoreTone(score) {
+  if (score >= 80) return 'strong';
+  if (score >= 60) return 'steady';
+  return 'low';
+}
 
-const getScoreColor = (score) => {
-  const t = Math.max(0, Math.min(1, (score - 40) / 60));
-  const h = Math.round(14 * t);
-  const s = Math.round(100 * t);
-  const l = Math.round(30 + 30 * t);
-  return `hsl(${h}, ${s}%, ${l}%)`;
-};
+function getInitials(name) {
+  return String(name || '')
+    .split(' ')
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
 
-const ICON_SM = 14;
-
-/* -------------------------------------------------
-   JobDetails
-   ------------------------------------------------- */
 export const JobDetails = memo(function JobDetails({
   jobId,
   onEdit,
   onTest,
   onShowCandidates,
+  onViewCandidate,
   canEditJob = true,
 }) {
   const { dataVersion } = useBackendData();
-  void dataVersion;
   const [copied, setCopied] = useState(false);
   const [activeMobileTab, setActiveMobileTab] = useState('analysis');
   const mobileScrollRef = useRef(null);
   const shareTimerRef = useRef(null);
   const job = getJobById(jobId);
   const applyPath = getApplicationSharePath(job);
+  const displayStatus = getDisplayJobStatus(job);
 
   useEffect(
     () => () => {
@@ -77,14 +68,19 @@ export const JobDetails = memo(function JobDetails({
     []
   );
 
+  const jobCandidates = useMemo(() => {
+    void dataVersion;
+    return job ? getCandidatesByJobId(job.id) : [];
+  }, [job, dataVersion]);
+
   const totalDuration = useMemo(
-    () => (job ? job.mocks.reduce((s, m) => s + m.durationMin, 0) : 0),
+    () => (job ? job.mocks.reduce((sum, mock) => sum + Number(mock.durationMin || 0), 0) : 0),
     [job]
   );
 
-  const mockRadarData = useMemo(
-    () => (job ? job.mocks.map((m) => ({ label: m.name, value: m.avgScore })) : []),
-    [job]
+  const needsReview = useMemo(
+    () => jobCandidates.filter((candidate) => candidate.status === 'pending').length,
+    [jobCandidates]
   );
 
   const candidateBreakdown = useMemo(
@@ -99,15 +95,12 @@ export const JobDetails = memo(function JobDetails({
         : [],
     [job]
   );
-  const jobCandidates = useMemo(() => {
-    void dataVersion;
-    return job ? getCandidatesByJobId(job.id) : [];
-  }, [job, dataVersion]);
 
   const handleEdit = useCallback(() => onEdit?.(jobId), [onEdit, jobId]);
 
   const handleShare = useCallback(() => {
-    navigator.clipboard.writeText(`${window.location.origin}${applyPath}`);
+    if (!applyPath) return;
+    navigator.clipboard?.writeText(`${window.location.origin}${applyPath}`);
     setCopied(true);
     if (shareTimerRef.current) window.clearTimeout(shareTimerRef.current);
     shareTimerRef.current = window.setTimeout(() => {
@@ -140,127 +133,108 @@ export const JobDetails = memo(function JobDetails({
     );
   }
 
+  const summaryContext = [job.seniority || 'Seniority not set', job.location || 'Location not set']
+    .filter(Boolean)
+    .join(' · ');
+
   const analysisPanel = (
     <div className="job-details__panel job-details__panel--analysis">
-      <EntityCard
-        showAvatar={false}
-        userName={job.title}
-        userEmail={`${job.department} · ${job.seniority}`}
-        showBadge
-        badgeType="jobStatus"
-        badgeVariant={job.status}
-        colLeft={{ icon: Briefcase, title: job.jobType, subtitle: 'Job Type' }}
-        colMid={{ icon: MapPin, title: job.location, subtitle: job.locationType }}
-        colRight={{
-          icon: Clock,
-          title: `${totalDuration} min`,
-          subtitle: `${job.mocks.length} Interviews`,
-        }}
-        tags={job.skills}
-        tagsLimit={5}
-        showDescription
-        descriptionTitle="Description"
-        descriptionContent={job.description}
-        animated={false}
-      />
+      <section className="job-details__summary-band">
+        <div className="job-details__summary-heading">
+          <div>
+            <h1>{job.title}</h1>
+            <p>{summaryContext}</p>
+          </div>
+          <div className="job-details__summary-actions">
+            <Badge type="jobStatus" variant={displayStatus} />
+          </div>
+        </div>
+        <div className="job-details__summary-meta">
+          <div>
+            <span>Job type</span>
+            <strong>{job.jobType}</strong>
+          </div>
+          <div>
+            <span>Work arrangement</span>
+            <strong>{job.locationType || 'Not set'}</strong>
+          </div>
+          <div>
+            <span>Assessment time</span>
+            <strong>{totalDuration} min</strong>
+          </div>
+          <div>
+            <span>Assessments</span>
+            <strong>{job.mocks.length}</strong>
+          </div>
+        </div>
+      </section>
 
       <div className="job-details__stats">
         <QuickInfoCard
-          icon={<Users />}
           number={job.totalApplied}
-          title="Total Applied"
+          title="Applications"
+          density="compact"
           animated={false}
         />
         <QuickInfoCard
-          icon={<Target />}
+          number={needsReview}
+          title="Needs review"
+          density="compact"
+          animated={false}
+        />
+        <QuickInfoCard
           number={`${job.avgScore}%`}
-          title="Avg Score"
+          title="Avg. score"
+          density="compact"
           animated={false}
         />
         <QuickInfoCard
-          icon={<TrendingUp />}
-          number={`${job.passRate}%`}
-          title="Pass Rate"
-          animated={false}
-        />
-        <QuickInfoCard
-          icon={<CalendarDays />}
-          number={job.activeDays}
-          title="Active Days"
+          number={job.endDate || 'No close date'}
+          title="Close date"
+          density="compact"
           animated={false}
         />
       </div>
 
       <section className="job-details__section">
-        <SectionTitle variant="inline">Performance Overview</SectionTitle>
-        <div className="job-details__charts-row">
-          <AreaChart
-            title="Application Trend"
-            data={job.applicationTrend}
-            dataKeys={[{ key: 'value', label: 'Applications', color: '#ff5d31' }]}
-            xKey="label"
-            className="job-details__chart"
-          />
-          {mockRadarData.length >= 3 ? (
-            <RadarChart
-              title="Avg Score per Mock"
-              stats={mockRadarData}
-              className="job-details__chart"
-            />
-          ) : (
-            <div className="job-details__chart job-details__single-mock">
-              <h3 className="job-details__single-mock-title">Avg Score per Mock</h3>
-              {mockRadarData.map((m) => (
-                <div key={m.label} className="job-details__single-mock-item">
-                  <span className="job-details__single-mock-label">{m.label}</span>
-                  <span className="job-details__single-mock-value">{m.value}%</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section className="job-details__section">
-        <SectionTitle variant="inline">Top Candidates</SectionTitle>
+        <SectionTitle variant="inline">Candidate pipeline</SectionTitle>
         <div className="job-details__cand-table">
           <TableHeader columns={TABLE_COLUMNS} gridTemplateColumns={GRID_TEMPLATE} />
           {jobCandidates.length > 0 ? (
-            jobCandidates.map((c) => (
-              <TableRow key={c.id} gridTemplateColumns={GRID_TEMPLATE}>
+            jobCandidates.map((candidate) => (
+              <TableRow
+                key={candidate.id}
+                gridTemplateColumns={GRID_TEMPLATE}
+                onClick={() =>
+                  onViewCandidate?.(toSlug(candidate.name, candidate.id), candidate.id)
+                }
+              >
                 <TableCell
                   color="tertiary"
-                  icon={
-                    <span className="job-details__avatar">
-                      {c.name
-                        .split(' ')
-                        .map((n) => n[0])
-                        .join('')}
-                    </span>
-                  }
+                  icon={<span className="job-details__avatar">{getInitials(candidate.name)}</span>}
                 >
-                  {c.name}
+                  {candidate.name}
                 </TableCell>
                 <TableCell className="job-details__score-cell">
                   <span className="job-details__score">
                     <span className="job-details__score-bar">
                       <span
-                        className="job-details__score-fill"
-                        style={{
-                          width: `${c.score}%`,
-                          backgroundColor: getScoreColor(c.score),
-                        }}
+                        className={[
+                          'job-details__score-fill',
+                          `job-details__score-fill--${getScoreTone(candidate.score)}`,
+                        ].join(' ')}
+                        style={{ width: `${candidate.score}%` }}
                       />
                     </span>
-                    <span className="job-details__score-value">{c.score}</span>
+                    <span className="job-details__score-value">{candidate.score}%</span>
                   </span>
                 </TableCell>
-                <TableCell color="tertiary">{c.date}</TableCell>
+                <TableCell color="tertiary">{candidate.date}</TableCell>
                 <TableCell>
-                  <Badge type="cheatingFlag" variant={c.antiCheat} iconLeft outline />
+                  <Badge type="cheatingFlag" variant={candidate.antiCheat} iconLeft outline />
                 </TableCell>
                 <TableCell>
-                  <Badge type="candidateState" variant={c.status} />
+                  <Badge type="candidateState" variant={candidate.status} />
                 </TableCell>
               </TableRow>
             ))
@@ -269,18 +243,50 @@ export const JobDetails = memo(function JobDetails({
               icon={<Users size={24} />}
               title="No candidates yet"
               description="Applications for this job will appear here as candidates apply."
-              action={
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  iconLeft={<UserSearch size={ICON_SM} />}
-                  onClick={() => onShowCandidates?.(jobId)}
-                >
-                  Open Pipeline
-                </Button>
-              }
             />
           )}
+        </div>
+      </section>
+
+      {job.applicationTrend?.length > 0 && (
+        <section className="job-details__section">
+          <SectionTitle variant="inline">Performance trend</SectionTitle>
+          <AreaChart
+            title="Application trend"
+            data={job.applicationTrend}
+            dataKeys={[{ key: 'value', label: 'Applications', color: CHART_BRAND }]}
+            xKey="label"
+            className="job-details__chart"
+          />
+        </section>
+      )}
+
+      <section className="job-details__section">
+        <SectionTitle variant="inline">Role and assessment setup</SectionTitle>
+        <div className="job-details__setup-grid">
+          <div className="job-details__setup-column">
+            <span className="job-details__info-label">Description</span>
+            <p className="job-details__description">{job.description}</p>
+            {job.skills?.length > 0 && (
+              <div className="job-details__tags">
+                {job.skills.map((skill) => (
+                  <span key={skill}>{skill}</span>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="job-details__setup-column">
+            <span className="job-details__info-label">Assessments</span>
+            <div className="job-details__mock-list">
+              {job.mocks.map((mock) => (
+                <div key={mock.id} className="job-details__mock-row">
+                  <span className="job-details__mock-name">{mock.name}</span>
+                  <span>{mock.weight}%</span>
+                  <span>{Number(mock.durationMin || 0)} min</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
     </div>
@@ -289,89 +295,64 @@ export const JobDetails = memo(function JobDetails({
   const actionsPanel = (
     <div className="job-details__panel job-details__panel--actions">
       <div className="job-details__card">
+        <SectionTitle variant="inline">Actions</SectionTitle>
         <div className="job-details__action-list">
-          {canEditJob && (
-            <>
-              <Button
-                variant="primary"
-                size="sm"
-                iconLeft={copied ? <Check size={ICON_SM} /> : <Share2 size={ICON_SM} />}
-                onClick={handleShare}
-              >
-                {copied ? 'Copied!' : 'Share Job'}
-              </Button>
-
-              <Button
-                variant="secondary"
-                size="sm"
-                iconLeft={<Eye size={ICON_SM} />}
-                onClick={() => onTest?.(applyPath)}
-              >
-                Test Application
-              </Button>
-            </>
-          )}
+          <Button variant="secondary" size="sm" onClick={handleShare} disabled={!applyPath}>
+            {copied ? 'Link copied' : 'Copy application link'}
+          </Button>
           <Button
             variant="secondary"
             size="sm"
-            iconLeft={<UserSearch size={ICON_SM} />}
-            onClick={() => onShowCandidates?.(jobId)}
+            onClick={() => applyPath && onTest?.(applyPath)}
+            disabled={!applyPath}
           >
-            Show Candidates
+            Preview application
           </Button>
-          {canEditJob && (
-            <Button
-              variant="ghost"
-              size="sm"
-              iconLeft={<Pencil size={ICON_SM} />}
-              onClick={handleEdit}
-            >
-              Edit Job
+          <Button variant="secondary" size="sm" onClick={() => onShowCandidates?.(jobId)}>
+            Show candidates
+          </Button>
+          {canEditJob ? (
+            <Button variant="ghost" size="sm" onClick={handleEdit}>
+              Edit job
             </Button>
+          ) : (
+            <p className="job-details__read-only">Viewer access is read-only for editing.</p>
           )}
         </div>
       </div>
 
-      <RadialBarChart title="Candidate Breakdown" data={candidateBreakdown} />
+      <div className="job-details__card">
+        <SectionTitle variant="inline">Candidate breakdown</SectionTitle>
+        <div className="job-details__breakdown-list">
+          {candidateBreakdown.map((item) => (
+            <div key={item.label} className="job-details__breakdown-row">
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+            </div>
+          ))}
+        </div>
+      </div>
 
       <div className="job-details__card">
-        <SectionTitle variant="inline">Job Info</SectionTitle>
-
-        <div className="job-details__info-group">
-          <span className="job-details__info-label">Evaluation Structure</span>
-          <div className="job-details__formula">
-            {job.mocks.map((m) => (
-              <div key={m.id} className="job-details__formula-row">
-                <span className="job-details__formula-name">{m.name}</span>
-                <span className="job-details__formula-pct">{m.weight}%</span>
-              </div>
-            ))}
+        <SectionTitle variant="inline">Publishing rules</SectionTitle>
+        <div className="job-details__formula">
+          <div className="job-details__formula-row">
+            <span className="job-details__formula-name">Published</span>
+            <span className="job-details__formula-pct">{job.publishDate}</span>
           </div>
-        </div>
-
-        <div className="job-details__divider" />
-
-        <div className="job-details__info-group">
-          <span className="job-details__info-label">Application Window</span>
-          <div className="job-details__formula">
-            <div className="job-details__formula-row">
-              <span className="job-details__formula-name">Published</span>
-              <span className="job-details__formula-pct">{job.publishDate}</span>
-            </div>
-            <div className="job-details__formula-row">
-              <span className="job-details__formula-name">Deadline</span>
-              <span className="job-details__formula-pct">{job.endDate || 'No end date'}</span>
-            </div>
-            <div className="job-details__formula-row">
-              <span className="job-details__formula-name">Max Candidates</span>
-              <span className="job-details__formula-pct">
-                {job.maxCandidates ? `${job.maxCandidates} applications` : 'Unlimited'}
-              </span>
-            </div>
-            <div className="job-details__formula-row">
-              <span className="job-details__formula-name">Total Duration</span>
-              <span className="job-details__formula-pct">{`${totalDuration} min`}</span>
-            </div>
+          <div className="job-details__formula-row">
+            <span className="job-details__formula-name">Deadline</span>
+            <span className="job-details__formula-pct">{job.endDate || 'No end date'}</span>
+          </div>
+          <div className="job-details__formula-row">
+            <span className="job-details__formula-name">Max candidates</span>
+            <span className="job-details__formula-pct">
+              {job.maxCandidates ? `${job.maxCandidates} applications` : 'Unlimited'}
+            </span>
+          </div>
+          <div className="job-details__formula-row">
+            <span className="job-details__formula-name">Total duration</span>
+            <span className="job-details__formula-pct">{totalDuration} min</span>
           </div>
         </div>
       </div>
@@ -397,3 +378,12 @@ export const JobDetails = memo(function JobDetails({
     </div>
   );
 });
+
+JobDetails.propTypes = {
+  jobId: PropTypes.string,
+  onEdit: PropTypes.func,
+  onTest: PropTypes.func,
+  onShowCandidates: PropTypes.func,
+  onViewCandidate: PropTypes.func,
+  canEditJob: PropTypes.bool,
+};

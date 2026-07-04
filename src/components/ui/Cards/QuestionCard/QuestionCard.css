@@ -177,7 +177,7 @@
 
 .question-card__delete-icon:hover {
   background-color: var(--bg-hover);
-  color: var(--red-500);
+  color: var(--status-error-text);
 }
 
 .question-card__delete-icon:active {
@@ -289,8 +289,8 @@
 }
 
 .question-card__score-icon {
-  color: var(--brand-default);
-  fill: var(--brand-default);
+  color: var(--text-accent);
+  fill: var(--text-accent);
 }
 
 .question-card__score-value {

@@ -1,0 +1,43 @@
+.app-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--app-logo-width, 4.125rem);
+  height: var(--app-logo-height, 1.875rem);
+  color: var(--text-primary);
+  line-height: 0;
+  flex-shrink: 0;
+}
+
+.app-logo--sm {
+  --app-logo-width: 3rem;
+  --app-logo-height: 1.375rem;
+}
+
+.app-logo--md {
+  --app-logo-width: 4.25rem;
+  --app-logo-height: 1.9375rem;
+}
+
+.app-logo--lg {
+  --app-logo-width: 5.75rem;
+  --app-logo-height: 2.625rem;
+}
+
+.app-logo__svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.app-logo__word {
+  fill: var(--app-logo-word, var(--gray-200));
+}
+
+.app-logo__dot {
+  fill: var(--app-logo-accent, var(--brand-default));
+}
+
+:root[data-theme='light'] .app-logo {
+  --app-logo-word: var(--text-primary);
+}

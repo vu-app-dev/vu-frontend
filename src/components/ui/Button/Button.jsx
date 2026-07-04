@@ -2,7 +2,7 @@ import { memo } from 'react';
 import PropTypes from 'prop-types';
 import './Button.css';
 
-const VARIANTS = ['primary', 'secondary', 'ghost', 'danger', 'dashed'];
+const VARIANTS = ['primary', 'secondary', 'ghost', 'success', 'danger', 'dashed'];
 const SIZES = ['sm', 'lg'];
 
 /**

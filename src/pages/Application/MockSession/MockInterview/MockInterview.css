@@ -289,7 +289,7 @@
 
 .mock-interview__thumb:hover .mock-interview__thumb-pin-icon {
   opacity: 1;
-  color: var(--brand-default);
+  color: var(--text-accent);
 }
 
 /* Main pinned view */
@@ -857,18 +857,28 @@
   align-items: center;
   gap: 4px;
   font-size: var(--text-xs);
-  color: var(--status-warning-text, #f59e0b);
+  color: var(--status-warning-text);
   font-weight: var(--font-semibold);
   padding: 2px 4px;
   animation: countdown-pulse 1s ease infinite;
 }
 
 @keyframes countdown-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 @keyframes stt-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }

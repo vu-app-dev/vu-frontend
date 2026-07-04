@@ -1,4 +1,5 @@
 export { redistributeWeights, redistributeWeightsPair } from './redistributeWeights';
+export { getDisplayJobStatus } from './jobStatusDisplay';
 export {
   THEMES,
   THEME_STORAGE_KEY,

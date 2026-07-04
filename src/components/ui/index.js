@@ -14,3 +14,6 @@ export { Stepper } from './Stepper';
 export { TableHeader, TableRow, TableCell } from './Tables';
 export { SectionTitle } from './SectionTitle';
 export { FilterOverlay } from './FilterOverlay';
+export { ConfirmDialog } from './Dialog';
+export { SidePanel } from './SidePanel';
+export { AppliedFilterChips } from './AppliedFilterChips';

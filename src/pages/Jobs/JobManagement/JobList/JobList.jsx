@@ -1,26 +1,25 @@
 import { useState, useMemo, useCallback, memo } from 'react';
 import { useLocation } from 'react-router-dom';
 import PropTypes from 'prop-types';
-import { Users, Pencil, Eye, Plus, FileText, Clock, Share2, Briefcase } from 'lucide-react';
+import { Users, Pencil, Plus, Share2, Briefcase } from 'lucide-react';
 import { Shortcuts } from '../../../../components/layout/Shortcuts';
 import { EntityCard } from '../../../../components/ui/Cards';
+import { AppliedFilterChips } from '../../../../components/ui/AppliedFilterChips';
 import { Pagination } from '../../../../components/ui/Pagination';
 import { FilterOverlay } from '../../../../components/ui/FilterOverlay';
 import { Button } from '../../../../components/ui/Button';
 import { EmptyState } from '../../../../components/ui/EmptyState';
 import { JOBS, JOB_TYPE_OPTIONS, useBackendData } from '../../../../api';
+import { getDisplayJobStatus } from '../../../../utils';
 import './JobList.css';
 
 /* ── Menu options ── */
 
 function getCardMenuOptions(canEditJob) {
-  const options = [
-    { id: 'view', label: 'View Details', icon: Eye, variant: 'default' },
-    { id: 'candidates', label: 'Show Candidates', icon: Users, variant: 'default' },
-  ];
+  const options = [{ id: 'candidates', label: 'Show candidates', icon: Users, variant: 'default' }];
   if (canEditJob) {
-    options.push({ id: 'share', label: 'Share Job', icon: Share2, variant: 'default' });
-    options.push({ id: 'edit', label: 'Edit Job', icon: Pencil, variant: 'default' });
+    options.push({ id: 'share', label: 'Copy application link', icon: Share2, variant: 'default' });
+    options.push({ id: 'edit', label: 'Edit job', icon: Pencil, variant: 'default' });
   }
   return options;
 }
@@ -112,6 +111,7 @@ export const JobList = memo(function JobList({
   const [currentPage, setCurrentPage] = useState(1);
   const [searchValue, setSearchValue] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [copiedJobId, setCopiedJobId] = useState('');
   const [overlayFilters, setOverlayFilters] = useState(() => ({
     ...INITIAL_OVERLAY,
     statusQuick: initialStatus,
@@ -121,6 +121,7 @@ export const JobList = memo(function JobList({
     void dataVersion;
     return JOBS.map((j) => ({
       ...j,
+      displayStatus: getDisplayJobStatus(j),
       totalCandidates: j.totalApplied || 0,
       mocks: (j.mocks || []).map((m) => m.name),
     }));
@@ -159,6 +160,39 @@ export const JobList = memo(function JobList({
     return count;
   }, [overlayFilters]);
 
+  const summary = useMemo(() => {
+    const active = jobsForCards.filter((job) => job.displayStatus === 'active').length;
+    const scheduled = jobsForCards.filter((job) => job.displayStatus === 'scheduled').length;
+    const closed = jobsForCards.filter((job) => job.displayStatus === 'closed').length;
+    return {
+      total: jobsForCards.length,
+      active,
+      scheduled,
+      closed,
+    };
+  }, [jobsForCards]);
+
+  const activeFilterChips = useMemo(() => {
+    const chips = [];
+    const status = STATUS_FILTERS.find((option) => option.value === overlayFilters.statusQuick);
+    const type = JOB_TYPE_OPTIONS.find((option) => option.value === overlayFilters.typeQuick);
+    const sort = SORT_OPTIONS.find((option) => option.value === overlayFilters.sortQuick);
+    if (status) chips.push({ key: 'statusQuick', label: `Status: ${status.label}` });
+    if (type) chips.push({ key: 'typeQuick', label: `Type: ${type.label}` });
+    if (sort && sort.value !== DEFAULT_SORT)
+      chips.push({ key: 'sortQuick', label: `Sort: ${sort.label}` });
+    return chips;
+  }, [overlayFilters]);
+
+  const clearAllOverlayFilters = useCallback(() => {
+    const next = { ...INITIAL_OVERLAY };
+    setOverlayFilters(next);
+    setStatusFilter('');
+    setTypeFilter('');
+    setSortBy(DEFAULT_SORT);
+    setCurrentPage(1);
+  }, []);
+
   const handleSearchChange = useCallback((e) => {
     setSearchValue(e.target.value);
     setCurrentPage(1);
@@ -170,7 +204,7 @@ export const JobList = memo(function JobList({
     const q = searchValue.trim() ? searchValue.toLowerCase() : null;
 
     let jobs = jobsForCards.filter((j) => {
-      if (statusLower && j.status !== statusLower) return false;
+      if (statusLower && j.displayStatus !== statusLower) return false;
       if (typeValue && j.jobTypeValue !== typeValue) return false;
       if (q && !j.title.toLowerCase().includes(q) && !j.description.toLowerCase().includes(q))
         return false;
@@ -208,7 +242,11 @@ export const JobList = memo(function JobList({
       if (action === 'view') onViewJob?.(job.id);
       else if (action === 'edit') onEditJob?.(job.id);
       else if (action === 'candidates') onShowCandidates?.(job);
-      else if (action === 'share') onShareJob?.(job);
+      else if (action === 'share') {
+        onShareJob?.(job);
+        setCopiedJobId(job.id);
+        window.setTimeout(() => setCopiedJobId(''), 1800);
+      }
     },
     [onViewJob, onEditJob, onShowCandidates, onShareJob]
   );
@@ -218,16 +256,21 @@ export const JobList = memo(function JobList({
     <div className="job-list">
       <Shortcuts
         filterLabel={SHORTCUTS_CONFIG.filterLabel}
-        filterCount={activeFilterCount ? `${activeFilterCount} active` : undefined}
         onFilterClick={() => setIsFilterOpen(true)}
+        filterSlot={
+          activeFilterCount ? (
+            <AppliedFilterChips chips={activeFilterChips} onClearAll={clearAllOverlayFilters} />
+          ) : null
+        }
         searchValue={searchValue}
         onSearchChange={handleSearchChange}
         searchPlaceholder="Search jobs..."
         primaryAction={
           canCreateJob
             ? {
-                label: 'Create Job',
+                label: 'Create job',
                 icon: Plus,
+                iconPosition: 'left',
                 onClick: () => onCreateJob?.(),
               }
             : undefined
@@ -235,45 +278,69 @@ export const JobList = memo(function JobList({
       />
 
       <div className="job-list__content">
+        <div className="job-list__summary-strip" aria-label="Jobs summary">
+          <div className="job-list__summary-item">
+            <span>Total jobs</span>
+            <strong>{summary.total}</strong>
+          </div>
+          <div className="job-list__summary-item">
+            <span>Active</span>
+            <strong>{summary.active}</strong>
+          </div>
+          <div className="job-list__summary-item">
+            <span>Scheduled</span>
+            <strong>{summary.scheduled}</strong>
+          </div>
+          <div className="job-list__summary-item">
+            <span>Closed</span>
+            <strong>{summary.closed}</strong>
+          </div>
+        </div>
+
         {/* Job cards */}
         <div className="job-list__cards">
           {paginatedJobs.length > 0 ? (
             paginatedJobs.map((job) => {
-              const smartDate = formatSmartDate(job.status, job.duration);
+              const displayStatus = job.displayStatus;
+              const smartDate = formatSmartDate(displayStatus, job.duration);
+              const roleContext = [job.jobType, job.seniority, job.location || job.locationType]
+                .filter(Boolean)
+                .join(' · ');
               return (
                 <EntityCard
                   key={job.id}
                   className="job-list__card"
                   userName={job.title}
-                  userEmail={job.department}
+                  userEmail={roleContext}
                   showAvatar={false}
                   showBadge
                   badgeType="jobStatus"
-                  badgeVariant={job.status}
+                  badgeVariant={displayStatus}
                   showMenu
                   menuOptions={cardMenuOptions}
                   onMenuSelect={(action) => handleMenuSelect(job, action)}
                   onClick={() => onViewJob?.(job.id)}
                   score={job.avgScore}
-                  scoreLabel="Avg Score"
+                  scoreLabel="Avg. score"
+                  scoreDisplay="bar"
+                  density="compact"
+                  menuAlwaysVisible
                   colLeft={{
-                    icon: Users,
                     title: String(job.totalCandidates),
-                    subtitle: 'Total Candidates',
+                    subtitle: 'Applications',
                   }}
                   colMid={{
-                    icon: FileText,
                     title: String(job.mocks.length),
-                    subtitle: 'Linked Mocks',
+                    subtitle: 'Assessments',
                   }}
                   colRight={{
-                    icon: Clock,
                     title: smartDate.title,
                     subtitle: smartDate.subtitle,
                   }}
                   tags={job.skills}
                   tagsLimit={3}
-                  animated
+                  caption={copiedJobId === job.id ? 'Link copied' : undefined}
+                  animated={false}
                 />
               );
             })
@@ -283,8 +350,8 @@ export const JobList = memo(function JobList({
               title={jobsForCards.length ? 'No matching jobs' : 'No jobs yet'}
               description={
                 jobsForCards.length
-                  ? 'Adjust the search or supported backend filters to see more jobs.'
-                  : 'Create your first job after adding at least one mock interview.'
+                  ? 'Adjust search or filters to show more jobs.'
+                  : 'Create a mock first, then publish your first job.'
               }
               action={
                 canCreateJob ? (

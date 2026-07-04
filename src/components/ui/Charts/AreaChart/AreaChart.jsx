@@ -71,6 +71,7 @@ export const AreaChart = memo(function AreaChart({
   dataKeys = DEFAULT_DATA_KEYS,
   xKey = 'label',
   className = '',
+  density = 'default',
   animated = true,
 }) {
   const [activeKey, setActiveKey] = useState(null);
@@ -88,7 +89,11 @@ export const AreaChart = memo(function AreaChart({
   );
 
   return (
-    <div className={['area-chart', className].filter(Boolean).join(' ')}>
+    <div
+      className={['area-chart', density === 'compact' && 'area-chart--compact', className]
+        .filter(Boolean)
+        .join(' ')}
+    >
       {title && <h3 className="area-chart__title">{title}</h3>}
       {title && <div className="area-chart__divider" />}
 
@@ -179,5 +184,6 @@ AreaChart.propTypes = {
   ),
   xKey: PropTypes.string,
   className: PropTypes.string,
+  density: PropTypes.oneOf(['default', 'compact']),
   animated: PropTypes.bool,
 };

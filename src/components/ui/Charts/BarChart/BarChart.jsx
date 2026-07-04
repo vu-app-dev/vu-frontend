@@ -98,6 +98,7 @@ export const BarChart = memo(function BarChart({
   dataKeys = DEFAULT_DATA_KEYS,
   xKey = 'label',
   className = '',
+  density = 'default',
   animated = true,
 }) {
   const isMultiBar = dataKeys.length > 1;
@@ -118,7 +119,11 @@ export const BarChart = memo(function BarChart({
   }, [data, dataKeys, isMultiBar]);
 
   return (
-    <div className={['bar-chart', className].filter(Boolean).join(' ')}>
+    <div
+      className={['bar-chart', density === 'compact' && 'bar-chart--compact', className]
+        .filter(Boolean)
+        .join(' ')}
+    >
       {title && <h3 className="bar-chart__title">{title}</h3>}
       {title && <div className="bar-chart__divider" />}
 
@@ -189,5 +194,6 @@ BarChart.propTypes = {
   ),
   xKey: PropTypes.string,
   className: PropTypes.string,
+  density: PropTypes.oneOf(['default', 'compact']),
   animated: PropTypes.bool,
 };

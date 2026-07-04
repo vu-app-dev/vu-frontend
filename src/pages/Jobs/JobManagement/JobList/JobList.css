@@ -10,9 +10,72 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--gap-xl);
+  gap: var(--gap-lg);
   padding: 0 var(--padding-lg) var(--padding-lg);
   min-height: 0;
+}
+
+.job-list__filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+
+.job-list__filter-chip,
+.job-list__filter-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-xs);
+  height: var(--size-7);
+  padding: 0 var(--padding-sm);
+  border: var(--border-sm) solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-tertiary);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.job-list__filter-chip:hover,
+.job-list__filter-clear:hover {
+  border-color: var(--border-default);
+  color: var(--text-secondary);
+}
+
+.job-list__filter-clear {
+  background: transparent;
+  border-color: transparent;
+}
+
+.job-list__summary-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--gap-sm);
+}
+
+.job-list__summary-item {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  padding: var(--padding-sm) var(--padding-md);
+  background: var(--bg-surface);
+  border: var(--border-sm) solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.job-list__summary-item span {
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+}
+
+.job-list__summary-item strong {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
 }
 
 /* ──────────────────────────────────────────
@@ -43,6 +106,10 @@
 }
 
 @media (max-width: 767px) {
+  .job-list__summary-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   /* Hide Linked Mocks column on mobile */
   .job-list__card .entity-card__cols-content {
     grid-template-columns: 1fr 1fr;
@@ -70,6 +137,10 @@
 }
 
 @media (max-width: 467px) {
+  .job-list__summary-strip {
+    grid-template-columns: 1fr;
+  }
+
   /* Very small screens: simplify card content to keep layout stable */
   .job-list__card .entity-card__tags {
     display: none;

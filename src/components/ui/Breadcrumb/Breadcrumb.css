@@ -1,13 +1,13 @@
-/* Breadcrumb Component */
-
 .breadcrumb {
-  display: inline-block;
+  display: block;
+  min-width: 0;
 }
 
 .breadcrumb__list {
   display: flex;
   align-items: center;
   gap: var(--gap-sm);
+  min-width: 0;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -17,78 +17,61 @@
   display: flex;
   align-items: center;
   gap: var(--size-1-5);
-  animation: breadcrumb-fade-in var(--transition-slow) both;
-  animation-delay: calc(var(--item-index, 0) * 50ms);
+  min-width: 0;
 }
 
-@keyframes breadcrumb-fade-in {
-  from {
-    opacity: 0;
-    transform: translateX(calc(-1 * var(--size-2)));
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-/* Label Base */
 .breadcrumb__label {
   display: inline-flex;
   align-items: center;
+  max-width: min(28rem, 52vw);
+  padding: var(--size-1) var(--size-2);
+  margin: 0 calc(-1 * var(--size-2));
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
-  line-height: 1.5;
+  line-height: 1.4;
   color: var(--text-tertiary);
-  border: none;
-  background: transparent;
   text-decoration: none;
-  padding: var(--size-0-5) var(--size-1-5);
-  margin: 0 calc(-1 * var(--size-1-5));
-  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   transition:
-    color var(--transition-base),
-    background var(--transition-base),
-    box-shadow var(--transition-fast);
-  outline: none;
+    background-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
-/* Interactive Link */
 .breadcrumb__link {
   cursor: pointer;
 }
 
 .breadcrumb__link:hover {
-  background: var(--white-a5);
+  background: var(--bg-card);
   color: var(--text-secondary);
 }
 
 .breadcrumb__link:active {
-  background: var(--white-a10);
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
 
 .breadcrumb__link:focus-visible {
-  background: var(--white-a10);
-  color: var(--text-primary);
-  box-shadow:
-    0 0 0 var(--size-0-5) var(--bg-base),
-    0 0 0 var(--size-1) var(--brand-default);
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
-/* Static Text */
 .breadcrumb__text {
   cursor: default;
 }
 
 .breadcrumb__text--current {
-  color: var(--text-secondary);
+  color: var(--text-primary);
+  font-weight: var(--font-semibold);
 }
 
-/* Separator */
 .breadcrumb__separator {
   flex-shrink: 0;
   color: var(--text-subtle);
-  opacity: 0.6;
 }

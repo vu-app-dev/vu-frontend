@@ -24,6 +24,7 @@ import {
   mapBackendCandidate,
   mapBackendJob,
   mapBackendMock,
+  mapBackendUserToMember,
   normalizeId,
 } from './mappers';
 import {
@@ -75,7 +76,6 @@ import {
   upsertJob,
   upsertMemberStore,
   upsertMock,
-  DEPARTMENT_OPTIONS,
   DIFFICULTY_OPTIONS,
   DURATION_OPTIONS,
   INDUSTRY_OPTIONS,
@@ -677,7 +677,6 @@ export function getJobsUsingMock(mockTitle) {
     title: job.title,
     status: job.status,
     totalApplied: job.totalApplied,
-    department: job.department,
   }));
 }
 
@@ -890,7 +889,6 @@ function buildPublicApplicationFallback(jobId, companyId) {
       startDateInput: '',
       endDate: 'Not provided',
       endDateInput: '',
-      department: 'Not provided',
       seniority: 'Not provided',
       jobType: 'Not provided',
       location: 'Not provided',
@@ -1039,7 +1037,6 @@ export async function buildApplicationContext(jobId = JOBS[0]?.id, options = {})
         startDateInput: job.startDateInput || '',
         endDate: job.endDate || 'Not provided',
         endDateInput: job.endDateInput || '',
-        department: job.department,
         seniority: job.seniority,
         jobType: job.jobType,
         location: job.location,
@@ -1206,7 +1203,6 @@ export async function acceptJoinRequest(requestId, role = 'viewer') {
     id: request.userId || `local-member-${Date.now()}`,
     name: request.name,
     email: request.email,
-    department: request.department || 'General',
     role,
     joinedDate: new Date().toLocaleDateString('en-US', {
       month: 'short',
@@ -1304,10 +1300,33 @@ export async function changePassword(input) {
 }
 
 export async function editCurrentUser(input) {
-  return apiFetch(endpoints.users.edit, {
+  const response = await apiFetch(endpoints.users.edit, {
     method: 'PATCH',
     body: input,
   });
+  const saved = unwrapEntity(response);
+  const nextUser =
+    saved && typeof saved === 'object'
+      ? { ...(CURRENT_USER || {}), ...saved }
+      : { ...(CURRENT_USER || {}), ...input };
+  const member = mapBackendUserToMember(
+    nextUser,
+    nextUser.companyUser || CURRENT_USER?.companyUser
+  );
+
+  if (member.id) {
+    upsertMemberStore(member);
+  } else if (CURRENT_USER_ID) {
+    updateMemberStore(CURRENT_USER_ID, member);
+  }
+
+  if (getStoredToken()) {
+    loadBackendData().catch((error) => {
+      console.warn('Profile saved, but workspace refresh failed.', error);
+    });
+  }
+
+  return nextUser;
 }
 
 export async function joinCompany(companyId, input = {}) {
@@ -1441,7 +1460,6 @@ export const backendApi = Object.freeze({
     jobTypeOptions: JOB_TYPE_OPTIONS,
     seniorityOptions: SENIORITY_OPTIONS,
     locationTypeOptions: LOCATION_TYPE_OPTIONS,
-    departmentOptions: DEPARTMENT_OPTIONS,
     mockLibrary: MOCK_LIBRARY,
     emailTriggers: EMAIL_TRIGGERS,
     initialJobForm: INITIAL_JOB_FORM,
@@ -1471,7 +1489,6 @@ export {
   CANDIDATES,
   COMPANY,
   CURRENT_USER_ID,
-  DEPARTMENT_OPTIONS,
   DIFFICULTY_OPTIONS,
   DURATION_OPTIONS,
   EMAIL_TRIGGERS,

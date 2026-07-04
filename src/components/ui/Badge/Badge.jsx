@@ -61,7 +61,8 @@ export const Badge = memo(function Badge({
 });
 
 Badge.propTypes = {
-  type: PropTypes.oneOf(['candidateState', 'cheatingFlag', 'jobStatus', 'role']).isRequired,
+  type: PropTypes.oneOf(['candidateState', 'cheatingFlag', 'jobStatus', 'mockStatus', 'role'])
+    .isRequired,
   variant: PropTypes.string.isRequired,
   iconLeft: PropTypes.oneOfType([PropTypes.bool, PropTypes.node]),
   iconRight: PropTypes.oneOfType([PropTypes.bool, PropTypes.node]),
