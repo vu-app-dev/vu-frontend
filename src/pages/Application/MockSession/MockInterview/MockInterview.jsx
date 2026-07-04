@@ -37,6 +37,110 @@ function formatTime(seconds) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+/* ── TTS queue (persistent audio element) ── */
+let _ttsQueue = [];
+let _ttsBusy = false;
+let _ttsAudioEl = null;
+
+function _getAudioEl() {
+  if (!_ttsAudioEl) {
+    _ttsAudioEl = document.getElementById('tts-audio');
+    if (!_ttsAudioEl) {
+      _ttsAudioEl = document.createElement('audio');
+      _ttsAudioEl.id = 'tts-audio';
+      _ttsAudioEl.style.display = 'none';
+      document.body.appendChild(_ttsAudioEl);
+    }
+  }
+  return _ttsAudioEl;
+}
+
+function unlockAudio() {
+  const el = _getAudioEl();
+  el.play().then(() => { el.pause(); el.currentTime = 0; }).catch(() => {});
+  if (window.speechSynthesis) {
+    const u = new SpeechSynthesisUtterance(' ');
+    u.volume = 0;
+    window.speechSynthesis.speak(u);
+  }
+}
+
+function stopTTS() {
+  _ttsQueue = [];
+  _ttsBusy = false;
+  const el = _getAudioEl();
+  el.onended = null;
+  el.onerror = null;
+  el.pause();
+  el.src = '';
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+}
+
+function speak(text, audioBase64) {
+  if (!text) return;
+  _ttsQueue.push({ text, audioBase64 });
+  if (!_ttsBusy) _playNextTTS();
+}
+
+function _playNextTTS() {
+  if (_ttsQueue.length === 0) {
+    _ttsBusy = false;
+    return;
+  }
+  _ttsBusy = true;
+  const { text, audioBase64 } = _ttsQueue.shift();
+
+  if (audioBase64) {
+    const el = _getAudioEl();
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      _playNextTTS();
+    };
+    el.onended = finish;
+    el.onerror = () => {
+      if (done) return;
+      done = true;
+      _speakBrowser(text);
+    };
+    el.src = `data:audio/mp3;base64,${audioBase64}`;
+    el.play().then(() => {
+      // playing
+    }).catch(() => {
+      if (done) return;
+      done = true;
+      el.onended = null;
+      el.onerror = null;
+      _speakBrowser(text);
+    });
+  } else {
+    _speakBrowser(text);
+  }
+}
+
+function _speakBrowser(text) {
+  if (!window.speechSynthesis) {
+    _playNextTTS();
+    return;
+  }
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 1.0;
+  u.lang = 'en-US';
+  let done = false;
+  u.onend = () => {
+    if (done) return;
+    done = true;
+    _playNextTTS();
+  };
+  u.onerror = () => {
+    if (done) return;
+    done = true;
+    _playNextTTS();
+  };
+  window.speechSynthesis.speak(u);
+}
+
 const PANEL = { camera: 'camera', code: 'code', screen: 'screen' };
 
 const MOCK_REQUIREMENTS = {
@@ -57,6 +161,8 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
   const [sessionToken, setSessionToken] = useState(null);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [sessionError, setSessionError] = useState(null);
+  const [readyToInterview, setReadyToInterview] = useState(false);
+  const introDataRef = useRef(null);
 
   /* Chat state */
   const [messages, setMessages] = useState([]);
@@ -155,6 +261,9 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
         setMessages(initialMessages);
         answerStartedAtRef.current = new Date().toISOString();
         setSessionLoading(false);
+
+        // Store intro/question data for playback after user clicks "Start"
+        introDataRef.current = { intro: data.intro, introAudio: data.introAudio, firstQuestion: data.firstQuestion, firstQuestionAudio: data.firstQuestionAudio };
       } catch (err) {
         if (!cancelled) {
           setSessionError(err.message);
@@ -165,15 +274,27 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
     return () => { cancelled = true; };
   }, [mockId]);
 
+  /* ── Start interview (user click unlocks audio) ── */
+  const handleStartInterview = useCallback(() => {
+    unlockAudio();
+    const d = introDataRef.current;
+    if (d) {
+      if (d.intro) speak(d.intro, d.introAudio);
+      if (d.firstQuestion) speak(d.firstQuestion.text, d.firstQuestionAudio);
+    }
+    setReadyToInterview(true);
+  }, []);
+
   /* ── Connect interview WS + STT WS when session is ready ── */
   useEffect(() => {
-    if (!sessionId || !sessionToken || isFinished) return;
+    if (!sessionId || !sessionToken || !readyToInterview || isFinished) return;
 
     const interviewWs = createInterviewWS({
       sessionId,
       sessionToken,
       onIntro: (data) => {
         addMessage('ai', data.text);
+        speak(data.text, data.audioBase64);
       },
       onQuestion: (data) => {
         cancelSilenceCountdown();
@@ -182,13 +303,16 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
         setQuestionIndex((prev) => prev + 1);
         answerStartedAtRef.current = new Date().toISOString();
         addMessage('ai', data.text);
+        speak(data.text, data.audioBase64);
         setIsTyping(false);
       },
       onAcknowledgement: (data) => {
         addMessage('ai', data.text);
+        speak(data.text, data.audioBase64);
         setIsTyping(false);
       },
       onSessionEnd: (data) => {
+        stopTTS();
         cancelSilenceCountdown();
         transcriptRef.current = '';
         setIsFinished(true);
@@ -210,6 +334,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
       onPartial: (text) => {
         setSttPartial(text);
         if (text.trim()) {
+          stopTTS();
           cancelSilenceCountdown();
         }
       },
@@ -234,7 +359,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
       interviewWsRef.current = null;
       sttWsRef.current = null;
     };
-  }, [sessionId, sessionToken, isFinished]);
+  }, [sessionId, sessionToken, readyToInterview, isFinished]);
 
   /* ── addMessage helper ── */
   const addMessage = useCallback((role, text) => {
@@ -330,6 +455,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
       setSttRecording(false);
     } else {
       if (!micCaptureRef.current) {
+        stopTTS();
         micCaptureRef.current = startMicCapture((base64) => {
           sendAudioToSTT(sttWsRef.current, base64);
         });
@@ -343,7 +469,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
 
   /* ── Timer countdown ── */
   useEffect(() => {
-    if (isFinished || sessionLoading) return;
+    if (isFinished || sessionLoading || !readyToInterview) return;
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -449,6 +575,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
     const camRef = camStreamRef;
     const screenRef = screenStreamRef;
     return () => {
+      stopTTS();
       camRef.current?.getTracks().forEach((t) => t.stop());
       screenRef.current?.getTracks().forEach((t) => t.stop());
       micCaptureRef.current?.stop();
@@ -465,6 +592,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
 
   /* ── Manual send (text input or submit accumulated voice) ── */
   const handleSend = useCallback(() => {
+    stopTTS();
     cancelSilenceCountdown();
     const voiceTranscript = transcriptRef.current.trim();
     transcriptRef.current = '';
@@ -511,6 +639,22 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
     return (
       <div className="mock-interview">
         <div className="mock-interview__header"><h3>Error: {sessionError}</h3></div>
+      </div>
+    );
+  }
+
+  if (!readyToInterview) {
+    return (
+      <div className="mock-interview">
+        <div className="mock-interview__ready-overlay">
+          <div className="mock-interview__ready-card">
+            <Bot size={32} />
+            <h3>Ready to Begin?</h3>
+            <p>Your AI interviewer is prepared. Click below to start the session.</p>
+            <p className="mock-interview__ready-note">Enable your camera and microphone when prompted.</p>
+            <Button variant="primary" onClick={handleStartInterview}>Start Interview</Button>
+          </div>
+        </div>
       </div>
     );
   }
