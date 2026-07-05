@@ -1,4 +1,21 @@
-const AI_SERVICE_URL = import.meta.env.VITE_AI_SERVICE_URL;
+function requireAbsoluteEnv(name) {
+  const value = import.meta.env[name]?.trim();
+  if (!value) {
+    throw new Error(`${name} is required. Add it to your .env file before building the app.`);
+  }
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error(`${name} must be a valid absolute AI service URL, for example https://ai.vuapp.dev.`);
+  }
+  if (!/^https?:$/i.test(url.protocol) || !url.hostname) {
+    throw new Error(`${name} must be an absolute AI service URL, for example https://ai.vuapp.dev.`);
+  }
+  return url.origin;
+}
+
+const AI_SERVICE_URL = requireAbsoluteEnv('VITE_AI_SERVICE_URL');
 
 function getWsBaseUrl() {
   const url = new URL(AI_SERVICE_URL);
