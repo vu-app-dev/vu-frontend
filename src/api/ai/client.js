@@ -1,4 +1,4 @@
-const AI_SERVICE_URL = import.meta.env.VITE_AI_SERVICE_URL || 'http://localhost:8000';
+const AI_SERVICE_URL = import.meta.env.VITE_AI_SERVICE_URL;
 
 function getWsBaseUrl() {
   const url = new URL(AI_SERVICE_URL);
