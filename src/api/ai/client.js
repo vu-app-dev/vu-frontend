@@ -30,7 +30,18 @@ export async function endInterview(sessionId) {
   return res.json();
 }
 
-export function createInterviewWS({ sessionId, sessionToken, onIntro, onQuestion, onAcknowledgement, onCheatWarning, onAnalysisUpdate, onSessionEnd, onError, onClose }) {
+export function createInterviewWS({
+  sessionId,
+  sessionToken,
+  onIntro,
+  onQuestion,
+  onAcknowledgement,
+  onCheatWarning,
+  onAnalysisUpdate,
+  onSessionEnd,
+  onError,
+  onClose,
+}) {
   const wsUrl = `${AI_WS_URL}/api/interview/session/${sessionId}?token=${sessionToken}`;
   const ws = new WebSocket(wsUrl);
 
@@ -81,29 +92,36 @@ export function createInterviewWS({ sessionId, sessionToken, onIntro, onQuestion
   return ws;
 }
 
-export function sendAnswer(ws, { sessionId, questionId, transcript, durationSeconds, startedAt, endedAt }) {
+export function sendAnswer(
+  ws,
+  { sessionId, questionId, transcript, durationSeconds, startedAt, endedAt }
+) {
   if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({
-      type: 'answer',
-      sessionId,
-      questionId,
-      transcript,
-      durationSeconds,
-      startedAt,
-      endedAt,
-    }));
+    ws.send(
+      JSON.stringify({
+        type: 'answer',
+        sessionId,
+        questionId,
+        transcript,
+        durationSeconds,
+        startedAt,
+        endedAt,
+      })
+    );
   }
 }
 
 export function sendVideoFrame(ws, { sessionId, image, frameNumber, timestamp }) {
   if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({
-      type: 'video_frame',
-      sessionId,
-      image: image || '',
-      frameNumber: frameNumber || 0,
-      timestamp: timestamp || Math.floor(Date.now() / 1000),
-    }));
+    ws.send(
+      JSON.stringify({
+        type: 'video_frame',
+        sessionId,
+        image: image || '',
+        frameNumber: frameNumber || 0,
+        timestamp: timestamp || Math.floor(Date.now() / 1000),
+      })
+    );
   }
 }
 
@@ -244,5 +262,13 @@ export function startMicCapture(onAudioChunk, sampleRate = 16000) {
     isRecording = true;
   }
 
-  return { start, stop, pause, resume, get isRecording() { return isRecording; } };
+  return {
+    start,
+    stop,
+    pause,
+    resume,
+    get isRecording() {
+      return isRecording;
+    },
+  };
 }

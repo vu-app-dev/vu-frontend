@@ -2,12 +2,10 @@ import { memo, useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { ArrowRight, ArrowLeft } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
-import { SectionTitle } from '../../../components/ui/SectionTitle';
 import { TextInput, EmailInput, FileInput, DropdownInput } from '../../../components/ui/Input';
 import { saveCandidateInfo, APPLICATION, CANDIDATE_INFO } from '../../../api';
 import './CandidateForm.css';
 
-/* ── Initial form state ── */
 const INITIAL_FORM = {
   firstName: '',
   lastName: '',
@@ -20,13 +18,11 @@ const INITIAL_FORM = {
   cvUrl: '',
 };
 
-/* ── Component ── */
 export const CandidateForm = memo(function CandidateForm({ onSubmit, onBack }) {
-  const [form, setForm] = useState(() => ({
-    ...INITIAL_FORM,
-    ...CANDIDATE_INFO,
-    resumeFile: null,
-  }));
+  const [form, setForm] = useState(() => {
+    const restored = { ...INITIAL_FORM, ...CANDIDATE_INFO, resumeFile: null };
+    return restored;
+  });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -43,7 +39,7 @@ export const CandidateForm = memo(function CandidateForm({ onSubmit, onBack }) {
   const handleFileChange = useCallback((e) => {
     const file = e.target.files?.[0];
     if (file) {
-      setForm((prev) => ({ ...prev, resumeFile: file, resumeName: file.name }));
+      setForm((prev) => ({ ...prev, resumeFile: file, resumeName: file.name, cvUrl: '' }));
       setErrors((prev) => {
         if (!prev.resume) return prev;
         const next = { ...prev };
@@ -76,6 +72,9 @@ export const CandidateForm = memo(function CandidateForm({ onSubmit, onBack }) {
         await saveCandidateInfo(form);
         onSubmit();
       } catch (error) {
+        if (!form.cvUrl && form.resumeFile) {
+          setForm((prev) => ({ ...prev, resumeFile: null, resumeName: '' }));
+        }
         setErrors({ submit: error.message || 'Unable to submit application.' });
       } finally {
         setSubmitting(false);
@@ -86,137 +85,121 @@ export const CandidateForm = memo(function CandidateForm({ onSubmit, onBack }) {
 
   return (
     <div className="candidate-form">
-      <div className="candidate-form__container">
-        {/* Header */}
-        <div className="candidate-form__header">
-          <SectionTitle
-            as="h2"
-            description="Please fill in your details to proceed with the application"
-          >
-            Your Information
-          </SectionTitle>
-          {APPLICATION && (
-            <p className="candidate-form__job-label">
-              Applying for <strong>{APPLICATION.job.title}</strong> at {APPLICATION.company.name}
-            </p>
-          )}
+      {/* ── Form body — flat, no card ── */}
+      <form className="candidate-form__body" onSubmit={handleSubmit} noValidate>
+        <div className="candidate-form__row">
+          <TextInput
+            label="First Name"
+            required
+            placeholder="John"
+            value={form.firstName}
+            error={!!errors.firstName}
+            hint={errors.firstName}
+            onChange={(e) => handleChange('firstName', e.target.value)}
+          />
+          <TextInput
+            label="Last Name"
+            required
+            placeholder="Doe"
+            value={form.lastName}
+            error={!!errors.lastName}
+            hint={errors.lastName}
+            onChange={(e) => handleChange('lastName', e.target.value)}
+          />
         </div>
 
-        {/* Form */}
-        <form className="candidate-form__body" onSubmit={handleSubmit} noValidate>
-          {/* Name row */}
-          <div className="candidate-form__row">
-            <TextInput
-              label="First Name"
-              required
-              placeholder="John"
-              value={form.firstName}
-              error={!!errors.firstName}
-              hint={errors.firstName}
-              onChange={(e) => handleChange('firstName', e.target.value)}
-            />
-            <TextInput
-              label="Last Name"
-              required
-              placeholder="Doe"
-              value={form.lastName}
-              error={!!errors.lastName}
-              hint={errors.lastName}
-              onChange={(e) => handleChange('lastName', e.target.value)}
-            />
-          </div>
+        <EmailInput
+          label="Email Address"
+          required
+          placeholder="john.doe@email.com"
+          value={form.email}
+          error={!!errors.email}
+          hint={errors.email}
+          onChange={(e) => handleChange('email', e.target.value)}
+        />
 
-          {/* Email */}
-          <EmailInput
-            label="Email Address"
-            required
-            placeholder="john.doe@email.com"
-            value={form.email}
-            error={!!errors.email}
-            hint={errors.email}
-            onChange={(e) => handleChange('email', e.target.value)}
-          />
-
-          {/* Phone + Location row */}
-          <div className="candidate-form__row">
-            <TextInput
-              label="Phone Number"
-              placeholder="+1 (555) 000-0000"
-              value={form.phone}
-              onChange={(e) => handleChange('phone', e.target.value)}
-              hint="Optional"
-            />
-            <DropdownInput
-              label="Location"
-              required
-              placeholder="Select your location"
-              value={form.location}
-              error={!!errors.location}
-              hint={errors.location}
-              onChange={(val) => handleChange('location', val)}
-              options={[
-                { label: 'United States', value: 'US' },
-                { label: 'United Kingdom', value: 'UK' },
-                { label: 'Canada', value: 'CA' },
-                { label: 'Germany', value: 'DE' },
-                { label: 'France', value: 'FR' },
-                { label: 'Remote', value: 'Remote' },
-              ]}
-            />
-          </div>
-
-          {/* LinkedIn */}
+        <div className="candidate-form__row">
           <TextInput
-            label="LinkedIn Profile"
-            placeholder="https://linkedin.com/in/your-profile"
-            value={form.linkedin}
-            onChange={(e) => handleChange('linkedin', e.target.value)}
+            label="Phone Number"
+            placeholder="+1 (555) 000-0000"
+            value={form.phone}
+            onChange={(e) => handleChange('phone', e.target.value)}
             hint="Optional"
           />
-
-          {/* Resume upload */}
-          <FileInput
-            label="Resume / CV"
+          <DropdownInput
+            label="Location"
             required
-            accept=".pdf,image/jpeg,image/png,image/webp"
-            error={!!errors.resume}
-            hint={
-              errors.resume ||
-              (form.resumeName ? `${form.resumeName} uploaded. Continue when ready.` : '')
-            }
-            onChange={handleFileChange}
+            placeholder="Select your location"
+            value={form.location}
+            error={!!errors.location}
+            hint={errors.location}
+            onChange={(val) => handleChange('location', val)}
+            options={[
+              { label: 'United States', value: 'US' },
+              { label: 'United Kingdom', value: 'UK' },
+              { label: 'Canada', value: 'CA' },
+              { label: 'Germany', value: 'DE' },
+              { label: 'France', value: 'FR' },
+              { label: 'Remote', value: 'Remote' },
+            ]}
           />
-          {errors.submit && <p className="candidate-form__error">{errors.submit}</p>}
+        </div>
 
-          {/* Actions */}
-          <div className="candidate-form__actions">
-            <Button
-              variant="ghost"
-              size="sm"
-              iconLeft={<ArrowLeft size={16} />}
-              onClick={onBack}
-              type="button"
-            >
-              Back
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              iconRight={<ArrowRight size={16} />}
-              type="submit"
-              disabled={submitting}
-            >
-              {submitting ? 'Submitting...' : 'Continue to Overview'}
-            </Button>
-          </div>
-        </form>
+        <TextInput
+          label="LinkedIn Profile"
+          placeholder="https://linkedin.com/in/your-profile"
+          value={form.linkedin}
+          onChange={(e) => handleChange('linkedin', e.target.value)}
+          hint="Optional"
+        />
 
-        {/* Info message */}
+        <FileInput
+          label="Resume / CV"
+          required={!form.cvUrl}
+          accept=".pdf,image/jpeg,image/png,image/webp"
+          error={!!errors.resume}
+          hint={
+            errors.resume ||
+            (form.resumeFile
+              ? `${form.resumeName} ready to upload.`
+              : form.cvUrl && form.resumeName
+                ? `${form.resumeName} previously uploaded.`
+                : '')
+          }
+          onChange={handleFileChange}
+        />
+
+        {errors.submit && <p className="candidate-form__error">{errors.submit}</p>}
+
         <p className="candidate-form__disclaimer">
           Your information is securely stored and will only be shared with the hiring team at{' '}
-          {APPLICATION?.company?.name || 'the company'}. By continuing, you agree to our assessment
-          terms.
+          {APPLICATION?.company?.name || 'the company'}.
         </p>
+      </form>
+
+      {/* ── Sticky bottom bar ── */}
+      <div className="candidate-form__sticky-bar">
+        <span className="candidate-form__sticky-bar-hint">All fields marked * are required</span>
+        <div className="candidate-form__sticky-bar-actions">
+          <Button
+            variant="ghost"
+            size="sm"
+            iconLeft={<ArrowLeft size={16} />}
+            onClick={onBack}
+            type="button"
+          >
+            Back
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            iconRight={<ArrowRight size={16} />}
+            onClick={handleSubmit}
+            disabled={submitting}
+          >
+            {submitting ? 'Submitting...' : 'Continue'}
+          </Button>
+        </div>
       </div>
     </div>
   );

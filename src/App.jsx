@@ -10,6 +10,7 @@ import {
 } from 'react-router-dom';
 import { PageLayout } from './components/layout/PageLayout';
 import { AppLogo } from './components/ui/AppLogo';
+import { ApplicationFlowLayout } from './pages/Application/_shared/ApplicationFlowLayout';
 import { RouteErrorBoundary } from './components/layout/RouteErrorBoundary';
 import { Button } from './components/ui/Button';
 import { EmptyState } from './components/ui/EmptyState';
@@ -95,11 +96,14 @@ const JobLanding = lazy(() =>
 const CandidateForm = lazy(() =>
   import('./pages/Application').then((m) => ({ default: m.CandidateForm }))
 );
-const JobOverview = lazy(() =>
-  import('./pages/Application').then((m) => ({ default: m.JobOverview }))
+const InterviewSetup = lazy(() =>
+  import('./pages/Application').then((m) => ({ default: m.InterviewSetup }))
 );
 const MockSession = lazy(() =>
   import('./pages/Application').then((m) => ({ default: m.MockSession }))
+);
+const InterviewSession = lazy(() =>
+  import('./pages/Application').then((m) => ({ default: m.InterviewSession }))
 );
 const SubmissionComplete = lazy(() =>
   import('./pages/Application').then((m) => ({ default: m.SubmissionComplete }))
@@ -894,26 +898,31 @@ function AppFormPage() {
   return (
     <CandidateForm
       onSubmit={() =>
-        navigate(keepSearch(getApplyPath(companyId, jobId, 'overview'), location.search))
+        navigate(keepSearch(getApplyPath(companyId, jobId, 'setup'), location.search))
       }
       onBack={() => navigate(keepSearch(getApplyPath(companyId, jobId), location.search))}
     />
   );
 }
 
-function AppOverviewPage() {
+function AppSetupPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { companyId, jobId } = useParams();
   const unavailable = getApplicationUnavailableRedirect(companyId, jobId, location.search);
   if (unavailable) return unavailable;
   return (
-    <JobOverview
-      onStartMock={(mockId) =>
-        navigate(keepSearch(getApplyPath(companyId, jobId, `mock/${mockId}`), location.search))
-      }
-      onSubmitApplication={() =>
-        navigate(keepSearch(getApplyPath(companyId, jobId, 'complete'), location.search))
+    <InterviewSetup
+      onNext={async () => {
+        const el = document.documentElement;
+        const request = el.requestFullscreen || el.webkitRequestFullscreen;
+        if (request) {
+          try { await request.call(el); } catch { /* browser denied */ }
+        }
+        navigate(keepSearch(getApplyPath(companyId, jobId, 'interview'), location.search));
+      }}
+      onBack={() =>
+        navigate(keepSearch(getApplyPath(companyId, jobId, 'form'), location.search))
       }
     />
   );
@@ -930,7 +939,22 @@ function AppMockPage() {
       key={mockId}
       mockId={mockId}
       onComplete={() =>
-        navigate(keepSearch(getApplyPath(companyId, jobId, 'overview'), location.search))
+        navigate(keepSearch(getApplyPath(companyId, jobId, 'setup'), location.search))
+      }
+    />
+  );
+}
+
+function AppInterviewPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { companyId, jobId } = useParams();
+  const unavailable = getApplicationUnavailableRedirect(companyId, jobId, location.search);
+  if (unavailable) return unavailable;
+  return (
+    <InterviewSession
+      onComplete={() =>
+        navigate(keepSearch(getApplyPath(companyId, jobId, 'complete'), location.search))
       }
     />
   );
@@ -1004,18 +1028,25 @@ export default function App() {
 
       {/* Application flow (candidate-facing, standalone) */}
       <Route path="/apply/:companyId/:jobId" element={<ApplicationRouteLayout />}>
-        <Route index element={<AppLandingPage />} />
-        <Route path="form" element={<AppFormPage />} />
-        <Route path="overview" element={<AppOverviewPage />} />
+        {/* Steps with shared header + stepper */}
+        <Route element={<ApplicationFlowLayout />}>
+          <Route index element={<AppLandingPage />} />
+          <Route path="form" element={<AppFormPage />} />
+          <Route path="setup" element={<AppSetupPage />} />
+        </Route>
         <Route path="mock/:mockId" element={<AppMockPage />} />
+        <Route path="interview" element={<AppInterviewPage />} />
         <Route path="complete" element={<AppCompletePage />} />
       </Route>
 
       <Route path="/apply/:jobId" element={<ApplicationRouteLayout />}>
-        <Route index element={<AppLandingPage />} />
-        <Route path="form" element={<AppFormPage />} />
-        <Route path="overview" element={<AppOverviewPage />} />
+        <Route element={<ApplicationFlowLayout />}>
+          <Route index element={<AppLandingPage />} />
+          <Route path="form" element={<AppFormPage />} />
+          <Route path="setup" element={<AppSetupPage />} />
+        </Route>
         <Route path="mock/:mockId" element={<AppMockPage />} />
+        <Route path="interview" element={<AppInterviewPage />} />
         <Route path="complete" element={<AppCompletePage />} />
       </Route>
 
