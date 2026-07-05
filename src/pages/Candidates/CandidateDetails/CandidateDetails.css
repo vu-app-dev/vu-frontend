@@ -405,72 +405,97 @@
   line-height: 1.5;
 }
 
+.candidate-details__decision-help {
+  margin: calc(-1 * var(--gap-sm)) 0 calc(-1 * var(--gap-xs));
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  line-height: 1.55;
+}
+
 /* Decision buttons */
 
 .candidate-details__decisions {
   display: flex;
   flex-direction: column;
-  gap: var(--gap-sm);
+  gap: var(--gap-xs);
 }
 
 .candidate-details__decision-btn {
   display: flex;
   align-items: center;
-  gap: var(--gap-md);
+  gap: var(--gap-sm);
   width: 100%;
-  padding: var(--padding-md) var(--padding-lg);
-  border: var(--border-sm) solid transparent;
+  min-height: 38px;
+  padding: 0 var(--padding-sm);
+  border: var(--border-sm) solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  background: transparent;
+  background: var(--bg-card);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
   color: var(--text-secondary);
+  text-align: left;
   cursor: pointer;
   transition:
     background-color var(--transition-base),
     border-color var(--transition-base),
-    color var(--transition-base);
+    color var(--transition-base),
+    transform var(--transition-base);
+}
+
+.candidate-details__decision-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-default);
 }
 
 .candidate-details__decision-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  width: var(--size-5);
+  height: var(--size-5);
+  padding: 3px;
+  background: color-mix(in srgb, currentColor 16%, transparent);
+  border-radius: var(--radius-full);
 }
 
 /* Accept */
 .candidate-details__decision--accept {
   color: var(--status-success-text);
-  border-color: var(--status-success-bg);
-  background: var(--status-success-bg);
+  border-color: color-mix(in srgb, var(--status-success-text) 30%, var(--border-subtle));
+  background: color-mix(in srgb, var(--status-success-bg) 64%, var(--bg-card));
 }
 
 .candidate-details__decision--accept:hover {
-  background: var(--status-success-hover);
-  border-color: var(--status-success-hover);
+  background: color-mix(in srgb, var(--status-success-bg) 92%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--status-success-text) 44%, transparent);
 }
 
 /* Shortlist */
 .candidate-details__decision--shortlist {
   color: var(--status-info-text);
-  border-color: var(--status-info-bg);
-  background: var(--status-info-bg);
+  border-color: color-mix(in srgb, var(--status-info-text) 28%, var(--border-subtle));
+  background: color-mix(in srgb, var(--status-info-bg) 60%, var(--bg-card));
 }
 
 .candidate-details__decision--shortlist:hover {
-  background: var(--status-info-hover);
-  border-color: var(--status-info-hover);
+  background: color-mix(in srgb, var(--status-info-bg) 88%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--status-info-text) 42%, transparent);
 }
 
 /* Reject */
 .candidate-details__decision--reject {
   color: var(--status-danger-text);
-  border-color: var(--status-danger-bg);
-  background: var(--status-danger-bg);
+  margin-top: 0;
+  border-color: color-mix(in srgb, var(--status-danger-text) 28%, var(--border-subtle));
+  background: color-mix(in srgb, var(--status-danger-bg) 54%, var(--bg-card));
 }
 
 .candidate-details__decision--reject:hover {
-  background: var(--status-danger-hover);
-  border-color: var(--status-danger-hover);
+  background: color-mix(in srgb, var(--status-danger-bg) 82%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--status-danger-text) 42%, transparent);
 }
 
 /* Completed mocks */
@@ -723,8 +748,7 @@
 
   .candidate-details__decision-btn {
     flex: 1;
-    min-width: 5.5rem;
-    justify-content: center;
+    min-width: 12rem;
   }
 
   .candidate-summary__ai-review,

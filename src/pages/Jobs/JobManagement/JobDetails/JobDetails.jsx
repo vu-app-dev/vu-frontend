@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Users } from 'lucide-react';
+import { Copy, ExternalLink, Pencil, Users } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { QuickInfoCard } from '../../../../components/ui/Cards';
 import { Button } from '../../../../components/ui/Button';
@@ -297,22 +297,39 @@ export const JobDetails = memo(function JobDetails({
       <div className="job-details__card">
         <SectionTitle variant="inline">Actions</SectionTitle>
         <div className="job-details__action-list">
-          <Button variant="secondary" size="sm" onClick={handleShare} disabled={!applyPath}>
-            {copied ? 'Link copied' : 'Copy application link'}
+          <Button
+            variant="primary"
+            size="sm"
+            iconLeft={<ExternalLink size={16} />}
+            className="job-details__action-primary"
+            onClick={() => applyPath && onTest?.(applyPath)}
+            disabled={!applyPath}
+          >
+            Test application
+          </Button>
+          <p className="job-details__action-note">
+            Open the candidate flow exactly as applicants will see it.
+          </p>
+          <Button
+            variant="secondary"
+            size="sm"
+            iconLeft={<Copy size={16} />}
+            onClick={handleShare}
+            disabled={!applyPath}
+          >
+            {copied ? 'Job link copied' : 'Share job link'}
           </Button>
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => applyPath && onTest?.(applyPath)}
-            disabled={!applyPath}
+            iconLeft={<Users size={16} />}
+            onClick={() => onShowCandidates?.(jobId)}
           >
-            Preview application
+            View candidates
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => onShowCandidates?.(jobId)}>
-            Show candidates
-          </Button>
+          <div className="job-details__action-divider" />
           {canEditJob ? (
-            <Button variant="ghost" size="sm" onClick={handleEdit}>
+            <Button variant="ghost" size="sm" iconLeft={<Pencil size={16} />} onClick={handleEdit}>
               Edit job
             </Button>
           ) : (

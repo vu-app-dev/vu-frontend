@@ -30,7 +30,12 @@ const DECISION_ACTIONS = [
     icon: List,
     className: 'candidate-details__decision--shortlist',
   },
-  { id: 'reject', label: 'Reject', icon: X, className: 'candidate-details__decision--reject' },
+  {
+    id: 'reject',
+    label: 'Reject',
+    icon: X,
+    className: 'candidate-details__decision--reject',
+  },
 ];
 
 const STATUS_LABELS = {
@@ -315,6 +320,9 @@ export const CandidateDetails = memo(function CandidateDetails({ candidate }) {
         .join(' ')}
     >
       <SectionTitle>Decision actions</SectionTitle>
+      <p className="candidate-details__decision-help">
+        Choose the next hiring outcome. Shortlist keeps the candidate in review.
+      </p>
       <div className="candidate-details__decisions">
         {visibleDecisionActions.map((action) => {
           const ActionIcon = action.icon;

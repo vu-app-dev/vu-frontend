@@ -276,12 +276,35 @@
 .job-details__action-list {
   display: flex;
   flex-direction: column;
-  gap: var(--gap-xs);
+  gap: var(--gap-sm);
 }
 
 .job-details__action-list .btn {
   width: 100%;
+}
+
+.job-details__action-primary {
+  justify-content: center;
+  min-height: var(--size-10);
+}
+
+.job-details__action-note {
+  margin: calc(-1 * var(--gap-xs)) 0 var(--gap-xs);
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  line-height: 1.55;
+}
+
+.job-details__action-list > .btn--secondary,
+.job-details__action-list > .btn--ghost {
   justify-content: flex-start;
+}
+
+.job-details__action-divider {
+  height: 1px;
+  margin: var(--gap-xs) 0;
+  background: var(--border-subtle);
 }
 
 /* ── Combined Job Info card ── */

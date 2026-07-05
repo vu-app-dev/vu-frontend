@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
-import { Briefcase, Lock } from 'lucide-react';
+import { Briefcase, Lock, Pencil } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { QuickInfoCard } from '../../../../components/ui/Cards';
 import { Button } from '../../../../components/ui/Button';
@@ -26,7 +26,6 @@ const JOB_STATUS_LABELS = {
 export const MockDetails = memo(function MockDetails({
   mockId,
   onEdit,
-  onTestMock,
   canEditMock = true,
 }) {
   const { dataVersion } = useBackendData();
@@ -82,7 +81,6 @@ export const MockDetails = memo(function MockDetails({
   const totalWeight =
     topics.reduce((sum, topic) => sum + Number(topic.weight || 0), 0) +
     questions.reduce((sum, question) => sum + Number(question.weight || 0), 0);
-  const canTest = Boolean(jobsUsing[0]?.id);
   const mockStatusVariant = isActive ? 'inUse' : 'available';
 
   const analysisPanel = (
@@ -212,20 +210,6 @@ export const MockDetails = memo(function MockDetails({
       <div className="mock-details__card">
         <SectionTitle variant="inline">Actions</SectionTitle>
         <div className="mock-details__action-list">
-          {canEditMock && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => canTest && onTestMock?.(jobsUsing[0].id)}
-              disabled={!canTest}
-              title={canTest ? 'Preview mock' : 'Attach this mock to a job before previewing'}
-            >
-              Test mock
-            </Button>
-          )}
-          {!canTest && (
-            <p className="mock-details__read-only">Attach this mock to a job before previewing.</p>
-          )}
           {isActive && (
             <div className="mock-details__active-notice">
               <Lock size={12} />
@@ -237,8 +221,10 @@ export const MockDetails = memo(function MockDetails({
           )}
           {canEditMock && (
             <Button
-              variant="ghost"
+              variant="primary"
               size="sm"
+              iconLeft={<Pencil size={16} />}
+              className="mock-details__action-primary"
               onClick={handleEdit}
               disabled={isActive}
               title={isActive ? 'Mocks in use cannot be edited' : 'Edit mock'}
@@ -314,6 +300,5 @@ export const MockDetails = memo(function MockDetails({
 MockDetails.propTypes = {
   mockId: PropTypes.string,
   onEdit: PropTypes.func,
-  onTestMock: PropTypes.func,
   canEditMock: PropTypes.bool,
 };
