@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { CheckCircle2, Clock, FileText, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, Clock, FileText, ArrowLeft, Sparkles, Users, Mail } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { APPLICATION, CANDIDATE_INFO, getCompletedCount } from '../../../api';
 import './SubmissionComplete.css';
@@ -27,91 +27,113 @@ export const SubmissionComplete = memo(function SubmissionComplete({ onBackToJob
   return (
     <div className="submission-complete">
       <div className="submission-complete__container">
-        {/* Success icon */}
-        <div className="submission-complete__icon-wrapper">
-          <CheckCircle2 size={48} />
-        </div>
+        <section className="submission-complete__hero" aria-labelledby="submission-complete-title">
+          <p className="submission-complete__kicker">Application submitted</p>
+          <h1 id="submission-complete-title" className="submission-complete__title">
+            Thank you, {candidateName}.
+          </h1>
+          <p className="submission-complete__subtitle">
+            Your application for <strong>{jobTitle}</strong> at <strong>{companyName}</strong> is
+            now with the hiring workflow.
+          </p>
 
-        {/* Title */}
-        <h1 className="submission-complete__title">Application Submitted!</h1>
-        <p className="submission-complete__subtitle">
-          Thank you, {candidateName}. Your application for <strong>{jobTitle}</strong> at{' '}
-          <strong>{companyName}</strong> has been successfully submitted.
-        </p>
-
-        {/* Summary card */}
-        <div className="submission-complete__summary">
-          <h3 className="submission-complete__summary-title">Application Summary</h3>
-          <div className="submission-complete__summary-divider" />
-          <div className="submission-complete__summary-list">
-            <div className="submission-complete__summary-item">
-              <FileText size={14} />
-              <span className="submission-complete__summary-label">Assessments Completed</span>
-              <span className="submission-complete__summary-value">
-                {completedCount} / {totalCount}
-              </span>
-            </div>
-            <div className="submission-complete__summary-item">
-              <Clock size={14} />
-              <span className="submission-complete__summary-label">Submitted At</span>
-              <span className="submission-complete__summary-value">{submittedAt}</span>
-            </div>
+          <div className="submission-complete__hero-note">
+            <Sparkles size={16} />
+            <span>We received your profile, setup checks, and interview responses.</span>
           </div>
-        </div>
 
-        {/* What's next */}
-        <div className="submission-complete__next">
-          <h3 className="submission-complete__next-title">What Happens Next?</h3>
-          <div className="submission-complete__timeline">
-            <div className="submission-complete__timeline-step">
-              <div className="submission-complete__timeline-dot submission-complete__timeline-dot--done" />
-              <div className="submission-complete__timeline-content">
-                <span className="submission-complete__timeline-label">Application Received</span>
-                <span className="submission-complete__timeline-desc">
-                  Your responses have been recorded
+          <Button
+            variant="ghost"
+            size="sm"
+            iconLeft={<ArrowLeft size={16} />}
+            className="submission-complete__back-btn"
+            onClick={onBackToJobs}
+          >
+            Back to Home
+          </Button>
+        </section>
+
+        <aside className="submission-complete__panel" aria-label="Submission details">
+          <div className="submission-complete__summary">
+            <div className="submission-complete__section-header">
+              <p className="submission-complete__section-label">Summary</p>
+              <h2 className="submission-complete__section-title">What was submitted</h2>
+            </div>
+
+            <div className="submission-complete__summary-list">
+              <div className="submission-complete__summary-item">
+                <span className="submission-complete__summary-icon">
+                  <FileText size={16} />
+                </span>
+                <span className="submission-complete__summary-label">Assessments completed</span>
+                <span className="submission-complete__summary-value">
+                  {completedCount} / {totalCount}
                 </span>
               </div>
-            </div>
-            <div className="submission-complete__timeline-step">
-              <div className="submission-complete__timeline-dot submission-complete__timeline-dot--active" />
-              <div className="submission-complete__timeline-content">
-                <span className="submission-complete__timeline-label">AI Evaluation</span>
-                <span className="submission-complete__timeline-desc">
-                  Your answers are being analyzed by our AI system
+              <div className="submission-complete__summary-item">
+                <span className="submission-complete__summary-icon">
+                  <Clock size={16} />
                 </span>
-              </div>
-            </div>
-            <div className="submission-complete__timeline-step">
-              <div className="submission-complete__timeline-dot" />
-              <div className="submission-complete__timeline-content">
-                <span className="submission-complete__timeline-label">Team Review</span>
-                <span className="submission-complete__timeline-desc">
-                  The hiring team will review your results
-                </span>
-              </div>
-            </div>
-            <div className="submission-complete__timeline-step">
-              <div className="submission-complete__timeline-dot" />
-              <div className="submission-complete__timeline-content">
-                <span className="submission-complete__timeline-label">Decision</span>
-                <span className="submission-complete__timeline-desc">
-                  You&apos;ll be notified via email about the outcome
-                </span>
+                <span className="submission-complete__summary-label">Submitted at</span>
+                <span className="submission-complete__summary-value">{submittedAt}</span>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Action */}
-        <Button
-          variant="ghost"
-          size="sm"
-          iconLeft={<ArrowLeft size={16} />}
-          className="submission-complete__back-btn"
-          onClick={onBackToJobs}
-        >
-          Back to Home
-        </Button>
+          <div className="submission-complete__next">
+            <div className="submission-complete__section-header">
+              <p className="submission-complete__section-label">Next steps</p>
+              <h2 className="submission-complete__section-title">What happens next</h2>
+            </div>
+
+            <div className="submission-complete__timeline">
+              <div className="submission-complete__timeline-step">
+                <div className="submission-complete__timeline-dot submission-complete__timeline-dot--done">
+                  <CheckCircle2 size={12} />
+                </div>
+                <div className="submission-complete__timeline-content">
+                  <span className="submission-complete__timeline-label">Application received</span>
+                  <span className="submission-complete__timeline-desc">
+                    Your responses have been recorded.
+                  </span>
+                </div>
+              </div>
+              <div className="submission-complete__timeline-step">
+                <div className="submission-complete__timeline-dot submission-complete__timeline-dot--active">
+                  <Sparkles size={12} />
+                </div>
+                <div className="submission-complete__timeline-content">
+                  <span className="submission-complete__timeline-label">AI evaluation</span>
+                  <span className="submission-complete__timeline-desc">
+                    Your answers are being analyzed for the role requirements.
+                  </span>
+                </div>
+              </div>
+              <div className="submission-complete__timeline-step">
+                <div className="submission-complete__timeline-dot">
+                  <Users size={12} />
+                </div>
+                <div className="submission-complete__timeline-content">
+                  <span className="submission-complete__timeline-label">Team review</span>
+                  <span className="submission-complete__timeline-desc">
+                    The hiring team will review the evaluation.
+                  </span>
+                </div>
+              </div>
+              <div className="submission-complete__timeline-step">
+                <div className="submission-complete__timeline-dot">
+                  <Mail size={12} />
+                </div>
+                <div className="submission-complete__timeline-content">
+                  <span className="submission-complete__timeline-label">Decision</span>
+                  <span className="submission-complete__timeline-desc">
+                    You&apos;ll be notified by email when there is an update.
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
   );

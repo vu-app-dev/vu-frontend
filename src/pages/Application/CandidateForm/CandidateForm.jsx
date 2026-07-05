@@ -19,10 +19,7 @@ const INITIAL_FORM = {
 };
 
 export const CandidateForm = memo(function CandidateForm({ onSubmit, onBack }) {
-  const [form, setForm] = useState(() => {
-    const restored = { ...INITIAL_FORM, ...CANDIDATE_INFO, resumeFile: null };
-    return restored;
-  });
+  const [form, setForm] = useState(() => ({ ...INITIAL_FORM, ...CANDIDATE_INFO, resumeFile: null }));
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -85,99 +82,108 @@ export const CandidateForm = memo(function CandidateForm({ onSubmit, onBack }) {
 
   return (
     <div className="candidate-form">
-      {/* ── Form body — flat, no card ── */}
       <form className="candidate-form__body" onSubmit={handleSubmit} noValidate>
-        <div className="candidate-form__row">
-          <TextInput
-            label="First Name"
-            required
-            placeholder="John"
-            value={form.firstName}
-            error={!!errors.firstName}
-            hint={errors.firstName}
-            onChange={(e) => handleChange('firstName', e.target.value)}
-          />
-          <TextInput
-            label="Last Name"
-            required
-            placeholder="Doe"
-            value={form.lastName}
-            error={!!errors.lastName}
-            hint={errors.lastName}
-            onChange={(e) => handleChange('lastName', e.target.value)}
-          />
+        <div className="candidate-form__panel">
+          <div className="candidate-form__intro">
+            <span className="candidate-form__eyebrow">Your profile</span>
+            <h2>Tell the hiring team who you are</h2>
+            <p>
+              This information connects your application, resume, and interview results in one
+              candidate profile.
+            </p>
+          </div>
+
+          <div className="candidate-form__fields">
+            <div className="candidate-form__row">
+              <TextInput
+                label="First Name"
+                required
+                placeholder="John"
+                value={form.firstName}
+                error={!!errors.firstName}
+                hint={errors.firstName}
+                onChange={(e) => handleChange('firstName', e.target.value)}
+              />
+              <TextInput
+                label="Last Name"
+                required
+                placeholder="Doe"
+                value={form.lastName}
+                error={!!errors.lastName}
+                hint={errors.lastName}
+                onChange={(e) => handleChange('lastName', e.target.value)}
+              />
+            </div>
+
+            <EmailInput
+              label="Email Address"
+              required
+              placeholder="john.doe@email.com"
+              value={form.email}
+              error={!!errors.email}
+              hint={errors.email}
+              onChange={(e) => handleChange('email', e.target.value)}
+            />
+
+            <div className="candidate-form__row">
+              <TextInput
+                label="Phone Number"
+                placeholder="+1 (555) 000-0000"
+                value={form.phone}
+                onChange={(e) => handleChange('phone', e.target.value)}
+              />
+              <DropdownInput
+                label="Location"
+                required
+                placeholder="Select your location"
+                value={form.location}
+                error={!!errors.location}
+                hint={errors.location}
+                onChange={(val) => handleChange('location', val)}
+                options={[
+                  { label: 'United States', value: 'US' },
+                  { label: 'United Kingdom', value: 'UK' },
+                  { label: 'Canada', value: 'CA' },
+                  { label: 'Germany', value: 'DE' },
+                  { label: 'France', value: 'FR' },
+                  { label: 'Remote', value: 'Remote' },
+                ]}
+              />
+            </div>
+
+            <TextInput
+              label="LinkedIn Profile"
+              placeholder="https://linkedin.com/in/your-profile"
+              value={form.linkedin}
+              onChange={(e) => handleChange('linkedin', e.target.value)}
+            />
+
+            <FileInput
+              label="Resume / CV"
+              required={!form.cvUrl}
+              accept=".pdf,image/jpeg,image/png,image/webp"
+              error={!!errors.resume}
+              hint={
+                errors.resume ||
+                (form.resumeFile
+                  ? `${form.resumeName} ready to upload.`
+                  : form.cvUrl && form.resumeName
+                    ? `${form.resumeName} previously uploaded.`
+                    : '')
+              }
+              onChange={handleFileChange}
+            />
+
+            {errors.submit && <p className="candidate-form__error">{errors.submit}</p>}
+          </div>
+
+          <p className="candidate-form__disclaimer">
+            Your information is securely stored and will only be shared with the hiring team at{' '}
+            {APPLICATION?.company?.name || 'the company'}.
+          </p>
         </div>
-
-        <EmailInput
-          label="Email Address"
-          required
-          placeholder="john.doe@email.com"
-          value={form.email}
-          error={!!errors.email}
-          hint={errors.email}
-          onChange={(e) => handleChange('email', e.target.value)}
-        />
-
-        <div className="candidate-form__row">
-          <TextInput
-            label="Phone Number"
-            placeholder="+1 (555) 000-0000"
-            value={form.phone}
-            onChange={(e) => handleChange('phone', e.target.value)}
-            hint="Optional"
-          />
-          <DropdownInput
-            label="Location"
-            required
-            placeholder="Select your location"
-            value={form.location}
-            error={!!errors.location}
-            hint={errors.location}
-            onChange={(val) => handleChange('location', val)}
-            options={[
-              { label: 'United States', value: 'US' },
-              { label: 'United Kingdom', value: 'UK' },
-              { label: 'Canada', value: 'CA' },
-              { label: 'Germany', value: 'DE' },
-              { label: 'France', value: 'FR' },
-              { label: 'Remote', value: 'Remote' },
-            ]}
-          />
-        </div>
-
-        <TextInput
-          label="LinkedIn Profile"
-          placeholder="https://linkedin.com/in/your-profile"
-          value={form.linkedin}
-          onChange={(e) => handleChange('linkedin', e.target.value)}
-          hint="Optional"
-        />
-
-        <FileInput
-          label="Resume / CV"
-          required={!form.cvUrl}
-          accept=".pdf,image/jpeg,image/png,image/webp"
-          error={!!errors.resume}
-          hint={
-            errors.resume ||
-            (form.resumeFile
-              ? `${form.resumeName} ready to upload.`
-              : form.cvUrl && form.resumeName
-                ? `${form.resumeName} previously uploaded.`
-                : '')
-          }
-          onChange={handleFileChange}
-        />
-
-        {errors.submit && <p className="candidate-form__error">{errors.submit}</p>}
-
-        <p className="candidate-form__disclaimer">
-          Your information is securely stored and will only be shared with the hiring team at{' '}
-          {APPLICATION?.company?.name || 'the company'}.
-        </p>
       </form>
 
-      {/* ── Sticky bottom bar ── */}
       <div className="candidate-form__sticky-bar">
         <span className="candidate-form__sticky-bar-hint">All fields marked * are required</span>
         <div className="candidate-form__sticky-bar-actions">

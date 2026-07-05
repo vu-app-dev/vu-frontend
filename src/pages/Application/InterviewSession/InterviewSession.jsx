@@ -41,7 +41,8 @@ function buildMockData(mock) {
 }
 
 const SILENCE_TIMEOUT_MS = 3000;
-const TRANSITION_DELAY_MS = 3000;
+const TRANSITION_DELAY_MS = 10000;
+const TAB_WARNING_VISIBLE_MS = 8000;
 const VIDEO_FRAME_INTERVAL_MS = 5000;
 
 export const InterviewSession = memo(function InterviewSession({ onComplete }) {
@@ -499,7 +500,7 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
         tabWarningTimerRef.current = setTimeout(() => {
           setShowTabWarning(false);
           tabWarningTimerRef.current = null;
-        }, 5000);
+        }, TAB_WARNING_VISIBLE_MS);
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
@@ -538,8 +539,7 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
     }
-    onComplete?.();
-  }, [phase, onComplete, stopVideoFrameCapture]);
+  }, [phase, stopVideoFrameCapture]);
 
   /* ══════════════════════════════════════════
      Cleanup on unmount
@@ -581,6 +581,10 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
     setRetryCount((c) => c + 1);
     startCurrentMock();
   }, [startCurrentMock]);
+
+  const handleFinish = useCallback(() => {
+    onComplete?.();
+  }, [onComplete]);
 
   /* ══════════════════════════════════════════
      Derived values
@@ -656,11 +660,25 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
         )}
 
         {phase === 'interviewing' && (
-          <>
-            <div
-              className={`interview-session__voice-circle ${isSpeaking ? 'interview-session__voice-circle--speaking' : ''}`}
-            >
-              <AppLogo size="md" />
+          <div className="interview-session__conversation">
+            <div className={`interview-session__voice-panel ${isSpeaking ? 'interview-session__voice-panel--speaking' : ''}`}>
+              <div
+                className={`interview-session__voice-circle ${isSpeaking ? 'interview-session__voice-circle--speaking' : ''}`}
+              >
+                <AppLogo size="md" />
+              </div>
+              <div className="interview-session__voice-state">
+                <span className="interview-session__voice-label">
+                  {isSpeaking ? 'AI speaking' : isAiThinking ? 'Processing answer' : 'Listening'}
+                </span>
+                <span className="interview-session__voice-subtext">
+                  {isSpeaking
+                    ? 'Wait for the question to finish.'
+                    : isAiThinking
+                      ? 'Preparing the next response.'
+                      : 'Speak naturally when you are ready.'}
+                </span>
+              </div>
             </div>
 
             <div className="interview-session__ai-text">
@@ -676,36 +694,65 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
                 </div>
               )}
 
-              <div className="interview-session__recording">
+              <div className={`interview-session__recording ${silenceCountdown != null ? 'interview-session__recording--pending' : ''}`}>
                 <span className="interview-session__recording-dot" />
-                <span>
-                  {silenceCountdown != null
-                    ? `Submitting in ${silenceCountdown}s...`
-                    : 'Recording...'}
-                </span>
+                <div className="interview-session__recording-copy">
+                  <span className="interview-session__recording-title">
+                    {silenceCountdown != null ? 'Answer captured' : 'Listening'}
+                  </span>
+                  <span className="interview-session__recording-detail">
+                    {silenceCountdown != null
+                      ? `Sending in ${silenceCountdown}s`
+                      : 'Your answer sends after a short pause.'}
+                  </span>
+                </div>
               </div>
             </div>
-          </>
-        )}
-
-        {/* Camera PIP */}
-        {(phase === 'interviewing' || phase === 'transitioning') && (
-          <div className="interview-session__camera-pip">
-            <video
-              ref={setCamVideoRef}
-              className="interview-session__camera-video"
-              autoPlay
-              muted
-              playsInline
-            />
           </div>
         )}
 
-        {/* Screen share indicator */}
+        {phase === 'complete' && (
+          <div className="interview-session__complete">
+            <div className="interview-session__complete-mark">
+              <CheckCircle2 size={42} />
+            </div>
+            <p className="interview-session__complete-kicker">Interview complete</p>
+            <h1 className="interview-session__complete-title">Thank you for your time.</h1>
+            <p className="interview-session__complete-copy">
+              Your interview responses have been recorded successfully. You can now continue to the
+              application summary.
+            </p>
+            <div className="interview-session__complete-summary">
+              <span>{mocks.length} interviews completed</span>
+              <span>{formatTime(totalSeconds - timeLeft)} recorded time</span>
+            </div>
+            <Button
+              variant="primary"
+              size="lg"
+              iconRight={<ArrowRight size={16} />}
+              onClick={handleFinish}
+            >
+              View summary
+            </Button>
+          </div>
+        )}
+
+        {/* Camera and screen share status */}
         {(phase === 'interviewing' || phase === 'transitioning') && (
-          <div className="interview-session__screen-share-badge">
-            <Monitor size={12} />
-            <span>Screen sharing active</span>
+          <div className="interview-session__monitor-card">
+            <div className="interview-session__camera-pip">
+              <video
+                ref={setCamVideoRef}
+                className="interview-session__camera-video"
+                autoPlay
+                muted
+                playsInline
+              />
+            </div>
+            <div className="interview-session__screen-share-badge">
+              <Monitor size={13} />
+              <span>Full screen shared</span>
+            </div>
           </div>
         )}
       </div>
@@ -713,9 +760,12 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
       {/* ── Tab switch toast ── */}
       {showTabWarning && (
         <div className="interview-session__toast">
-          <AlertTriangle size={14} />
-          <span>
-            Stay on this tab during the interview ({tabSwitchCount})
+          <span className="interview-session__toast-icon">
+            <AlertTriangle size={16} />
+          </span>
+          <span className="interview-session__toast-copy">
+            <strong>Stay on this tab</strong>
+            <span>Tab switches are recorded during the interview ({tabSwitchCount}).</span>
           </span>
         </div>
       )}
@@ -763,9 +813,13 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
               ))}
             </div>
 
+            <div className="interview-session__overlay-count-ring" aria-hidden="true">
+              <span>{transitionCountdown ?? Math.ceil(TRANSITION_DELAY_MS / 1000)}</span>
+            </div>
+
             <Button
               variant="primary"
-              size="md"
+              size="lg"
               iconRight={<ChevronRight size={18} />}
               onClick={advanceToNextMock}
             >

@@ -1,1 +1,2 @@
-export { InterviewSetup, getScreenShareStream, clearScreenShareStream } from './InterviewSetup';
+export { InterviewSetup } from './InterviewSetup';
+export { getScreenShareStream, clearScreenShareStream } from './screenShareStream';

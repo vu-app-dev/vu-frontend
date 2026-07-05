@@ -1,6 +1,7 @@
 import { memo, useMemo, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
+import { Building2, MapPin } from 'lucide-react';
 import { Badge } from '../../../components/ui/Badge';
 import { Stepper } from '../../../components/ui/Stepper';
 import { APPLICATION } from '../../../api';
@@ -57,18 +58,43 @@ export const ApplicationFlowLayout = memo(function ApplicationFlowLayout() {
   if (!APPLICATION) return <Outlet />;
 
   const { job, company } = APPLICATION;
-  const contextParts = [company?.name, job?.location, job?.locationType].filter(Boolean);
 
   return (
     <div className="app-flow">
       <header className="app-flow__header">
-        <p className="app-flow__company">{company?.name}</p>
-        <div className="app-flow__title-row">
-          <h1 className="app-flow__title">{job?.title}</h1>
-          <Badge type="jobStatus" variant={job?.status || 'active'} />
-        </div>
-        <p className="app-flow__context">{contextParts.join(' · ')}</p>
+        <div className="app-flow__header-main">
+          <div className="app-flow__identity">
+            <p className="app-flow__eyebrow">Application</p>
+            <div className="app-flow__title-row">
+              <h1 className="app-flow__title">{job?.title}</h1>
+              <Badge type="jobStatus" variant={job?.status || 'active'} />
+            </div>
+            <div className="app-flow__context-list" aria-label="Application context">
+              {company?.name && (
+                <span className="app-flow__context-item">
+                  <Building2 size={14} />
+                  {company.name}
+                </span>
+              )}
+              {job?.location && (
+                <span className="app-flow__context-item">
+                  <MapPin size={14} />
+                  {job.location}
+                </span>
+              )}
+              {job?.locationType && (
+                <span className="app-flow__context-item">{job.locationType}</span>
+              )}
+            </div>
+          </div>
 
+          <div className="app-flow__stage">
+            <span className="app-flow__stage-label">Step</span>
+            <span className="app-flow__stage-value">
+              {activeStep + 1}/{STEPS.length}
+            </span>
+          </div>
+        </div>
         <div className="app-flow__stepper-wrap">
           <Stepper
             steps={stepperSteps}

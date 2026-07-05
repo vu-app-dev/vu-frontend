@@ -20,41 +20,49 @@ export const JobLanding = memo(function JobLanding({ onApply }) {
   return (
     <div className="job-landing">
       <div className="job-landing__body">
-        {/* Quick info cards */}
-        <div className="job-landing__cards">
-          <QuickInfoCard
-            icon={<Briefcase />}
-            number={job.jobType || 'Not set'}
-            title="Job type"
-            density="compact"
-            animated={false}
-          />
-          <QuickInfoCard
-            icon={<TrendingUp />}
-            number={job.seniority || 'Not set'}
-            title="Seniority"
-            density="compact"
-            animated={false}
-          />
-          <QuickInfoCard
-            icon={<Clock />}
-            number={durationLabel}
-            title="Duration"
-            density="compact"
-            animated={false}
-          />
-          <QuickInfoCard
-            icon={<CalendarClock />}
-            number={job.deadline || 'No deadline'}
-            title="Deadline"
-            density="compact"
-            animated={false}
-          />
-        </div>
+        <section className="job-landing__overview" aria-label="Role snapshot">
+          <div className="job-landing__overview-copy">
+            <span className="job-landing__section-label">Role snapshot</span>
+            <p>
+              Check the role details, timing, and requirements first. When everything looks right,
+              continue to share your profile and prepare for the interview.
+            </p>
+          </div>
 
-        {/* About the role */}
-        <section>
-          <h2 className="job-landing__section-label">About the Role</h2>
+          <div className="job-landing__cards">
+            <QuickInfoCard
+              icon={<Briefcase />}
+              number={job.jobType || 'Not set'}
+              title="Job type"
+              density="compact"
+              animated={false}
+            />
+            <QuickInfoCard
+              icon={<TrendingUp />}
+              number={job.seniority || 'Not set'}
+              title="Seniority"
+              density="compact"
+              animated={false}
+            />
+            <QuickInfoCard
+              icon={<Clock />}
+              number={durationLabel}
+              title="Duration"
+              density="compact"
+              animated={false}
+            />
+            <QuickInfoCard
+              icon={<CalendarClock />}
+              number={job.deadline || 'No deadline'}
+              title="Deadline"
+              density="compact"
+              animated={false}
+            />
+          </div>
+        </section>
+
+        <section className="job-landing__section">
+          <h2 className="job-landing__section-title">About the role</h2>
           <p className="job-landing__description">{job.description}</p>
           {job.skills?.length > 0 && (
             <div className="job-landing__skills">

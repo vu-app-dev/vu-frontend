@@ -12,17 +12,10 @@ import {
   Circle,
 } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
+import { setScreenShareStream } from './screenShareStream';
 import './InterviewSetup.css';
 
 const CHECK = { idle: 'idle', checking: 'checking', granted: 'granted', denied: 'denied' };
-
-// Module-level store for the screen share stream so it persists across navigation
-let _screenShareStream = null;
-export function getScreenShareStream() { return _screenShareStream; }
-export function clearScreenShareStream() {
-  _screenShareStream?.getTracks().forEach((t) => t.stop());
-  _screenShareStream = null;
-}
 
 const DEVICES = [
   {
@@ -42,11 +35,24 @@ const DEVICES = [
   {
     key: 'screen',
     label: 'Screen Share',
-    description: 'Active throughout the interview for integrity monitoring',
+    description: 'Share your full screen for integrity monitoring',
     Icon: Monitor,
     request: async () => {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      _screenShareStream = stream;
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          displaySurface: 'monitor',
+        },
+        audio: false,
+        monitorTypeSurfaces: 'include',
+        selfBrowserSurface: 'exclude',
+        surfaceSwitching: 'exclude',
+      });
+      const displaySurface = stream.getVideoTracks()[0]?.getSettings?.().displaySurface;
+      if (displaySurface && displaySurface !== 'monitor') {
+        stream.getTracks().forEach((track) => track.stop());
+        throw new Error('Please share your full screen, not a window or browser tab.');
+      }
+      setScreenShareStream(stream);
       return stream;
     },
   },
@@ -71,7 +77,6 @@ export const InterviewSetup = memo(function InterviewSetup({ onNext, onBack }) {
     setDeviceState((prev) => ({ ...prev, [device.key]: CHECK.checking }));
     try {
       const stream = await device.request();
-      // Keep screen share stream alive — stop all others after testing
       if (device.key !== 'screen') {
         stream.getTracks().forEach((t) => t.stop());
       }
@@ -87,25 +92,45 @@ export const InterviewSetup = memo(function InterviewSetup({ onNext, onBack }) {
     deviceState.screen === CHECK.granted;
 
   const checkedCount = Object.values(deviceState).filter((s) => s === CHECK.granted).length;
+  const progressPercent = Math.round((checkedCount / DEVICES.length) * 100);
 
   return (
     <div className="interview-setup">
-      {/* ── Body ── */}
       <div className="interview-setup__body">
-        {/* Device checks */}
-        <section>
-          <h2 className="interview-setup__section-label">Device Check</h2>
+        <section className="interview-setup__panel">
+          <div className="interview-setup__intro">
+            <span className="interview-setup__eyebrow">Interview setup</span>
+            <h2>Prepare your device before the interview starts</h2>
+            <p>
+              Complete each permission check now so the live session can begin without interruption.
+            </p>
+          </div>
+
+          <div className="interview-setup__progress" aria-label="Device check progress">
+            <div className="interview-setup__progress-header">
+              <span>{checkedCount} of {DEVICES.length} checks ready</span>
+              <span>{progressPercent}%</span>
+            </div>
+            <div className="interview-setup__progress-track">
+              <div
+                className="interview-setup__progress-fill"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+
           <div className="interview-setup__checks">
             {DEVICES.map((device) => {
               const state = deviceState[device.key];
               const DeviceIcon = device.Icon;
               return (
-                <div key={device.key} className="interview-setup__check-row">
+                <div
+                  key={device.key}
+                  className={`interview-setup__check-row interview-setup__check-row--${state}`}
+                >
                   <div className="interview-setup__check-left">
-                    <div
-                      className={`interview-setup__check-icon-wrap ${state === CHECK.granted ? 'interview-setup__check-icon-wrap--granted' : ''} ${state === CHECK.denied ? 'interview-setup__check-icon-wrap--denied' : ''}`}
-                    >
-                      <DeviceIcon size={16} />
+                    <div className="interview-setup__check-icon-wrap">
+                      <DeviceIcon size={17} />
                     </div>
                     <div className="interview-setup__check-info">
                       <span className="interview-setup__check-name">{device.label}</span>
@@ -129,7 +154,7 @@ export const InterviewSetup = memo(function InterviewSetup({ onNext, onBack }) {
                       </span>
                     )}
                     {(state === CHECK.idle || state === CHECK.denied) && (
-                      <Button variant="ghost" size="sm" onClick={() => checkDevice(device)}>
+                      <Button variant="secondary" size="sm" onClick={() => checkDevice(device)}>
                         {state === CHECK.denied ? 'Retry' : 'Test'}
                       </Button>
                     )}
@@ -140,9 +165,8 @@ export const InterviewSetup = memo(function InterviewSetup({ onNext, onBack }) {
           </div>
         </section>
 
-        {/* Guidelines */}
-        <section>
-          <h2 className="interview-setup__section-label">Before You Start</h2>
+        <section className="interview-setup__guidelines-panel">
+          <h2 className="interview-setup__section-label">Before you start</h2>
           <div className="interview-setup__guidelines">
             {GUIDELINES.map((text) => (
               <div key={text} className="interview-setup__guideline">
@@ -154,7 +178,6 @@ export const InterviewSetup = memo(function InterviewSetup({ onNext, onBack }) {
         </section>
       </div>
 
-      {/* ── Sticky bar ── */}
       <div className="interview-setup__sticky-bar">
         <span
           className={`interview-setup__bar-status ${allGranted ? 'interview-setup__bar-status--ready' : ''}`}
@@ -162,12 +185,7 @@ export const InterviewSetup = memo(function InterviewSetup({ onNext, onBack }) {
           {allGranted ? 'All devices ready' : `${checkedCount}/3 devices checked`}
         </span>
         <div className="interview-setup__bar-actions">
-          <Button
-            variant="ghost"
-            size="sm"
-            iconLeft={<ArrowLeft size={16} />}
-            onClick={onBack}
-          >
+          <Button variant="ghost" size="sm" iconLeft={<ArrowLeft size={16} />} onClick={onBack}>
             Back
           </Button>
           <Button
