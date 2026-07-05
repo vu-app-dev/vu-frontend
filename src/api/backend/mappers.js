@@ -665,6 +665,7 @@ export function formToBackendJobInput(form) {
   return {
     title: requireText(form.title, 'Job title', 3, 30),
     description: requireText(form.description, 'Description', 10, 255),
+    departments: [clampText(form.department || 'General', 100)],
     type: form.jobType || form.type || JobTypeEnum.FULL_TIME,
     requirements: requireText(
       uniqueCompact(form.technologies || []).join(', '),
