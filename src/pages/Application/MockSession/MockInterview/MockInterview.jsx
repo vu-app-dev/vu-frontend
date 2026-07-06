@@ -26,7 +26,7 @@ import {
   closeSTTConnection,
   startMicCapture,
 } from '../../../../api/ai/client';
-import { getApplicationMock } from '../../../../api';
+import { getApplicationMock, CANDIDATE_INFO } from '../../../../api';
 import './MockInterview.css';
 
 function formatTime(seconds) {
@@ -234,7 +234,8 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
       try {
         const data = await startInterview({
           mockId,
-          candidateId: 'candidate-1',
+          candidateId: CANDIDATE_INFO?.candidateId || '',
+          cvUrl: CANDIDATE_INFO?.cvUrl || '',
           mockData: mock
             ? {
                 type: mock.type || 'TECHNICAL',

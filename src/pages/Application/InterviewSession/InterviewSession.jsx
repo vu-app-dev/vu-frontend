@@ -15,7 +15,7 @@ import {
   closeSTTConnection,
   startMicCapture,
 } from '../../../api/ai/client';
-import { APPLICATION, startMock, completeMock } from '../../../api';
+import { APPLICATION, startMock, completeMock, CANDIDATE_INFO } from '../../../api';
 import { getScreenShareStream, clearScreenShareStream } from '../InterviewSetup';
 import { unlockAudio, stopTTS, speak, onSpeakingChange } from '../../../utils/tts';
 import './InterviewSession.css';
@@ -205,11 +205,12 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
 
     try {
       startMock(mock.id);
-      const data = await startInterview({
-        mockId: mock.id,
-        candidateId: 'candidate-1',
-        mockData: buildMockData(mock),
-      });
+        const data = await startInterview({
+          mockId: mock.id,
+          candidateId: CANDIDATE_INFO?.candidateId || '',
+          cvUrl: CANDIDATE_INFO?.cvUrl || '',
+          mockData: buildMockData(mock),
+        });
 
       sessionIdRef.current = data.sessionId;
       sessionTokenRef.current = data.sessionToken;
