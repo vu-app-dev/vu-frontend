@@ -205,8 +205,8 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
   const [voiceDraft, setVoiceDraft] = useState('');
 
   /* Silence countdown state */
-  const SILENCE_TIMEOUT_MS = 5000;
-  const TTS_COOLDOWN_MS = 2000;
+  const SILENCE_TIMEOUT_MS = 7000;
+  const TTS_COOLDOWN_MS = 800;
   const transcriptRef = useRef('');
   const silenceTimerRef = useRef(null);
   const [silenceCountdown, setSilenceCountdown] = useState(null);
@@ -442,6 +442,8 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
         cancelSilenceCountdown();
       } else {
         micCaptureRef.current?.resume();
+        transcriptRef.current = '';
+        setVoiceDraft('');
         ttsCooldownRef.current = true;
         setTimeout(() => { ttsCooldownRef.current = false; }, TTS_COOLDOWN_MS);
       }

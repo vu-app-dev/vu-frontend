@@ -40,11 +40,11 @@ function buildMockData(mock) {
   };
 }
 
-const SILENCE_TIMEOUT_MS = 5000;
+const SILENCE_TIMEOUT_MS = 7000;
 const TRANSITION_DELAY_MS = 10000;
 const TAB_WARNING_VISIBLE_MS = 8000;
 const VIDEO_FRAME_INTERVAL_MS = 5000;
-const TTS_COOLDOWN_MS = 2000;
+const TTS_COOLDOWN_MS = 800;
 
 export const InterviewSession = memo(function InterviewSession({ onComplete }) {
   const mocks = APPLICATION?.mocks || [];
@@ -125,6 +125,7 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
         cancelSilenceCountdown();
       } else {
         micCaptureRef.current?.resume();
+        transcriptRef.current = '';
         ttsCooldownRef.current = true;
         setTimeout(() => { ttsCooldownRef.current = false; }, TTS_COOLDOWN_MS);
       }
