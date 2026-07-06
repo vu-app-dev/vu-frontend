@@ -25,11 +25,18 @@ function getWsBaseUrl() {
 export const AI_BASE_URL = AI_SERVICE_URL;
 export const AI_WS_URL = getWsBaseUrl();
 
-export async function startInterview({ mockId, candidateId, cvUrl, mockData }) {
+export async function startInterview({ mockId, candidateId, cvUrl, mockData, mocks }) {
+  const body = { candidateId, cvUrl: cvUrl || '' };
+  if (mocks) {
+    body.mocks = mocks;
+  } else {
+    body.mockId = mockId;
+    body.mockData = mockData;
+  }
   const res = await fetch(`${AI_BASE_URL}/api/interview/start`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mockId, candidateId, cvUrl: cvUrl || '', mockData }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -55,6 +62,8 @@ export function createInterviewWS({
   onAcknowledgement,
   onCheatWarning,
   onAnalysisUpdate,
+  onMockTimeWarning,
+  onMockTransition,
   onSessionEnd,
   onError,
   onClose,
@@ -83,6 +92,12 @@ export function createInterviewWS({
         break;
       case 'analysis_update':
         onAnalysisUpdate?.(data);
+        break;
+      case 'mock_time_warning':
+        onMockTimeWarning?.(data);
+        break;
+      case 'mock_transition':
+        onMockTransition?.(data);
         break;
       case 'session_end':
         onSessionEnd?.(data);
