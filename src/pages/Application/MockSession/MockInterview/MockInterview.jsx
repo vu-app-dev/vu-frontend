@@ -79,6 +79,16 @@ function stopTTS() {
   if (window.speechSynthesis) window.speechSynthesis.cancel();
 }
 
+let _ttsOnSpeakingChange = null;
+function setTtsSpeakingCallback(cb) { _ttsOnSpeakingChange = cb; }
+
+function _ttsStarted() {
+  if (_ttsOnSpeakingChange) _ttsOnSpeakingChange(true);
+}
+function _ttsEnded() {
+  if (_ttsOnSpeakingChange) _ttsOnSpeakingChange(false);
+}
+
 function speak(text, audioBase64) {
   if (!text) return;
   _ttsQueue.push({ text, audioBase64 });
@@ -88,9 +98,11 @@ function speak(text, audioBase64) {
 function _playNextTTS() {
   if (_ttsQueue.length === 0) {
     _ttsBusy = false;
+    _ttsEnded();
     return;
   }
   _ttsBusy = true;
+  _ttsStarted();
   const { text, audioBase64 } = _ttsQueue.shift();
 
   if (audioBase64) {
@@ -194,11 +206,14 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
 
   /* Silence countdown state */
   const SILENCE_TIMEOUT_MS = 5000;
+  const TTS_COOLDOWN_MS = 2000;
   const transcriptRef = useRef('');
   const silenceTimerRef = useRef(null);
   const [silenceCountdown, setSilenceCountdown] = useState(null);
   const silenceStartRef = useRef(null);
   const countdownIntervalRef = useRef(null);
+  const ttsCooldownRef = useRef(false);
+  const isTtsSpeakingRef = useRef(false);
 
   /* Panel state */
   const [showCamera, setShowCamera] = useState(true);
@@ -418,6 +433,22 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
     }, SILENCE_TIMEOUT_MS);
   }, [cancelSilenceCountdown, submitAccumulatedTranscript]);
 
+  /* ── TTS speaking → pause mic + STT cooldown ── */
+  useEffect(() => {
+    setTtsSpeakingCallback((speaking) => {
+      isTtsSpeakingRef.current = speaking;
+      if (speaking) {
+        micCaptureRef.current?.pause();
+        cancelSilenceCountdown();
+      } else {
+        micCaptureRef.current?.resume();
+        ttsCooldownRef.current = true;
+        setTimeout(() => { ttsCooldownRef.current = false; }, TTS_COOLDOWN_MS);
+      }
+    });
+    return () => setTtsSpeakingCallback(null);
+  }, [cancelSilenceCountdown]);
+
   /* ── Connect interview WS + STT WS when session is ready ── */
   useEffect(() => {
     if (!sessionId || !sessionToken || !readyToInterview || isFinished) return;
@@ -471,7 +502,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
       onSessionBegins: () => setSttConnected(true),
       onPartial: (text) => {
         setSttPartial(text);
-        if (text.trim()) {
+        if (text.trim() && !isTtsSpeakingRef.current && !ttsCooldownRef.current) {
           stopTTS();
           cancelSilenceCountdown();
         }
@@ -480,6 +511,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
         setSttPartial('');
         if (!text.trim()) return;
         if (isTypingRef.current) return;
+        if (isTtsSpeakingRef.current || ttsCooldownRef.current) return;
         const nextTranscript = `${transcriptRef.current ? `${transcriptRef.current} ` : ''}${text.trim()}`;
         transcriptRef.current = nextTranscript;
         setVoiceDraft(nextTranscript);

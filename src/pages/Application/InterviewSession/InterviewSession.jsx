@@ -40,10 +40,11 @@ function buildMockData(mock) {
   };
 }
 
-const SILENCE_TIMEOUT_MS = 3000;
+const SILENCE_TIMEOUT_MS = 5000;
 const TRANSITION_DELAY_MS = 10000;
 const TAB_WARNING_VISIBLE_MS = 8000;
 const VIDEO_FRAME_INTERVAL_MS = 5000;
+const TTS_COOLDOWN_MS = 2000;
 
 export const InterviewSession = memo(function InterviewSession({ onComplete }) {
   const mocks = APPLICATION?.mocks || [];
@@ -92,6 +93,8 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
   const isAiThinkingRef = useRef(false);
   const timerIntervalRef = useRef(null);
   const fullscreenExitTimerRef = useRef(null);
+  const ttsCooldownRef = useRef(false);
+  const isTtsSpeakingRef = useRef(false);
 
   useEffect(() => { phaseRef.current = phase; }, [phase]);
   useEffect(() => { isAiThinkingRef.current = isAiThinking; }, [isAiThinking]);
@@ -115,12 +118,15 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
   /* ── TTS speaking state callback — pause mic while AI talks ── */
   useEffect(() => {
     onSpeakingChange((speaking) => {
+      isTtsSpeakingRef.current = speaking;
       setIsSpeaking(speaking);
       if (speaking) {
         micCaptureRef.current?.pause();
         cancelSilenceCountdown();
       } else {
         micCaptureRef.current?.resume();
+        ttsCooldownRef.current = true;
+        setTimeout(() => { ttsCooldownRef.current = false; }, TTS_COOLDOWN_MS);
       }
     });
     return () => onSpeakingChange(null);
@@ -268,7 +274,7 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
       const sttWs = createSTTConnection({
         onSessionBegins: () => {},
         onPartial: (text) => {
-          if (text.trim()) {
+          if (text.trim() && !isTtsSpeakingRef.current && !ttsCooldownRef.current) {
             stopTTS();
             cancelSilenceCountdown();
           }
@@ -276,6 +282,7 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
         onFinal: (text) => {
           if (!text.trim()) return;
           if (isAiThinkingRef.current) return;
+          if (isTtsSpeakingRef.current || ttsCooldownRef.current) return;
           const next = `${transcriptRef.current ? `${transcriptRef.current} ` : ''}${text.trim()}`;
           transcriptRef.current = next;
           restartSilenceCountdown();
