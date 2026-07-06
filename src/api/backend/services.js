@@ -1109,9 +1109,9 @@ export async function saveCandidateInfo(data) {
       makeJobLookup()
     );
 
-    if (mapped.id) {
+    if (mapped.backendId) {
       upsertCandidate(mapped);
-      setCandidateInfo({ cvUrl, candidateId: mapped.id });
+      setCandidateInfo({ cvUrl, candidateId: mapped.backendId });
     }
   }
 
