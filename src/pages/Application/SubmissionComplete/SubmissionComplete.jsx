@@ -1,12 +1,10 @@
 import { memo, useMemo } from 'react';
-import PropTypes from 'prop-types';
-import { CheckCircle2, Clock, FileText, ArrowLeft, Sparkles, Users, Mail } from 'lucide-react';
-import { Button } from '../../../components/ui/Button';
+import { CheckCircle2, Clock, FileText, Sparkles, Users, Mail } from 'lucide-react';
 import { APPLICATION, CANDIDATE_INFO, getCompletedCount } from '../../../api';
 import './SubmissionComplete.css';
 
 /* ── Component ── */
-export const SubmissionComplete = memo(function SubmissionComplete({ onBackToJobs }) {
+export const SubmissionComplete = memo(function SubmissionComplete() {
   const completedCount = getCompletedCount();
   const totalCount = APPLICATION?.mocks?.length ?? 0;
   const jobTitle = APPLICATION?.job?.title ?? 'the position';
@@ -42,15 +40,6 @@ export const SubmissionComplete = memo(function SubmissionComplete({ onBackToJob
             <span>We received your profile, setup checks, and interview responses.</span>
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            iconLeft={<ArrowLeft size={16} />}
-            className="submission-complete__back-btn"
-            onClick={onBackToJobs}
-          >
-            Back to Home
-          </Button>
         </section>
 
         <aside className="submission-complete__panel" aria-label="Submission details">
@@ -138,7 +127,3 @@ export const SubmissionComplete = memo(function SubmissionComplete({ onBackToJob
     </div>
   );
 });
-
-SubmissionComplete.propTypes = {
-  onBackToJobs: PropTypes.func.isRequired,
-};

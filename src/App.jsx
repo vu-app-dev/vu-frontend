@@ -559,7 +559,11 @@ function JobDetailsPage() {
     <JobDetails
       jobId={id}
       onEdit={() => navigate(`/jobs/${id}/edit`)}
-      onTest={(path) => navigate(path || `/apply/${id}`)}
+      onTest={(path) => {
+        const targetPath = path || `/apply/${id}`;
+        const targetUrl = new URL(targetPath, window.location.origin);
+        window.open(targetUrl.toString(), '_blank', 'noopener,noreferrer');
+      }}
       onShowCandidates={() => navigate(getCandidatesPath(id))}
       onViewCandidate={(slug, selectedCandidateId) =>
         navigate(`/candidates/${slug}`, { state: { selectedCandidateId } })
@@ -961,15 +965,7 @@ function AppInterviewPage() {
 }
 
 function AppCompletePage() {
-  const navigate = useNavigate();
-  const { companyId, jobId } = useParams();
-  const { isAuthenticated } = useBackendData();
-  const publicApplicationPath = getApplyPath(companyId, jobId);
-  return (
-    <SubmissionComplete
-      onBackToJobs={() => navigate(isAuthenticated ? '/candidates' : publicApplicationPath)}
-    />
-  );
+  return <SubmissionComplete />;
 }
 
 // ══════════════════════════════════════════════════════════

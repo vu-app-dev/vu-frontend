@@ -101,13 +101,6 @@
   margin-top: 2px;
 }
 
-.submission-complete__back-btn {
-  position: relative;
-  z-index: 1;
-  width: fit-content;
-  margin-top: var(--gap-sm);
-}
-
 .submission-complete__panel {
   display: flex;
   min-width: 0;
@@ -304,7 +297,4 @@
     text-align: left;
   }
 
-  .submission-complete__back-btn {
-    width: 100%;
-  }
 }

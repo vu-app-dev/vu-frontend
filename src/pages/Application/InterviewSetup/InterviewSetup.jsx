@@ -9,7 +9,7 @@ import {
   Loader,
   ArrowRight,
   ArrowLeft,
-  Circle,
+  ShieldCheck,
 } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { setScreenShareStream } from './screenShareStream';
@@ -58,13 +58,7 @@ const DEVICES = [
   },
 ];
 
-const GUIDELINES = [
-  'Find a quiet, well-lit environment before starting',
-  'Close unnecessary browser tabs and applications',
-  'Make sure your internet connection is stable',
-  'The interview is timed and cannot be paused or restarted',
-  'Your camera and screen activity may be monitored for integrity',
-];
+const GUIDELINES = ['Quiet space', 'Stable internet', 'Full-screen share only'];
 
 export const InterviewSetup = memo(function InterviewSetup({ onNext, onBack }) {
   const [deviceState, setDeviceState] = useState({
@@ -108,7 +102,9 @@ export const InterviewSetup = memo(function InterviewSetup({ onNext, onBack }) {
 
           <div className="interview-setup__progress" aria-label="Device check progress">
             <div className="interview-setup__progress-header">
-              <span>{checkedCount} of {DEVICES.length} checks ready</span>
+              <span>
+                {checkedCount} of {DEVICES.length} checks ready
+              </span>
               <span>{progressPercent}%</span>
             </div>
             <div className="interview-setup__progress-track">
@@ -170,7 +166,9 @@ export const InterviewSetup = memo(function InterviewSetup({ onNext, onBack }) {
           <div className="interview-setup__guidelines">
             {GUIDELINES.map((text) => (
               <div key={text} className="interview-setup__guideline">
-                <Circle size={5} />
+                <span className="interview-setup__guideline-icon">
+                  <ShieldCheck size={14} />
+                </span>
                 <span>{text}</span>
               </div>
             ))}

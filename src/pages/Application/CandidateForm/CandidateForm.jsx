@@ -161,7 +161,7 @@ export const CandidateForm = memo(function CandidateForm({ onSubmit, onBack }) {
             <FileInput
               label="Resume / CV"
               required={!form.cvUrl}
-              accept=".pdf,image/jpeg,image/png,image/webp"
+              accept=".pdf,application/pdf"
               error={!!errors.resume}
               hint={
                 errors.resume ||
@@ -169,7 +169,7 @@ export const CandidateForm = memo(function CandidateForm({ onSubmit, onBack }) {
                   ? `${form.resumeName} ready to upload.`
                   : form.cvUrl && form.resumeName
                     ? `${form.resumeName} previously uploaded.`
-                    : '')
+                    : 'Upload your CV as a PDF file only.')
               }
               onChange={handleFileChange}
             />

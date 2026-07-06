@@ -481,8 +481,8 @@
   --overlay-default: var(--black-a60);
   --overlay-strong: var(--black-a80);
 
-  --divider-primary: var(--black-a10);
-  --divider-secondary: var(--black-a20);
+  --divider-primary: var(--border-subtle);
+  --divider-secondary: var(--border-default);
 
   /* Shadows */
   --shadow-sm: rgba(0, 0, 0, 0.05);
@@ -551,7 +551,6 @@
 :root[data-theme='light'] {
   color-scheme: light;
 
-  /* Map existing white alpha usages to dark-on-light translucency. */
   --white-a5: var(--black-a5);
   --white-a10: var(--black-a10);
   --white-a15: var(--black-a15);
@@ -565,25 +564,25 @@
   --white-a80: var(--black-a80);
   --white-a90: var(--black-a90);
 
-  --brand-subtle: rgba(230, 79, 40, 0.12);
+  --brand-subtle: rgba(230, 79, 40, 0.1);
 
-  --text-primary: rgba(15, 23, 42, 0.95);
-  --text-secondary: rgba(15, 23, 42, 0.85);
-  --text-tertiary: rgba(15, 23, 42, 0.72);
-  --text-subtle: rgba(15, 23, 42, 0.64);
+  --text-primary: rgba(15, 23, 42, 0.96);
+  --text-secondary: rgba(15, 23, 42, 0.82);
+  --text-tertiary: rgba(15, 23, 42, 0.68);
+  --text-subtle: rgba(15, 23, 42, 0.6);
   --text-accent: var(--brand-700);
   --text-inverse: var(--white);
-  --text-disabled: rgba(15, 23, 42, 0.45);
+  --text-disabled: rgba(15, 23, 42, 0.48);
 
-  --bg-outer: #edf1f5;
-  --bg-base: #f6f8fb;
-  --bg-surface: #ffffff;
-  --bg-card: #f8fafc;
-  --bg-subcard: #eef3f8;
+  --bg-outer: #e8edf3;
+  --bg-base: #f1f4f8;
+  --bg-surface: #f7f9fc;
+  --bg-card: #fcfdff;
+  --bg-subcard: #edf2f7;
   --bg-elevated: #ffffff;
-  --bg-hover: #edf2f8;
-  --bg-press: #e4ebf3;
-  --bg-oncard: #eef3f8;
+  --bg-hover: #e9eff6;
+  --bg-press: #dfe7f0;
+  --bg-oncard: #f0f4f8;
 
   --subtle-green: #e6f5ec;
   --subtle-yellow: #fff4d8;
@@ -592,29 +591,29 @@
   --subtle-teal: #e7f6f8;
   --subtle-purple: #f2ebfa;
 
-  --border-subtle: rgba(15, 23, 42, 0.08);
-  --border-default: rgba(15, 23, 42, 0.14);
-  --border-strong: rgba(15, 23, 42, 0.2);
-  --border-structure: rgba(15, 23, 42, 0.11);
-  --border-hover: rgba(15, 23, 42, 0.18);
+  --border-subtle: rgba(15, 23, 42, 0.1);
+  --border-default: rgba(15, 23, 42, 0.16);
+  --border-strong: rgba(15, 23, 42, 0.24);
+  --border-structure: rgba(15, 23, 42, 0.13);
+  --border-hover: rgba(15, 23, 42, 0.2);
   --border-reverse: rgba(15, 23, 42, 0.35);
-  --border-focus: rgba(230, 79, 40, 0.52);
+  --border-focus: rgba(230, 79, 40, 0.62);
   --border-error: rgba(255, 59, 48, 0.5);
   --focus-outline: var(--border-md) solid var(--border-focus);
   --focus-outline-offset: var(--size-0-5);
   --focus-ring: 0 0 0 var(--size-0-5) var(--bg-base), 0 0 0 var(--size-1) var(--border-focus);
 
   --btn-primary-text: var(--white);
-  --btn-primary-bg: var(--brand-600);
-  --btn-primary-hover: var(--brand-default);
-  --btn-primary-active: var(--brand-600);
-  --btn-primary-border: var(--brand-700);
-  --btn-primary-shadow: 0 1px 2px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  --btn-primary-bg: var(--brand-700);
+  --btn-primary-hover: var(--brand-800);
+  --btn-primary-active: var(--brand-900);
+  --btn-primary-border: var(--brand-800);
+  --btn-primary-shadow: 0 1px 2px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.22);
   --btn-primary-shadow-hover:
-    0 2px 5px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.32);
+    0 2px 5px rgba(15, 23, 42, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.24);
 
   --btn-secondary-text: var(--text-secondary);
-  --btn-secondary-bg: var(--bg-subcard);
+  --btn-secondary-bg: var(--bg-card);
   --btn-secondary-hover: var(--bg-hover);
   --btn-secondary-active: var(--bg-press);
   --btn-secondary-border: var(--border-default);
@@ -625,63 +624,63 @@
   --btn-ghost-active: var(--white-a10);
 
   --btn-disabled-text: var(--text-disabled);
-  --btn-disabled-bg: var(--white-a5);
+  --btn-disabled-bg: rgba(15, 23, 42, 0.07);
 
   --input-text: var(--text-secondary);
   --input-placeholder: var(--text-subtle);
-  --input-bg: var(--bg-surface);
+  --input-bg: var(--bg-elevated);
   --input-bg-oncard: var(--bg-oncard);
   --input-border: var(--border-default);
   --input-border-hover: var(--border-strong);
   --input-border-focus: var(--border-focus);
 
   --status-success-text: var(--green-800);
-  --status-success-bg: rgba(52, 199, 89, 0.16);
-  --status-success-hover: rgba(52, 199, 89, 0.24);
+  --status-success-bg: rgba(52, 199, 89, 0.13);
+  --status-success-hover: rgba(52, 199, 89, 0.2);
 
   --status-error-text: var(--red-800);
-  --status-error-bg: rgba(255, 59, 48, 0.16);
-  --status-error-hover: rgba(255, 59, 48, 0.24);
+  --status-error-bg: rgba(255, 59, 48, 0.13);
+  --status-error-hover: rgba(255, 59, 48, 0.2);
 
   --status-warning-text: var(--yellow-900);
-  --status-warning-bg: rgba(255, 204, 0, 0.2);
-  --status-warning-hover: rgba(255, 204, 0, 0.28);
-  --status-warning-border: rgba(255, 204, 0, 0.32);
+  --status-warning-bg: rgba(255, 204, 0, 0.16);
+  --status-warning-hover: rgba(255, 204, 0, 0.24);
+  --status-warning-border: rgba(181, 145, 0, 0.28);
 
   --status-danger-text: var(--red-800);
-  --status-danger-bg: rgba(255, 59, 48, 0.16);
-  --status-danger-hover: rgba(255, 59, 48, 0.24);
+  --status-danger-bg: rgba(255, 59, 48, 0.13);
+  --status-danger-hover: rgba(255, 59, 48, 0.2);
 
   --status-info-text: var(--blue-800);
-  --status-info-bg: rgba(0, 122, 255, 0.16);
-  --status-info-hover: rgba(0, 122, 255, 0.24);
+  --status-info-bg: rgba(0, 122, 255, 0.13);
+  --status-info-hover: rgba(0, 122, 255, 0.2);
 
   --status-purple-text: var(--purple-800);
-  --status-purple-bg: rgba(175, 82, 222, 0.16);
-  --status-purple-hover: rgba(175, 82, 222, 0.24);
+  --status-purple-bg: rgba(175, 82, 222, 0.13);
+  --status-purple-hover: rgba(175, 82, 222, 0.2);
 
   --status-teal-text: var(--teal-800);
-  --status-teal-bg: rgba(48, 176, 199, 0.16);
-  --status-teal-hover: rgba(48, 176, 199, 0.24);
+  --status-teal-bg: rgba(48, 176, 199, 0.13);
+  --status-teal-hover: rgba(48, 176, 199, 0.2);
 
   --status-gray-text: var(--gray-800);
-  --status-gray-bg: rgba(15, 23, 42, 0.08);
-  --status-gray-hover: rgba(15, 23, 42, 0.14);
+  --status-gray-bg: rgba(15, 23, 42, 0.09);
+  --status-gray-hover: rgba(15, 23, 42, 0.15);
 
   --overlay-default: var(--black-a40);
   --overlay-strong: var(--black-a60);
 
-  --divider-primary: var(--black-a10);
-  --divider-secondary: var(--black-a20);
+  --divider-primary: var(--border-subtle);
+  --divider-secondary: var(--border-default);
 
   --shadow-sm: rgba(15, 23, 42, 0.08);
   --shadow-md: rgba(15, 23, 42, 0.16);
-  --shadow-window: 0 0 0 1px var(--border-subtle), 0 24px 48px -12px rgba(15, 23, 42, 0.22);
-  --shadow-card: 0 6px 18px -10px rgba(15, 23, 42, 0.22), 0 3px 8px -4px rgba(15, 23, 42, 0.12);
+  --shadow-window: 0 0 0 1px var(--border-subtle), 0 24px 48px -18px rgba(15, 23, 42, 0.24);
+  --shadow-card: 0 8px 22px -16px rgba(15, 23, 42, 0.22), 0 2px 6px -4px rgba(15, 23, 42, 0.14);
 
   --chart-brand: var(--brand-700);
-  --chart-brand-soft: rgba(230, 79, 40, 0.24);
-  --chart-brand-strong: rgba(230, 79, 40, 0.38);
+  --chart-brand-soft: rgba(230, 79, 40, 0.2);
+  --chart-brand-strong: rgba(230, 79, 40, 0.34);
   --chart-success: var(--green-700);
   --chart-warning: var(--yellow-800);
   --chart-danger: var(--red-700);
@@ -692,8 +691,8 @@
   --chart-brand-4: #f8ab8d;
   --chart-brand-5: #fbc8b0;
   --chart-brand-6: #fee5d7;
-  --chart-bar-neutral: rgba(15, 23, 42, 0.18);
-  --chart-grid: rgba(15, 23, 42, 0.14);
+  --chart-bar-neutral: rgba(15, 23, 42, 0.16);
+  --chart-grid: rgba(15, 23, 42, 0.12);
   --chart-axis-x: rgba(15, 23, 42, 0.58);
   --chart-axis-y: rgba(15, 23, 42, 0.45);
   --chart-cursor: rgba(15, 23, 42, 0.08);

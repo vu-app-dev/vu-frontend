@@ -1,10 +1,11 @@
-import { memo, useMemo, useCallback } from 'react';
+import { memo, useMemo, useCallback, useState } from 'react';
 import PropTypes from 'prop-types';
 import { useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
-import { Building2, MapPin } from 'lucide-react';
+import { Building2, MapPin, Moon, Sun } from 'lucide-react';
 import { Badge } from '../../../components/ui/Badge';
 import { Stepper } from '../../../components/ui/Stepper';
 import { APPLICATION } from '../../../api';
+import { getActiveTheme, THEMES, toggleTheme as toggleAppTheme } from '../../../utils';
 import './ApplicationFlowLayout.css';
 
 const STEPS = [
@@ -28,6 +29,7 @@ export const ApplicationFlowLayout = memo(function ApplicationFlowLayout() {
   const { companyId, jobId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const [theme, setTheme] = useState(() => getActiveTheme());
 
   const currentSuffix = suffixFromPath(location.pathname, companyId, jobId);
   const activeStep = useMemo(() => {
@@ -55,9 +57,14 @@ export const ApplicationFlowLayout = memo(function ApplicationFlowLayout() {
     return v;
   }, [activeStep]);
 
+  const handleThemeToggle = useCallback(() => {
+    setTheme((currentTheme) => toggleAppTheme(currentTheme));
+  }, []);
+
   if (!APPLICATION) return <Outlet />;
 
   const { job, company } = APPLICATION;
+  const isLightTheme = theme === THEMES.light;
 
   return (
     <div className="app-flow">
@@ -88,11 +95,16 @@ export const ApplicationFlowLayout = memo(function ApplicationFlowLayout() {
             </div>
           </div>
 
-          <div className="app-flow__stage">
-            <span className="app-flow__stage-label">Step</span>
-            <span className="app-flow__stage-value">
-              {activeStep + 1}/{STEPS.length}
-            </span>
+          <div className="app-flow__header-actions">
+            <button
+              type="button"
+              className="app-flow__theme-button"
+              onClick={handleThemeToggle}
+              aria-label={isLightTheme ? 'Switch to dark mode' : 'Switch to light mode'}
+              title={isLightTheme ? 'Switch to dark mode' : 'Switch to light mode'}
+            >
+              {isLightTheme ? <Moon size={16} /> : <Sun size={16} />}
+            </button>
           </div>
         </div>
         <div className="app-flow__stepper-wrap">
