@@ -433,9 +433,13 @@ export const CandidateDetails = memo(function CandidateDetails({ candidate }) {
   const summaryTab = (
     <div className="candidate-summary">
       <section className="candidate-summary__ai-review">
-        <span>Future AI review</span>
+        <span>AI review</span>
         <h2>Candidate review summary</h2>
-        <p>Once connected, this area will summarize fit, evidence, and review risks.</p>
+        {candidate.performance?.overallSummary ? (
+          <p>{candidate.performance.overallSummary}</p>
+        ) : (
+          <p>Once the interview is complete, this area will summarize fit, evidence, and review risks.</p>
+        )}
       </section>
 
       <div className="candidate-summary__analysis-grid">
