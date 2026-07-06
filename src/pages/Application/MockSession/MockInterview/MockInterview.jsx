@@ -205,7 +205,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
   const [voiceDraft, setVoiceDraft] = useState('');
 
   /* Silence countdown state */
-  const SILENCE_TIMEOUT_MS = 7000;
+  const SILENCE_TIMEOUT_MS = 3000;
   const TTS_COOLDOWN_MS = 800;
   const transcriptRef = useRef('');
   const silenceTimerRef = useRef(null);

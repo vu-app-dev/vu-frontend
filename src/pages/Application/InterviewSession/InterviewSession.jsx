@@ -40,7 +40,7 @@ function buildMockData(mock) {
   };
 }
 
-const SILENCE_TIMEOUT_MS = 7000;
+const SILENCE_TIMEOUT_MS = 3000;
 const TRANSITION_DELAY_MS = 10000;
 const TAB_WARNING_VISIBLE_MS = 8000;
 const VIDEO_FRAME_INTERVAL_MS = 5000;
