@@ -17,7 +17,7 @@ import { EmptyState } from './components/ui/EmptyState';
 import { ConfirmDialog } from './components/ui/Dialog';
 import { getJoinRequestById } from './api';
 import { buildApplicationContext, getApplicationSharePath } from './api';
-import { getCandidateById, getCandidateBySlug } from './api';
+import { getCandidateById, getCandidateBySlug, fetchCandidateById } from './api';
 import {
   APPLICATION,
   CURRENT_USER_ID,
@@ -493,6 +493,14 @@ function CandidateDetailsPage() {
   const candidate =
     (selectedCandidateId ? getCandidateById(selectedCandidateId) : null) ||
     getCandidateBySlug(slug);
+
+  useEffect(() => {
+    const backendId = candidate?.backendId;
+    if (backendId) {
+      fetchCandidateById(backendId).catch(() => {});
+    }
+  }, [candidate?.backendId]);
+
   if (!candidate) return <Navigate to="/candidates" replace />;
   return <CandidateDetails candidate={candidate} />;
 }
