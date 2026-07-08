@@ -80,6 +80,7 @@ import {
   DURATION_OPTIONS,
   INDUSTRY_OPTIONS,
 } from './store';
+import { analyzeCv } from '../ai/client';
 
 async function fetchPaginated(path, query = {}) {
   const items = [];
@@ -1112,6 +1113,19 @@ export async function saveCandidateInfo(data) {
     if (mapped.backendId) {
       upsertCandidate(mapped);
       setCandidateInfo({ cvUrl, candidateId: mapped.backendId });
+
+      if (cvUrl || backendCvUrl) {
+        const allTopics = (APPLICATION?.mocks || []).flatMap((m) => m.topics || []);
+        const jobContext = {
+          title: APPLICATION?.job?.title || '',
+          description: APPLICATION?.job?.description || '',
+          technologies: (APPLICATION?.job?.skills || []).join(', '),
+          topics: [...new Set(allTopics)].join(', '),
+        };
+        analyzeCv({ candidateId: mapped.backendId, cvUrl: cvUrl || backendCvUrl, jobContext }).catch(
+          (err) => console.warn('CV analysis request failed (non-blocking):', err)
+        );
+      }
     }
   }
 

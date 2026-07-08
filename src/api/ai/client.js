@@ -25,6 +25,19 @@ function getWsBaseUrl() {
 export const AI_BASE_URL = AI_SERVICE_URL;
 export const AI_WS_URL = getWsBaseUrl();
 
+export async function analyzeCv({ candidateId, cvUrl, jobContext }) {
+  const res = await fetch(`${AI_BASE_URL}/api/cv/analyze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ candidateId, cvUrl, jobContext: jobContext || {} }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `CV analysis failed: ${res.status}`);
+  }
+  return res.json();
+}
+
 export async function startInterview({ mockId, candidateId, cvUrl, mockData, mocks }) {
   const body = { candidateId, cvUrl: cvUrl || '' };
   if (mocks) {
