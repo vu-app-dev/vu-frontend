@@ -501,6 +501,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
     interviewWsRef.current = interviewWs;
 
     const sttWs = createSTTConnection({
+      sessionId: sessionId,
       onSessionBegins: () => setSttConnected(true),
       onPartial: (text) => {
         setSttPartial(text);
