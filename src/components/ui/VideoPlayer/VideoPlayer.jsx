@@ -6,7 +6,9 @@ import './VideoPlayer.css';
 // - Safari (and iOS) play HLS natively, so we assign hlsSrc directly.
 // - Other browsers load hls.js on demand (dynamic import keeps it out of the
 //   main bundle and avoids downloading it where it is not needed).
-// - If neither HLS path is available, the native <video> uses mp4Src.
+// - Any HLS failure (e.g. Cloudinary still generating a rendition) drops down
+//   to the MP4 source. The <video> stays mounted the whole time so a transient
+//   media error never tears the player down mid-fallback.
 export const VideoPlayer = memo(function VideoPlayer({
   hlsSrc,
   mp4Src,
@@ -14,80 +16,80 @@ export const VideoPlayer = memo(function VideoPlayer({
   className,
 }) {
   const videoRef = useRef(null);
-  const [error, setError] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return undefined;
 
-    setError(false);
+    setFailed(false);
     let hls = null;
     let cancelled = false;
+
+    // Last-resort source. If the MP4 itself errors, surface the failure.
+    const playMp4 = () => {
+      if (cancelled) return;
+      if (!mp4Src) {
+        setFailed(true);
+        return;
+      }
+      video.src = mp4Src;
+      video.load();
+      video.addEventListener(
+        'error',
+        () => {
+          if (!cancelled) setFailed(true);
+        },
+        { once: true },
+      );
+    };
 
     const canPlayNativeHls =
       video.canPlayType('application/vnd.apple.mpegurl') !== '';
 
+    // Safari / iOS: native HLS, with a one-shot fallback to MP4 on failure.
     if (hlsSrc && canPlayNativeHls) {
       video.src = hlsSrc;
-      return undefined;
+      video.addEventListener('error', playMp4, { once: true });
+      return () => {
+        cancelled = true;
+        video.removeEventListener('error', playMp4);
+      };
     }
 
+    // Other browsers: hls.js via MSE, falling back to MP4 on a fatal error.
     if (hlsSrc) {
       import('hls.js')
         .then(({ default: Hls }) => {
           if (cancelled) return;
-          if (Hls.isSupported()) {
-            hls = new Hls({ enableWorker: true });
-            hls.loadSource(hlsSrc);
-            hls.attachMedia(video);
-            hls.on(Hls.Events.ERROR, (_event, data) => {
-              // Fall back to the MP4 source on a fatal HLS error.
-              if (data?.fatal) {
-                hls?.destroy();
-                hls = null;
-                if (mp4Src) {
-                  video.src = mp4Src;
-                } else {
-                  setError(true);
-                }
-              }
-            });
-          } else if (mp4Src) {
-            video.src = mp4Src;
-          } else {
-            setError(true);
+          if (!Hls.isSupported()) {
+            playMp4();
+            return;
           }
+          hls = new Hls({ enableWorker: true });
+          hls.loadSource(hlsSrc);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.ERROR, (_event, data) => {
+            if (!data?.fatal) return;
+            hls?.destroy();
+            hls = null;
+            playMp4();
+          });
         })
-        .catch(() => {
-          if (cancelled) return;
-          if (mp4Src) {
-            video.src = mp4Src;
-          } else {
-            setError(true);
-          }
-        });
+        .catch(playMp4);
+
       return () => {
         cancelled = true;
         if (hls) hls.destroy();
       };
     }
 
-    if (mp4Src) {
-      video.src = mp4Src;
-      return undefined;
-    }
-
-    setError(true);
-    return undefined;
+    // No HLS source at all — play the MP4 directly.
+    playMp4();
+    return () => {
+      cancelled = true;
+    };
   }, [hlsSrc, mp4Src]);
-
-  if (error) {
-    return (
-      <div className={['video-player video-player--error', className].filter(Boolean).join(' ')}>
-        <p>This recording could not be loaded.</p>
-      </div>
-    );
-  }
 
   return (
     <div className={['video-player', className].filter(Boolean).join(' ')}>
@@ -98,10 +100,14 @@ export const VideoPlayer = memo(function VideoPlayer({
         playsInline
         preload="metadata"
         poster={poster || undefined}
-        onError={() => setError(true)}
       >
         Your browser does not support the video tag.
       </video>
+      {failed && (
+        <div className="video-player__error">
+          <p>This recording could not be loaded.</p>
+        </div>
+      )}
     </div>
   );
 });

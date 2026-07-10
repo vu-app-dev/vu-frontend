@@ -1,4 +1,5 @@
 .video-player {
+  position: relative;
   width: 100%;
   overflow: hidden;
   background: var(--bg-base, #000);
@@ -14,15 +15,17 @@
   background: #000;
 }
 
-.video-player--error {
+.video-player__error {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 12rem;
   padding: var(--padding-lg);
+  background: color-mix(in srgb, var(--bg-base, #000) 78%, transparent);
 }
 
-.video-player--error p {
+.video-player__error p {
   margin: 0;
   color: var(--text-tertiary);
   font-size: var(--text-sm);
