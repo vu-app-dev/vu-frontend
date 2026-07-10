@@ -779,6 +779,13 @@ export async function fetchCandidateById(id) {
   return upsertCandidate(mapped);
 }
 
+// Requests the backend to mint optimized Cloudinary streaming URLs for a
+// candidate's interview recording. Returns { publicId, hlsUrl, mp4Url } where
+// hlsUrl is the preferred adaptive stream and mp4Url a compatibility fallback.
+export async function fetchCandidateVideo(candidateId) {
+  return apiFetch(endpoints.candidates.video(candidateId));
+}
+
 function getCandidateBackendId(candidate) {
   return normalizeId(
     candidate?.applicationId ||

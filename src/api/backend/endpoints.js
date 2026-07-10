@@ -50,6 +50,7 @@ export const endpoints = {
   },
   candidates: {
     byId: (candidateId) => `/candidates/get/${candidateId}`,
+    video: (candidateId) => `/candidates/video/${candidateId}`,
     paginated: '/candidates/get_paginated',
     apply: (companyId, jobId) => `/candidates/apply/${companyId}/${jobId}`,
     updateStatus: (candidateId) => `/candidates/update/${candidateId}`,

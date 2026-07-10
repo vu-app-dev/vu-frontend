@@ -1,0 +1,29 @@
+.video-player {
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg-base, #000);
+  border: var(--border-sm) solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.video-player__el {
+  display: block;
+  width: 100%;
+  max-height: 32rem;
+  aspect-ratio: 16 / 9;
+  background: #000;
+}
+
+.video-player--error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 12rem;
+  padding: var(--padding-lg);
+}
+
+.video-player--error p {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+}
