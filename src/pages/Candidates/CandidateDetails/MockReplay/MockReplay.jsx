@@ -7,15 +7,13 @@ import './MockReplay.css';
 
 export const MockReplay = memo(function MockReplay({ candidate }) {
   const candidateId = candidate?.backendId || candidate?.raw?.id;
-  // Only interviews that were recorded carry a stored video reference.
-  const hasRecording = Boolean(candidate?.videoUrl || candidate?.performance?.videoUrl);
 
   // Result is tagged with the candidate id it belongs to so a stale response
   // from a previously viewed candidate is ignored during render.
   const [result, setResult] = useState(null); // { id, video } | { id, error: true }
 
   useEffect(() => {
-    if (!candidateId || !hasRecording) return undefined;
+    if (!candidateId) return undefined;
 
     let cancelled = false;
     fetchCandidateVideo(candidateId)
@@ -29,15 +27,15 @@ export const MockReplay = memo(function MockReplay({ candidate }) {
     return () => {
       cancelled = true;
     };
-  }, [candidateId, hasRecording]);
+  }, [candidateId]);
 
   const resolved = result && result.id === candidateId ? result : null;
-  const status = !candidateId || !hasRecording
+  const status = !candidateId
     ? 'idle'
     : !resolved
       ? 'loading'
       : resolved.error
-        ? 'error'
+        ? 'idle'
         : 'ready';
 
   return (
@@ -53,12 +51,6 @@ export const MockReplay = memo(function MockReplay({ candidate }) {
                 <span>Loading</span>
                 <h3>Preparing interview replay</h3>
                 <p>Generating an optimized stream for this session.</p>
-              </>
-            ) : status === 'error' ? (
-              <>
-                <span>Unavailable</span>
-                <h3>Replay could not be loaded</h3>
-                <p>The interview recording is temporarily unavailable. Please try again later.</p>
               </>
             ) : (
               <>
