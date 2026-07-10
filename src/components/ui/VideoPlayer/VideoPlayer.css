@@ -25,6 +25,12 @@
   background: color-mix(in srgb, var(--bg-base, #000) 78%, transparent);
 }
 
+.video-player__error--block {
+  position: static;
+  min-height: 12rem;
+  background: transparent;
+}
+
 .video-player__error p {
   margin: 0;
   color: var(--text-tertiary);
