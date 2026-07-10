@@ -273,6 +273,7 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
 
       /* Open STT WS */
       const sttWs = createSTTConnection({
+        sessionId: sessionIdRef.current || undefined,
         onSessionBegins: () => {},
         onPartial: (text) => {
           if (text.trim() && !isTtsSpeakingRef.current && !ttsCooldownRef.current) {

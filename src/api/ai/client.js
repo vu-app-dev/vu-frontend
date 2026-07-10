@@ -190,8 +190,10 @@ export function closeInterviewWS(ws) {
   }
 }
 
-export function createSTTConnection({ onPartial, onFinal, onSessionBegins, onError, onClose }) {
-  const wsUrl = `${AI_WS_URL}/api/stt/realtime`;
+export function createSTTConnection({ onPartial, onFinal, onSessionBegins, onError, onClose, sessionId }) {
+  const wsUrl = sessionId
+    ? `${AI_WS_URL}/api/stt/realtime?session_id=${sessionId}`
+    : `${AI_WS_URL}/api/stt/realtime`;
   const ws = new WebSocket(wsUrl);
 
   ws.onopen = () => {
