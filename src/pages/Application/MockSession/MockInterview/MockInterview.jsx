@@ -213,6 +213,8 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
   const [silenceCountdown, setSilenceCountdown] = useState(null);
   const silenceStartRef = useRef(null);
   const countdownIntervalRef = useRef(null);
+  const submittedQuestionIdsRef = useRef(new Set());
+  const pendingQuestionIdRef = useRef(null);
   const ttsCooldownRef = useRef(false);
   const isTtsSpeakingRef = useRef(false);
 
@@ -290,6 +292,8 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
             timestamp: formatTime(0),
           });
         }
+        submittedQuestionIdsRef.current = new Set();
+        pendingQuestionIdRef.current = null;
         setMessages(initialMessages);
         answerStartedAtRef.current = new Date().toISOString();
         setSessionLoading(false);
@@ -362,16 +366,22 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
 
   /* ── Send answer to interview WS ── */
   const sendAnswerToInterview = useCallback((transcript) => {
-    if (!interviewWsRef.current || interviewWsRef.current.readyState !== WebSocket.OPEN) return;
+    if (!interviewWsRef.current || interviewWsRef.current.readyState !== WebSocket.OPEN) return false;
     const sid = sessionIdRef.current;
     const qid = currentQuestionIdRef.current;
+    if (!sid || !qid) return false;
+    if (pendingQuestionIdRef.current === qid || submittedQuestionIdsRef.current.has(qid)) {
+      return false;
+    }
     const startedAt = answerStartedAtRef.current || new Date().toISOString();
     const endedAt = new Date().toISOString();
     const durationSeconds = Math.round((Date.now() - new Date(startedAt).getTime()) / 1000);
 
+    pendingQuestionIdRef.current = qid;
+    submittedQuestionIdsRef.current.add(qid);
     sendAnswer(interviewWsRef.current, {
       sessionId: sid,
-      questionId: qid || 'q1',
+      questionId: qid,
       transcript,
       durationSeconds: durationSeconds || 30,
       startedAt,
@@ -379,6 +389,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
     });
     answerStartedAtRef.current = new Date().toISOString();
     setIsTyping(true);
+    return true;
   }, []);
 
   /* ── Silence countdown helpers ── */
@@ -405,8 +416,9 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
     }
     transcriptRef.current = '';
     setVoiceDraft('');
-    addMessage('candidate', transcript);
-    sendAnswerToInterview(transcript);
+    if (sendAnswerToInterview(transcript)) {
+      addMessage('candidate', transcript);
+    }
   }, [addMessage, cancelSilenceCountdown, sendAnswerToInterview]);
 
   const restartSilenceCountdown = useCallback(() => {
@@ -468,6 +480,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
         transcriptRef.current = '';
         setVoiceDraft('');
         setCurrentQuestionId(data.id);
+        pendingQuestionIdRef.current = null;
         if (data.speechType !== 'follow_up') {
           setQuestionIndex((prev) => prev + 1);
         }
@@ -486,6 +499,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
         cancelSilenceCountdown();
         transcriptRef.current = '';
         setVoiceDraft('');
+        pendingQuestionIdRef.current = null;
         setIsTyping(false);
         setIsFinished(true);
         const closingText =
@@ -504,6 +518,8 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
       },
       onError: (data) => {
         console.error('[Interview]', data.message);
+        pendingQuestionIdRef.current = null;
+        setIsTyping(false);
       },
       onClose: () => {},
     });
@@ -722,10 +738,11 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
     setVoiceDraft('');
     const text = inputValue.trim() || voiceTranscript;
     if (!text || isFinished) return;
-    addMessage('candidate', text);
-    setInputValue('');
-    setSttPartial('');
-    sendAnswerToInterview(text);
+    if (sendAnswerToInterview(text)) {
+      addMessage('candidate', text);
+      setInputValue('');
+      setSttPartial('');
+    }
   }, [inputValue, isFinished, sendAnswerToInterview, addMessage, cancelSilenceCountdown]);
 
   const handleKeyDown = useCallback(

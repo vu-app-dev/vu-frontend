@@ -95,6 +95,8 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
   const isAiThinkingRef = useRef(false);
   const candidateIntroRef = useRef('');
   const askedQuestionTextsRef = useRef([]);
+  const submittedQuestionIdsRef = useRef(new Set());
+  const pendingQuestionIdRef = useRef(null);
   const timerIntervalRef = useRef(null);
   const fullscreenExitTimerRef = useRef(null);
   const ttsCooldownRef = useRef(false);
@@ -148,7 +150,16 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
     const startedAt = answerStartedAtRef.current || new Date().toISOString();
     const endedAt = new Date().toISOString();
     const durationSeconds = Math.round((Date.now() - new Date(startedAt).getTime()) / 1000);
-    const questionId = currentQuestionIdRef.current || 'q1';
+    const questionId = currentQuestionIdRef.current;
+    if (!questionId) return;
+    if (
+      pendingQuestionIdRef.current === questionId ||
+      submittedQuestionIdsRef.current.has(questionId)
+    ) {
+      return;
+    }
+    pendingQuestionIdRef.current = questionId;
+    submittedQuestionIdsRef.current.add(questionId);
 
     if (questionId === INTRO_QUESTION_ID && !candidateIntroRef.current) {
       candidateIntroRef.current = transcript;
@@ -219,6 +230,8 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
     setIsAiThinking(false);
     cancelSilenceCountdown();
     transcriptRef.current = '';
+    submittedQuestionIdsRef.current = new Set();
+    pendingQuestionIdRef.current = null;
 
     try {
       startMock(mock.id);
@@ -253,6 +266,7 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
           cancelSilenceCountdown();
           transcriptRef.current = '';
           currentQuestionIdRef.current = msg.id;
+          pendingQuestionIdRef.current = null;
           if (msg.id !== INTRO_QUESTION_ID && msg.text) {
             askedQuestionTextsRef.current = [...askedQuestionTextsRef.current, msg.text];
           }
@@ -269,6 +283,7 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
           stopTTS();
           cancelSilenceCountdown();
           transcriptRef.current = '';
+          pendingQuestionIdRef.current = null;
           const isLastMock = activeMockIndex + 1 >= mocks.length;
           if (isLastMock) {
             const finalMessage =
@@ -293,7 +308,11 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
             setPhase('complete');
           }
         },
-        onError: (err) => console.error('[Interview]', err.message),
+        onError: (err) => {
+          console.error('[Interview]', err.message);
+          pendingQuestionIdRef.current = null;
+          setIsAiThinking(false);
+        },
         onClose: () => {},
       });
       interviewWsRef.current = interviewWs;
