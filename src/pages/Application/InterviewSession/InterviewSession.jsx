@@ -45,6 +45,7 @@ const TRANSITION_DELAY_MS = 10000;
 const TAB_WARNING_VISIBLE_MS = 8000;
 const VIDEO_FRAME_INTERVAL_MS = 5000;
 const TTS_COOLDOWN_MS = 800;
+const INTRO_QUESTION_ID = 'intro';
 
 export const InterviewSession = memo(function InterviewSession({ onComplete }) {
   const mocks = APPLICATION?.mocks || [];
@@ -58,6 +59,7 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
 
   /* ── Interview session state ── */
   const [latestAiMessage, setLatestAiMessage] = useState('');
+  const [closingMessage, setClosingMessage] = useState('');
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [timeLeft, setTimeLeft] = useState(totalSeconds);
@@ -91,6 +93,8 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
   const transitionTimerRef = useRef(null);
   const phaseRef = useRef(phase);
   const isAiThinkingRef = useRef(false);
+  const candidateIntroRef = useRef('');
+  const askedQuestionTextsRef = useRef([]);
   const timerIntervalRef = useRef(null);
   const fullscreenExitTimerRef = useRef(null);
   const ttsCooldownRef = useRef(false);
@@ -144,10 +148,15 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
     const startedAt = answerStartedAtRef.current || new Date().toISOString();
     const endedAt = new Date().toISOString();
     const durationSeconds = Math.round((Date.now() - new Date(startedAt).getTime()) / 1000);
+    const questionId = currentQuestionIdRef.current || 'q1';
+
+    if (questionId === INTRO_QUESTION_ID && !candidateIntroRef.current) {
+      candidateIntroRef.current = transcript;
+    }
 
     sendAnswer(interviewWsRef.current, {
       sessionId: sessionIdRef.current,
-      questionId: currentQuestionIdRef.current || 'q1',
+      questionId,
       transcript,
       durationSeconds: durationSeconds || 30,
       startedAt,
@@ -206,6 +215,7 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
     setPhase('preparing');
     setErrorMsg(null);
     setLatestAiMessage('');
+    setClosingMessage('');
     setIsAiThinking(false);
     cancelSilenceCountdown();
     transcriptRef.current = '';
@@ -217,11 +227,17 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
           candidateId: CANDIDATE_INFO?.candidateId || '',
           cvUrl: CANDIDATE_INFO?.cvUrl || '',
           mockData: buildMockData(mock),
+          skipIntro: activeMockIndex > 0 && Boolean(candidateIntroRef.current),
+          candidateIntro: candidateIntroRef.current,
+          previousQuestions: askedQuestionTextsRef.current,
         });
 
       sessionIdRef.current = data.sessionId;
       sessionTokenRef.current = data.sessionToken;
       currentQuestionIdRef.current = data.firstQuestion?.id || null;
+      if (data.firstQuestion?.id !== INTRO_QUESTION_ID && data.firstQuestion?.text) {
+        askedQuestionTextsRef.current = [...askedQuestionTextsRef.current, data.firstQuestion.text];
+      }
       answerStartedAtRef.current = new Date().toISOString();
 
       /* Open interview WS */
@@ -237,6 +253,9 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
           cancelSilenceCountdown();
           transcriptRef.current = '';
           currentQuestionIdRef.current = msg.id;
+          if (msg.id !== INTRO_QUESTION_ID && msg.text) {
+            askedQuestionTextsRef.current = [...askedQuestionTextsRef.current, msg.text];
+          }
           answerStartedAtRef.current = new Date().toISOString();
           speak(msg.text, msg.audioBase64, (t) => setLatestAiMessage(t));
           setIsAiThinking(false);
@@ -246,10 +265,18 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
           speak(msg.text, msg.audioBase64, (t) => setLatestAiMessage(t));
           setIsAiThinking(false);
         },
-        onSessionEnd: () => {
+        onSessionEnd: (msg) => {
           stopTTS();
           cancelSilenceCountdown();
           transcriptRef.current = '';
+          const isLastMock = activeMockIndex + 1 >= mocks.length;
+          if (isLastMock) {
+            const finalMessage =
+              msg?.closingText ||
+              'Thank you for completing the interview. Please watch your email for the next steps.';
+            setClosingMessage(finalMessage);
+            speak(finalMessage, msg?.closingAudioBase64, (t) => setLatestAiMessage(t));
+          }
           completeMock(mock.id);
 
           closeInterviewWS(interviewWsRef.current);
@@ -729,8 +756,8 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
             <p className="interview-session__complete-kicker">Interview complete</p>
             <h1 className="interview-session__complete-title">Thank you for your time.</h1>
             <p className="interview-session__complete-copy">
-              Your interview responses have been recorded successfully. You can now continue to the
-              application summary.
+              {closingMessage ||
+                'Your interview responses have been recorded successfully. Please watch your email for the next steps.'}
             </p>
             <div className="interview-session__complete-summary">
               <span>{mocks.length} interviews completed</span>

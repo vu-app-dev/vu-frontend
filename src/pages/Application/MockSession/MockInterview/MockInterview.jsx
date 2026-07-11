@@ -159,6 +159,7 @@ function _speakBrowser(text) {
 }
 
 const PANEL = { camera: 'camera', code: 'code', screen: 'screen' };
+const INTRO_QUESTION_ID = 'intro';
 
 const MOCK_REQUIREMENTS = {
   Technical: { camera: true, mic: true, code: true, screen: true },
@@ -281,7 +282,7 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
         }
         if (data.firstQuestion) {
           setCurrentQuestionId(data.firstQuestion.id);
-          setQuestionIndex(1);
+          setQuestionIndex(data.firstQuestion.id === INTRO_QUESTION_ID ? 0 : 1);
           initialMessages.push({
             id: Date.now() + 1,
             role: 'ai',
@@ -467,7 +468,9 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
         transcriptRef.current = '';
         setVoiceDraft('');
         setCurrentQuestionId(data.id);
-        setQuestionIndex((prev) => prev + 1);
+        if (data.speechType !== 'follow_up') {
+          setQuestionIndex((prev) => prev + 1);
+        }
         answerStartedAtRef.current = new Date().toISOString();
         addMessage('ai', data.text);
         speak(data.text, data.audioBase64);
@@ -483,7 +486,13 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
         cancelSilenceCountdown();
         transcriptRef.current = '';
         setVoiceDraft('');
+        setIsTyping(false);
         setIsFinished(true);
+        const closingText =
+          data?.closingText ||
+          'Thank you for completing the interview. Please watch your email for the next steps.';
+        addMessage('ai', closingText);
+        speak(closingText, data?.closingAudioBase64);
         if (data?.performance?.score != null) {
           addMessage(
             'ai',
@@ -920,7 +929,13 @@ export const MockInterview = memo(function MockInterview({ mockId, onComplete })
           <span className="mock-interview__rec-dot" />
           <h3 className="mock-interview__header-title">AI Interview</h3>
           <span className="mock-interview__header-sep" />
-          <span className="mock-interview__header-subtitle">Question {questionIndex}</span>
+          <span className="mock-interview__header-subtitle">
+            {currentQuestionId === INTRO_QUESTION_ID
+              ? 'Introduction'
+              : questionIndex > 0
+                ? `Question ${questionIndex}`
+                : 'Preparing'}
+          </span>
         </div>
         <div className="mock-interview__header-right">
           <div className="mock-interview__toggles">

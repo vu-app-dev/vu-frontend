@@ -38,13 +38,29 @@ export async function analyzeCv({ candidateId, cvUrl, jobContext }) {
   return res.json();
 }
 
-export async function startInterview({ mockId, candidateId, cvUrl, mockData, mocks }) {
+export async function startInterview({
+  mockId,
+  candidateId,
+  cvUrl,
+  mockData,
+  mocks,
+  skipIntro,
+  candidateIntro,
+  previousQuestions,
+}) {
   const body = { candidateId, cvUrl: cvUrl || '' };
   if (mocks) {
     body.mocks = mocks;
   } else {
     body.mockId = mockId;
     body.mockData = mockData;
+  }
+  if (skipIntro) {
+    body.skipIntro = true;
+    body.candidateIntro = candidateIntro || '';
+  }
+  if (previousQuestions?.length) {
+    body.previousQuestions = previousQuestions;
   }
   const res = await fetch(`${AI_BASE_URL}/api/interview/start`, {
     method: 'POST',
