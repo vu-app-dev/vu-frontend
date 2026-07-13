@@ -595,7 +595,6 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
      ══════════════════════════════════════════ */
   useEffect(() => {
     if (phase !== 'complete') return;
-    stopTTS();
     closeInterviewWS(interviewWsRef.current);
     closeSTTConnection(sttWsRef.current);
     micCaptureRef.current?.stop();
