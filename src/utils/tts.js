@@ -93,6 +93,18 @@ function _playNextTTS() {
   }
 }
 
+function _pickBrowserVoice() {
+  const voices = window.speechSynthesis?.getVoices?.() || [];
+  const preferred = ['Aria', 'Microsoft Aria', 'Microsoft Aria Online (Natural) - English (United States)'];
+  for (const name of preferred) {
+    const match = voices.find((v) => v.name === name);
+    if (match) return match;
+  }
+  const enUsFemale = voices.find((v) => v.lang === 'en-US' && /aria|female|zira|jenny/i.test(v.name));
+  if (enUsFemale) return enUsFemale;
+  return voices.find((v) => v.lang === 'en-US') || null;
+}
+
 function _speakBrowser(text) {
   if (!window.speechSynthesis) {
     _playNextTTS();
@@ -101,6 +113,8 @@ function _speakBrowser(text) {
   const u = new SpeechSynthesisUtterance(text);
   u.rate = 1.0;
   u.lang = 'en-US';
+  const voice = _pickBrowserVoice();
+  if (voice) u.voice = voice;
   let done = false;
   u.onend = () => {
     if (done) return;
