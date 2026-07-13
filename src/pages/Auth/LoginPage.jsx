@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useLocation } from 'react-router-dom';
 import {
   AlertCircle,
@@ -9,8 +9,6 @@ import {
   Phone,
   UserRound,
   UserX,
-  Users,
-  ClipboardCheck,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import {
@@ -27,7 +25,7 @@ import {
   useBackendData,
 } from '../../api';
 import { useVerificationResendCooldown } from './useVerificationResendCooldown';
-import { AppLogo } from '../../components/ui/AppLogo';
+import { AuthShell } from './AuthShell';
 import './LoginPage.css';
 
 const EMPTY_LOGIN = { email: '', password: '' };
@@ -149,7 +147,7 @@ function validateRegisterForm(form) {
   if (!form.phone.trim()) e.phone = 'Phone is required.';
   else if (!PHONE_PATTERN.test(form.phone)) e.phone = 'Enter a valid phone number.';
   if (form.website && !isValidUrl(form.website)) e.website = 'Enter a valid URL.';
-  if (form.password.length < 8 || form.password.length > 20) e.password = 'Password must be 8–20 characters.';
+  if (form.password.length < 8 || form.password.length > 20) e.password = 'Password must be 8-20 characters.';
   else if (!/[a-z]/.test(form.password) || !/[A-Z]/.test(form.password)) e.password = 'Use uppercase and lowercase letters.';
   if (form.password !== form.confirmPassword) e.confirmPassword = 'Passwords must match.';
   if (!form.companyName.trim()) e.companyName = 'Company name is required.';
@@ -162,37 +160,6 @@ function validateVerifyForm(form) {
   else if (!isValidEmail(form.email)) e.email = 'Enter a valid email.';
   if (!form.code.trim()) e.code = 'Verification code is required.';
   return e;
-}
-
-const BRAND_FEATURES = [
-  { icon: Users, text: 'Manage your entire hiring pipeline in one place' },
-  { icon: ClipboardCheck, text: 'AI-powered mock interviews and candidate scoring' },
-  { icon: Building2, text: 'Publish jobs and track applicants automatically' },
-];
-
-function BrandPanel() {
-  return (
-    <aside className="auth-root__brand">
-      <div className="auth-root__blob auth-root__blob--1" />
-      <div className="auth-root__blob auth-root__blob--2" />
-      <div className="auth-root__brand-top">
-        <AppLogo size="sm" />
-      </div>
-      <div className="auth-root__brand-body">
-        <h2 className="auth-root__brand-heading">Hire smarter,<br />move faster.</h2>
-        <p className="auth-root__brand-sub">The all-in-one hiring workspace built for modern teams.</p>
-        <div className="auth-root__feature-list">
-          {BRAND_FEATURES.map(({ icon: Icon, text }) => (
-            <div key={text} className="auth-root__feature">
-              <div className="auth-root__feature-icon"><Icon size={14} /></div>
-              {text}
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="auth-root__brand-bottom">© {new Date().getFullYear()} VU · All rights reserved</div>
-    </aside>
-  );
 }
 
 export function LoginPage() {
@@ -212,6 +179,7 @@ export function LoginPage() {
   const [loginNotice, setLoginNotice] = useState(null);
   const [verifyHint, setVerifyHint] = useState('');
   const [showVerifyRecovery, setShowVerifyRecovery] = useState(false);
+  const titleRef = useRef(null);
   const { resendSeconds, canResendCode, startResendCooldown, resetResendCooldown } = useVerificationResendCooldown();
 
   const eyebrow = useMemo(() => {
@@ -377,17 +345,18 @@ export function LoginPage() {
 
   const authDialog = loginNotice || authNotice;
 
+  useEffect(() => {
+    titleRef.current?.focus();
+  }, [mode]);
+
   if (isAuthenticated) return <Navigate to="/candidates" replace />;
 
   return (
-    <div className="auth-root">
-      <BrandPanel />
-
-      <div className="auth-root__form-panel">
+    <AuthShell wide={mode === 'register'}>
         <div className={`auth-card${mode === 'register' ? ' auth-card--wide' : ''}`}>
           <div className="auth-card__header">
             <span className="auth-card__eyebrow">{eyebrow}</span>
-            <h1 className="auth-card__title">{title}</h1>
+            <h1 ref={titleRef} tabIndex="-1" className="auth-card__title">{title}</h1>
             <p className="auth-card__subtitle">{subtitle}</p>
           </div>
 
@@ -396,7 +365,7 @@ export function LoginPage() {
               <EmailInput label="Email" value={loginForm.email} onChange={(e) => updateLogin('email', e.target.value)} error={Boolean(fieldErrors.email)} hint={fieldErrors.email} required />
               <PasswordInput label="Password" value={loginForm.password} onChange={(e) => updateLogin('password', e.target.value)} error={Boolean(fieldErrors.password)} hint={fieldErrors.password} required />
               {error && (
-                <div className="auth-card__error">
+                <div className="auth-card__error" role="alert" aria-live="assertive">
                   <AlertCircle size={15} className="auth-card__error-icon" />
                   {error}
                 </div>
@@ -435,7 +404,7 @@ export function LoginPage() {
               </div>
               <Textarea label="Company description" rows={3} value={registerForm.description} onChange={(e) => updateRegister('description', e.target.value)} />
               {error && (
-                <div className="auth-card__error">
+                <div className="auth-card__error" role="alert" aria-live="assertive">
                   <AlertCircle size={15} className="auth-card__error-icon" />
                   {error}
                 </div>
@@ -456,7 +425,7 @@ export function LoginPage() {
               <EmailInput label="Email" value={verifyForm.email} onChange={(e) => { setVerifyForm((f) => ({ ...f, email: e.target.value })); clearFieldError('email'); setError(''); }} error={Boolean(fieldErrors.email)} hint={fieldErrors.email} required />
               <TextInput label="Verification code" value={verifyForm.code} onChange={(e) => { setVerifyForm((f) => ({ ...f, code: e.target.value })); clearFieldError('code'); setError(''); }} hint={fieldErrors.code || verifyHint} error={Boolean(fieldErrors.code)} required />
               {error && (
-                <div className="auth-card__error">
+                <div className="auth-card__error" role="alert" aria-live="assertive">
                   <AlertCircle size={15} className="auth-card__error-icon" />
                   {error}
                 </div>
@@ -473,7 +442,6 @@ export function LoginPage() {
             </form>
           )}
         </div>
-      </div>
 
       {authDialog && (
         <div className="auth-dialog-backdrop" role="presentation">
@@ -487,6 +455,6 @@ export function LoginPage() {
           </div>
         </div>
       )}
-    </div>
+    </AuthShell>
   );
 }

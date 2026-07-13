@@ -1,7 +1,6 @@
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import { Briefcase, Lock, Pencil } from 'lucide-react';
 import PropTypes from 'prop-types';
-import { QuickInfoCard } from '../../../../components/ui/Cards';
 import { Button } from '../../../../components/ui/Button';
 import { Badge } from '../../../../components/ui/Badge';
 import { BarChart } from '../../../../components/ui/Charts';
@@ -78,9 +77,6 @@ export const MockDetails = memo(function MockDetails({
   const technologies = Array.isArray(mock.technologies) ? mock.technologies : [];
   const topics = Array.isArray(mock.topics) ? mock.topics : [];
   const questions = Array.isArray(mock.questions) ? mock.questions : [];
-  const totalWeight =
-    topics.reduce((sum, topic) => sum + Number(topic.weight || 0), 0) +
-    questions.reduce((sum, question) => sum + Number(question.weight || 0), 0);
   const mockStatusVariant = isActive ? 'inUse' : 'available';
 
   const analysisPanel = (
@@ -115,33 +111,6 @@ export const MockDetails = memo(function MockDetails({
         </div>
       </section>
 
-      <div className="mock-details__stats">
-        <QuickInfoCard
-          number={mock.totalSessions}
-          title="Sessions"
-          density="compact"
-          animated={false}
-        />
-        <QuickInfoCard
-          number={`${mock.avgScore}%`}
-          title="Avg. score"
-          density="compact"
-          animated={false}
-        />
-        <QuickInfoCard
-          number={`${mock.passRate}%`}
-          title="Pass rate"
-          density="compact"
-          animated={false}
-        />
-        <QuickInfoCard
-          number={jobsUsing.length}
-          title="Used in jobs"
-          density="compact"
-          animated={false}
-        />
-      </div>
-
       <section className="mock-details__section">
         <SectionTitle variant="inline">Used in jobs</SectionTitle>
         {jobsUsing.length > 0 ? (
@@ -169,25 +138,17 @@ export const MockDetails = memo(function MockDetails({
 
       <section className="mock-details__section">
         <SectionTitle variant="inline">Scoring structure</SectionTitle>
-        <div className="mock-details__formula">
+        <div className="mock-details__scoring-chips">
           {topics.map((topic) => (
-            <div key={topic.id} className="mock-details__formula-row">
-              <span className="mock-details__formula-name">{topic.name}</span>
-              <span className="mock-details__formula-pct">{topic.weight}%</span>
-            </div>
+            <span key={topic.id} className="mock-details__scoring-chip">
+              {topic.name}
+            </span>
           ))}
           {questions.map((question, index) => (
-            <div key={question.id} className="mock-details__formula-row">
-              <span className="mock-details__formula-name">
-                Q{index + 1}: {question.title}
-              </span>
-              <span className="mock-details__formula-pct">{question.weight}%</span>
-            </div>
+            <span key={question.id} className="mock-details__scoring-chip">
+              Q{index + 1}: {question.title}
+            </span>
           ))}
-          <div className="mock-details__formula-row mock-details__formula-row--total">
-            <span className="mock-details__formula-name">Total</span>
-            <span className="mock-details__formula-pct">{totalWeight}%</span>
-          </div>
         </div>
       </section>
 

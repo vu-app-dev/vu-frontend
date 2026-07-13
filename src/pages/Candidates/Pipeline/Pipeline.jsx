@@ -98,6 +98,7 @@ const BASE_OVERLAY_FILTERS = [
   { key: 'flaggedOnly', label: 'Integrity', type: 'toggle', toggleLabel: 'Show flagged only' },
 ];
 const INITIAL_OVERLAY = { status: [], job: '', score: { min: '', max: '' }, flaggedOnly: false };
+const JOB_PERF_PER_PAGE = 5;
 
 function average(values) {
   const numbers = values.map(Number).filter((value) => Number.isFinite(value));
@@ -367,6 +368,7 @@ export const Pipeline = memo(function Pipeline() {
   const [overviewKey, setOverviewKey] = useState(0); // Force animation reset on tab change
   const [overviewSortColumn, setOverviewSortColumn] = useState(null);
   const [overviewSortDirection, setOverviewSortDirection] = useState(null);
+  const [overviewPage, setOverviewPage] = useState(1);
   const [lastSelectedId, setLastSelectedId] = useState(() => initialSelectedId);
   const [searchValue, setSearchValue] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -472,30 +474,6 @@ export const Pipeline = memo(function Pipeline() {
     if (overlayFilters.flaggedOnly) count++;
     return count;
   }, [overlayFilters]);
-
-  const activeFilterChips = useMemo(() => {
-    void dataVersion;
-    const chips = [];
-    if (overlayFilters.status.length) {
-      chips.push({
-        key: 'status',
-        label: `Status: ${overlayFilters.status.join(', ')}`,
-      });
-    }
-    if (overlayFilters.job) {
-      const job = JOBS.find((item) => item.id === overlayFilters.job);
-      chips.push({ key: 'job', label: `Job: ${job?.title || overlayFilters.job}` });
-    }
-    if (overlayFilters.score.min || overlayFilters.score.max) {
-      const min = overlayFilters.score.min || '0';
-      const max = overlayFilters.score.max || '100';
-      chips.push({ key: 'score', label: `Score: ${min}-${max}%` });
-    }
-    if (overlayFilters.flaggedOnly) {
-      chips.push({ key: 'flaggedOnly', label: 'Integrity flagged' });
-    }
-    return chips;
-  }, [overlayFilters, dataVersion]);
 
   const clearAllOverlayFilters = useCallback(() => {
     setOverlayFilters(INITIAL_OVERLAY);
@@ -626,6 +604,7 @@ export const Pipeline = memo(function Pipeline() {
   const handleOverviewSort = useCallback((columnKey, direction) => {
     setOverviewSortColumn(direction ? columnKey : null);
     setOverviewSortDirection(direction);
+    setOverviewPage(1);
   }, []);
 
   const sortedJobPerformance = useMemo(() => {
@@ -639,6 +618,13 @@ export const Pipeline = memo(function Pipeline() {
       return String(aVal).localeCompare(String(bVal)) * modifier;
     });
   }, [overviewSortColumn, overviewSortDirection, overviewData.jobPerformance]);
+
+  const jobPerfTotalPages = Math.max(1, Math.ceil(sortedJobPerformance.length / JOB_PERF_PER_PAGE));
+  const safeOverviewPage = Math.min(overviewPage, jobPerfTotalPages);
+  const paginatedJobPerformance = useMemo(() => {
+    const start = (safeOverviewPage - 1) * JOB_PERF_PER_PAGE;
+    return sortedJobPerformance.slice(start, start + JOB_PERF_PER_PAGE);
+  }, [sortedJobPerformance, safeOverviewPage]);
 
   const columnsWithSortState = useMemo(
     () =>
@@ -698,7 +684,10 @@ export const Pipeline = memo(function Pipeline() {
         onFilterClick={() => setIsFilterOpen(true)}
         filterSlot={
           activeFilterCount ? (
-            <AppliedFilterChips chips={activeFilterChips} onClearAll={clearAllOverlayFilters} />
+            <AppliedFilterChips
+              count={activeFilterCount}
+              onClearAll={clearAllOverlayFilters}
+            />
           ) : null
         }
         searchValue={searchValue}
@@ -730,7 +719,7 @@ export const Pipeline = memo(function Pipeline() {
                   <span>Shortlisted</span>
                   <strong>{overviewData.stats.shortlisted}</strong>
                 </div>
-                <div className="pipeline-page__summary-item">
+                <div className="pipeline-page__summary-item" data-summary="flagged">
                   <span>Flagged</span>
                   <strong>{overviewData.stats.flagged}</strong>
                 </div>
@@ -887,7 +876,7 @@ export const Pipeline = memo(function Pipeline() {
                     gridTemplateColumns={JOB_PERF_GRID}
                   />
                   <div className="overview__table-rows">
-                    {sortedJobPerformance.map((job, index) => (
+                    {paginatedJobPerformance.map((job, index) => (
                       <TableRow
                         key={index}
                         className="overview__table-row"
@@ -916,6 +905,15 @@ export const Pipeline = memo(function Pipeline() {
                     ))}
                   </div>
                 </div>
+                {sortedJobPerformance.length > JOB_PERF_PER_PAGE && (
+                  <Pagination
+                    currentPage={safeOverviewPage}
+                    totalPages={jobPerfTotalPages}
+                    totalItems={sortedJobPerformance.length}
+                    itemsPerPage={JOB_PERF_PER_PAGE}
+                    onPageChange={setOverviewPage}
+                  />
+                )}
               </div>
 
               <div className="overview__charts-section">

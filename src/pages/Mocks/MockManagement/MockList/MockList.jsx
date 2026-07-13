@@ -312,10 +312,6 @@ export const MockList = memo(function MockList({
             <span>Available</span>
             <strong>{summary.available}</strong>
           </div>
-          <div className="mock-list__summary-item">
-            <span>Avg. score</span>
-            <strong>{summary.avgScore}%</strong>
-          </div>
         </div>
 
         <div className="mock-list__cards">
@@ -337,9 +333,6 @@ export const MockList = memo(function MockList({
                 menuOptions={mockMenuOptions}
                 onMenuSelect={(action) => handleMenuSelect(mock, action)}
                 onClick={() => onViewMock?.(mock.id)}
-                score={mock.avgScore}
-                scoreLabel="Avg. score"
-                scoreDisplay="bar"
                 density="compact"
                 menuAlwaysVisible
                 colLeft={{

@@ -1,8 +1,31 @@
 .company-join__panel {
-  width: min(100%, 640px);
+  width: 100%;
+}
+
+.company-join__header {
+  gap: var(--gap-sm);
+}
+
+.company-join__heading-row {
   display: flex;
-  flex-direction: column;
-  gap: var(--gap-lg);
+  align-items: flex-start;
+  gap: var(--gap-md);
+}
+
+.company-join__heading-row > div:last-child {
+  min-width: 0;
+}
+
+.company-join__mark {
+  display: grid;
+  width: var(--size-10);
+  height: var(--size-10);
+  flex-shrink: 0;
+  place-items: center;
+  color: var(--text-accent);
+  background: var(--brand-subtle);
+  border: var(--border-sm) solid color-mix(in srgb, var(--brand-default) 28%, transparent);
+  border-radius: var(--radius-sm);
 }
 
 .company-join__phone-input .input-field__input {
@@ -11,15 +34,23 @@
 }
 
 .company-join__actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--gap-sm);
 }
 
-.company-join__actions button {
-  flex: 1;
+.company-join__actions:has(> :nth-child(3)) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .company-join__done {
+  align-items: center;
   text-align: center;
+}
+
+@media (max-width: 560px) {
+  .company-join__actions,
+  .company-join__actions:has(> :nth-child(3)) {
+    grid-template-columns: 1fr;
+  }
 }

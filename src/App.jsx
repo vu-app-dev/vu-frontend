@@ -15,6 +15,7 @@ import { RouteErrorBoundary } from './components/layout/RouteErrorBoundary';
 import { Button } from './components/ui/Button';
 import { EmptyState } from './components/ui/EmptyState';
 import { ConfirmDialog } from './components/ui/Dialog';
+import { InterviewCapabilityGate } from './components/ui/InterviewCapabilityGate';
 import { getJoinRequestById } from './api';
 import { buildApplicationContext, getApplicationSharePath } from './api';
 import { getCandidateById, getCandidateBySlug, fetchCandidateById } from './api';
@@ -924,19 +925,21 @@ function AppSetupPage() {
   const unavailable = getApplicationUnavailableRedirect(companyId, jobId, location.search);
   if (unavailable) return unavailable;
   return (
-    <InterviewSetup
-      onNext={async () => {
-        const el = document.documentElement;
-        const request = el.requestFullscreen || el.webkitRequestFullscreen;
-        if (request) {
-          try { await request.call(el); } catch { /* browser denied */ }
+    <InterviewCapabilityGate>
+      <InterviewSetup
+        onNext={async () => {
+          const el = document.documentElement;
+          const request = el.requestFullscreen || el.webkitRequestFullscreen;
+          if (request) {
+            try { await request.call(el); } catch { /* browser denied */ }
+          }
+          navigate(keepSearch(getApplyPath(companyId, jobId, 'interview'), location.search));
+        }}
+        onBack={() =>
+          navigate(keepSearch(getApplyPath(companyId, jobId, 'form'), location.search))
         }
-        navigate(keepSearch(getApplyPath(companyId, jobId, 'interview'), location.search));
-      }}
-      onBack={() =>
-        navigate(keepSearch(getApplyPath(companyId, jobId, 'form'), location.search))
-      }
-    />
+      />
+    </InterviewCapabilityGate>
   );
 }
 
@@ -947,13 +950,15 @@ function AppMockPage() {
   const unavailable = getApplicationUnavailableRedirect(companyId, jobId, location.search);
   if (unavailable) return unavailable;
   return (
-    <MockSession
-      key={mockId}
-      mockId={mockId}
-      onComplete={() =>
-        navigate(keepSearch(getApplyPath(companyId, jobId, 'setup'), location.search))
-      }
-    />
+    <InterviewCapabilityGate>
+      <MockSession
+        key={mockId}
+        mockId={mockId}
+        onComplete={() =>
+          navigate(keepSearch(getApplyPath(companyId, jobId, 'setup'), location.search))
+        }
+      />
+    </InterviewCapabilityGate>
   );
 }
 
@@ -964,11 +969,13 @@ function AppInterviewPage() {
   const unavailable = getApplicationUnavailableRedirect(companyId, jobId, location.search);
   if (unavailable) return unavailable;
   return (
-    <InterviewSession
-      onComplete={() =>
-        navigate(keepSearch(getApplyPath(companyId, jobId, 'complete'), location.search))
-      }
-    />
+    <InterviewCapabilityGate>
+      <InterviewSession
+        onComplete={() =>
+          navigate(keepSearch(getApplyPath(companyId, jobId, 'complete'), location.search))
+        }
+      />
+    </InterviewCapabilityGate>
   );
 }
 

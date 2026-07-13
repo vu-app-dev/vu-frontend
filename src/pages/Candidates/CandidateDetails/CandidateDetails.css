@@ -2,21 +2,44 @@
 
 .candidate-details {
   display: flex;
+  flex-direction: column;
   gap: var(--gap-lg);
-  height: 100%;
+  min-height: 100%;
   padding: var(--padding-lg);
-  min-height: 0;
 }
 
-/* Left — Main content */
-
-.candidate-details__main {
+.candidate-details__desktop-layout {
+  display: flex;
+  gap: var(--gap-lg);
   flex: 1;
+  align-items: flex-start;
+}
+
+.candidate-details__mobile-layout {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--gap-md);
+  overflow: visible;
+}
+
+.candidate-details__mobile-content {
   display: flex;
   flex-direction: column;
   gap: var(--gap-lg);
-  min-height: 0;
   min-width: 0;
+  overflow: visible;
+}
+
+.candidate-details__mobile-content::-webkit-scrollbar {
+  width: 0;
+  background: transparent;
+}
+
+.candidate-details__mobile-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-lg);
 }
 
 .candidate-details__header {
@@ -124,7 +147,7 @@
   background-color: var(--bg-surface);
   border: var(--border-sm) solid var(--border-structure);
   border-radius: var(--radius-md);
-  min-height: 0;
+  min-width: 0;
   overflow: visible;
   transition: border-color var(--transition-base);
 }
@@ -135,9 +158,8 @@
 }
 
 .candidate-details__tab-content {
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0;
+  min-width: 0;
+  overflow: visible;
 }
 
 .candidate-details__tab-content::-webkit-scrollbar {
@@ -354,7 +376,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--gap-lg);
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .candidate-details__sidebar::-webkit-scrollbar {
@@ -644,8 +666,6 @@
 /* ── Tablet & Mobile (≤ 1023px) ── */
 @media (max-width: 1023px) {
   .candidate-details {
-    display: flex;
-    flex-direction: column;
     height: auto;
     min-height: 100%;
     overflow: visible;
@@ -654,8 +674,12 @@
     padding: var(--padding-md);
   }
 
-  .candidate-details__main {
-    min-height: 0;
+  .candidate-details__desktop-layout {
+    display: none;
+  }
+
+  .candidate-details__mobile-layout {
+    display: flex;
     overflow: visible;
   }
 
@@ -668,51 +692,26 @@
     justify-content: flex-start;
   }
 
-  .candidate-details__tabs-container {
-    flex: none;
-    overflow: visible;
-    height: auto;
-    min-height: 0;
-    padding: var(--padding-lg);
-    gap: var(--gap-md);
-  }
-
-  .candidate-details__tab-content {
-    display: flex;
-    flex-direction: column;
-    gap: var(--gap-lg);
-    overflow: visible;
-    height: auto;
-    max-height: none;
-    min-height: 0;
-  }
-
-  .candidate-details__tabs-container > .tabs {
+  .candidate-details__mobile-layout > .tabs {
     position: relative;
     overflow-x: auto;
     overflow-y: hidden;
     white-space: nowrap;
     gap: var(--gap-md);
     padding-bottom: var(--gap-sm);
+    flex-shrink: 0;
   }
 
-  .candidate-details__tabs-container > .tabs::-webkit-scrollbar {
+  .candidate-details__mobile-layout > .tabs::-webkit-scrollbar {
     width: 0;
     height: 0;
     background: transparent;
   }
 
-  .candidate-details__tabs-container > .tabs .tab {
+  .candidate-details__mobile-layout > .tabs .tab {
     white-space: nowrap;
     padding-bottom: var(--padding-sm);
     font-size: var(--text-sm);
-  }
-
-  .candidate-details__sidebar {
-    width: 100%;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-    overflow: visible;
   }
 
   .candidate-summary__analysis-grid {
@@ -727,20 +726,6 @@
     gap: var(--gap-md);
   }
 
-  .candidate-details__tabs-container {
-    flex: none;
-    padding: var(--padding-md);
-    gap: var(--gap-md);
-    min-height: 0;
-  }
-
-  .candidate-details__tab-content {
-    overflow: visible;
-    max-height: none;
-  }
-
-  /* Mocks: vertical stack on narrow mobile */
-  /* Decision buttons: horizontal row */
   .candidate-details__decisions {
     flex-direction: row;
     flex-wrap: wrap;
@@ -755,10 +740,6 @@
   .candidate-summary__panel,
   .candidate-details__header {
     padding: var(--padding-md);
-  }
-
-  .candidate-details__sidebar {
-    grid-template-columns: 1fr;
   }
 
   .candidate-details__header-meta {

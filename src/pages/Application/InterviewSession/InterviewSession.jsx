@@ -46,9 +46,10 @@ const TAB_WARNING_VISIBLE_MS = 8000;
 const VIDEO_FRAME_INTERVAL_MS = 5000;
 const TTS_COOLDOWN_MS = 800;
 const INTRO_QUESTION_ID = 'intro';
+const EMPTY_MOCKS = [];
 
 export const InterviewSession = memo(function InterviewSession({ onComplete }) {
-  const mocks = APPLICATION?.mocks || [];
+  const mocks = APPLICATION?.mocks || EMPTY_MOCKS;
   const totalSeconds = (APPLICATION?.job?.totalDuration || 30) * 60;
 
   /* ── Phase state machine ── */
@@ -101,6 +102,10 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
   const fullscreenExitTimerRef = useRef(null);
   const ttsCooldownRef = useRef(false);
   const isTtsSpeakingRef = useRef(false);
+  const startTransitionRef = useRef(null);
+  const advanceToNextMockRef = useRef(null);
+  const startVideoFrameCaptureRef = useRef(null);
+  const stopVideoFrameCaptureRef = useRef(null);
 
   useEffect(() => { phaseRef.current = phase; }, [phase]);
   useEffect(() => { isAiThinkingRef.current = isAiThinking; }, [isAiThinking]);
@@ -300,10 +305,10 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
           sttWsRef.current = null;
           micCaptureRef.current?.pause();
 
-          stopVideoFrameCapture();
+          stopVideoFrameCaptureRef.current?.();
 
           if (activeMockIndex + 1 < mocks.length) {
-            startTransition();
+            startTransitionRef.current?.();
           } else {
             setPhase('complete');
           }
@@ -355,7 +360,7 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
         speak(data.firstQuestion.text, data.firstQuestionAudio, showText);
       }
 
-      startVideoFrameCapture();
+      startVideoFrameCaptureRef.current?.();
       setPhase('interviewing');
       setRetryCount(0);
     } catch (err) {
@@ -385,7 +390,7 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
     transitionTimerRef.current = setTimeout(() => {
       clearInterval(countdownInterval);
       setTransitionCountdown(null);
-      advanceToNextMock();
+      advanceToNextMockRef.current?.();
     }, TRANSITION_DELAY_MS);
 
     return () => {
@@ -428,7 +433,7 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
      Video frame capture
      ══════════════════════════════════════════ */
   const startVideoFrameCapture = useCallback(() => {
-    stopVideoFrameCapture();
+    stopVideoFrameCaptureRef.current?.();
     videoFrameIntervalRef.current = setInterval(() => {
       if (!camVideoRef.current || !interviewWsRef.current) return;
       if (interviewWsRef.current.readyState !== WebSocket.OPEN) return;
@@ -458,6 +463,11 @@ export const InterviewSession = memo(function InterviewSession({ onComplete }) {
       videoFrameIntervalRef.current = null;
     }
   }, []);
+
+  startTransitionRef.current = startTransition;
+  advanceToNextMockRef.current = advanceToNextMock;
+  startVideoFrameCaptureRef.current = startVideoFrameCapture;
+  stopVideoFrameCaptureRef.current = stopVideoFrameCapture;
 
   /* ══════════════════════════════════���═══════
      Media initialization (runs once on mount)

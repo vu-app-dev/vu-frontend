@@ -39,6 +39,9 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: {
             recharts: ['recharts'],
+            motion: ['framer-motion'],
+            'landing-graphics': ['ogl'],
+            'smooth-scroll': ['lenis'],
           },
         },
       },

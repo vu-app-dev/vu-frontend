@@ -15,40 +15,6 @@
   min-height: 0;
 }
 
-.job-list__filter-chips {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--gap-sm);
-}
-
-.job-list__filter-chip,
-.job-list__filter-clear {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--gap-xs);
-  height: var(--size-7);
-  padding: 0 var(--padding-sm);
-  border: var(--border-sm) solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  background: var(--bg-card);
-  color: var(--text-tertiary);
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  cursor: pointer;
-}
-
-.job-list__filter-chip:hover,
-.job-list__filter-clear:hover {
-  border-color: var(--border-default);
-  color: var(--text-secondary);
-}
-
-.job-list__filter-clear {
-  background: transparent;
-  border-color: transparent;
-}
-
 .job-list__summary-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -107,7 +73,7 @@
 
 @media (max-width: 767px) {
   .job-list__summary-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: none;
   }
 
   /* Hide Linked Mocks column on mobile */

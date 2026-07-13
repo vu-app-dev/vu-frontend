@@ -262,6 +262,26 @@
   background: var(--border-subtle);
 }
 
+.mock-details__scoring-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-sm);
+}
+
+.mock-details__scoring-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--padding-xs) var(--padding-md);
+  background: var(--bg-card);
+  border: var(--border-sm) solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  white-space: nowrap;
+}
+
 .mock-details__formula {
   display: flex;
   flex-direction: column;

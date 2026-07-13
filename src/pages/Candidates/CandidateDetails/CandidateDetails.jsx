@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, memo } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef, memo } from 'react';
 import PropTypes from 'prop-types';
 import { Check, List, X } from 'lucide-react';
 import { Badge } from '../../../components/ui/Badge';
@@ -37,6 +37,13 @@ const DECISION_ACTIONS = [
     className: 'candidate-details__decision--reject',
   },
 ];
+
+const COMPACT_DETAILS_QUERY = '(max-width: 1023px)';
+
+function getInitialCompactLayout() {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+  return window.matchMedia(COMPACT_DETAILS_QUERY).matches;
+}
 
 const STATUS_LABELS = {
   accepted: 'Accepted',
@@ -209,6 +216,7 @@ export const CandidateDetails = memo(function CandidateDetails({ candidate }) {
   const [activeTab, setActiveTab] = useState('summary');
   const [pendingDecision, setPendingDecision] = useState(null);
   const [decisionMessage, setDecisionMessage] = useState('');
+  const [isCompactLayout, setIsCompactLayout] = useState(getInitialCompactLayout);
   const tabContentRef = useRef(null);
 
   const handleTabChange = useCallback((tab) => {
@@ -283,6 +291,30 @@ export const CandidateDetails = memo(function CandidateDetails({ candidate }) {
     setPendingDecision(null);
     await handleDecision(action);
   }, [handleDecision, pendingDecision]);
+
+  const compactTabs = useMemo(
+    () => [
+      ...tabs,
+      {
+        label: 'Details',
+        isActive: activeTab === 'details',
+        onClick: () => handleTabChange('details'),
+      },
+    ],
+    [activeTab, handleTabChange, tabs]
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia(COMPACT_DETAILS_QUERY);
+    const update = (event) => {
+      setIsCompactLayout(event.matches);
+      if (!event.matches) {
+        setActiveTab((current) => (current === 'details' ? 'summary' : current));
+      }
+    };
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
 
   const canChangeCandidateStatus = useMemo(() => {
     void dataVersion;
@@ -511,55 +543,71 @@ export const CandidateDetails = memo(function CandidateDetails({ candidate }) {
 
   return (
     <div className="candidate-details">
-      <div className="candidate-details__main">
-        <section className="candidate-details__header" aria-label="Candidate summary">
-          <div className="candidate-details__identity">
-            <h1>{candidate.name}</h1>
-            <p>{candidate.email || 'Email not provided'}</p>
+      <section className="candidate-details__header" aria-label="Candidate summary">
+        <div className="candidate-details__identity">
+          <h1>{candidate.name}</h1>
+          <p>{candidate.email || 'Email not provided'}</p>
+        </div>
+        <div className="candidate-details__header-status">
+          <Badge type="candidateState" variant={statusVariant}>
+            {getCandidateStatusLabel(candidate.status)}
+          </Badge>
+          <Badge type="cheatingFlag" variant={integrityVariant} iconLeft outline>
+            {getIntegrityLabel(candidate.antiCheat)}
+          </Badge>
+        </div>
+        <div className="candidate-details__header-meta">
+          <div>
+            <span>Role</span>
+            <strong>{candidate.job}</strong>
           </div>
-          <div className="candidate-details__header-status">
-            <Badge type="candidateState" variant={statusVariant}>
-              {getCandidateStatusLabel(candidate.status)}
-            </Badge>
-            <Badge type="cheatingFlag" variant={integrityVariant} iconLeft outline>
-              {getIntegrityLabel(candidate.antiCheat)}
-            </Badge>
+          <div>
+            <span>Applied</span>
+            <strong>{candidate.date}</strong>
           </div>
-          <div className="candidate-details__header-meta">
-            <div>
-              <span>Role</span>
-              <strong>{candidate.job}</strong>
-            </div>
-            <div>
-              <span>Applied</span>
-              <strong>{candidate.date}</strong>
-            </div>
-            <div className="candidate-details__header-score">
-              <span>Score</span>
-              <strong>{candidateScore}%</strong>
-              <i>
-                <b style={{ width: `${candidateScore}%` }} />
-              </i>
-            </div>
+          <div className="candidate-details__header-score">
+            <span>Score</span>
+            <strong>{candidateScore}%</strong>
+            <i>
+              <b style={{ width: `${candidateScore}%` }} />
+            </i>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <div className="candidate-details__tabs-container">
-          <Tabs items={tabs} scrollRef={tabContentRef} />
-
-          <div ref={tabContentRef} className="candidate-details__tab-content">
+      {isCompactLayout ? (
+        <div className="candidate-details__mobile-layout">
+          <Tabs items={compactTabs} />
+          <div className="candidate-details__mobile-content">
             {activeTab === 'summary' && summaryTab}
             {activeTab === 'analysis' && <CVAnalysis candidate={candidate} />}
             {activeTab === 'replay' && <MockReplay candidate={candidate} />}
+            {activeTab === 'details' && (
+              <div className="candidate-details__mobile-sidebar">
+                {showDecisionSection && decisionSection}
+                {applicationInfoSection}
+                {jobAssessmentsSection}
+              </div>
+            )}
           </div>
         </div>
-      </div>
-
-      <aside className="candidate-details__sidebar">
-        {showDecisionSection && decisionSection}
-        {applicationInfoSection}
-        {jobAssessmentsSection}
-      </aside>
+      ) : (
+        <div className="candidate-details__desktop-layout">
+          <div className="candidate-details__tabs-container">
+            <Tabs items={tabs} scrollRef={tabContentRef} />
+            <div ref={tabContentRef} className="candidate-details__tab-content">
+              {activeTab === 'summary' && summaryTab}
+              {activeTab === 'analysis' && <CVAnalysis candidate={candidate} />}
+              {activeTab === 'replay' && <MockReplay candidate={candidate} />}
+            </div>
+          </div>
+          <aside className="candidate-details__sidebar">
+            {showDecisionSection && decisionSection}
+            {applicationInfoSection}
+            {jobAssessmentsSection}
+          </aside>
+        </div>
+      )}
 
       <ConfirmDialog
         isOpen={Boolean(pendingDecisionAction)}

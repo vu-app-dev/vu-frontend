@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Building2, CheckCircle2, Mail, Phone, UserRound } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
@@ -9,6 +9,7 @@ import {
   verifyEmail as verifyJoinEmail,
 } from '../../api';
 import { useVerificationResendCooldown } from './useVerificationResendCooldown';
+import { AuthShell } from './AuthShell';
 import './LoginPage.css';
 import './CompanyJoinPage.css';
 
@@ -78,6 +79,7 @@ export function CompanyJoinPage() {
   const [notice, setNotice] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const titleRef = useRef(null);
   const { resendSeconds, canResendCode, startResendCooldown } = useVerificationResendCooldown();
 
   const updateField = useCallback((field, value) => {
@@ -175,18 +177,26 @@ export function CompanyJoinPage() {
     [form.email, verifyCode]
   );
 
+  useEffect(() => {
+    titleRef.current?.focus();
+  }, [step]);
+
   return (
-    <main className="auth-page company-join">
-      <section className="auth-page__panel company-join__panel">
-        <div className="auth-page__brand">
-          <div className="auth-page__mark">
-            {step === 'done' ? <CheckCircle2 size={22} /> : <Building2 size={22} />}
-          </div>
-          <div>
-            <h1 className="auth-page__title">
+    <AuthShell wide={step === 'join'}>
+      <div className={`auth-card company-join__panel${step === 'join' ? ' auth-card--wide' : ''}`}>
+        <div className="auth-card__header company-join__header">
+          <span className="auth-card__eyebrow">
+            {step === 'done' ? 'Request ready' : 'Company access'}
+          </span>
+          <div className="company-join__heading-row">
+            <div className="company-join__mark" aria-hidden="true">
+              {step === 'done' ? <CheckCircle2 size={21} /> : <Building2 size={21} />}
+            </div>
+            <div>
+            <h1 ref={titleRef} tabIndex="-1" className="auth-card__title">
               {step === 'done' ? 'Request submitted' : 'Request company access'}
             </h1>
-            <p className="auth-page__subtitle">
+            <p className="auth-card__subtitle">
               {step === 'verify'
                 ? 'Verify your email to finish sending the access request.'
                 : step === 'done'
@@ -194,11 +204,12 @@ export function CompanyJoinPage() {
                   : 'Create your account and ask to join this workspace.'}
             </p>
           </div>
+          </div>
         </div>
 
         {step === 'join' && (
-          <form className="auth-page__form" onSubmit={handleJoinSubmit}>
-            <div className="auth-page__grid">
+          <form className="auth-card__form" onSubmit={handleJoinSubmit} noValidate>
+            <div className="auth-card__row">
               <TextInput
                 label="First name"
                 value={form.firstName}
@@ -256,9 +267,9 @@ export function CompanyJoinPage() {
               />
             </div>
 
-            {error && <p className="auth-page__error">{error}</p>}
+            {error && <p className="auth-card__error" role="alert" aria-live="assertive">{error}</p>}
             <div className="company-join__actions">
-              <Button variant="secondary" size="lg" onClick={() => navigate('/login')}>
+              <Button type="button" variant="secondary" size="lg" onClick={() => navigate('/login')}>
                 I already have access
               </Button>
               <Button type="submit" size="lg" loading={isSubmitting}>
@@ -269,7 +280,10 @@ export function CompanyJoinPage() {
         )}
 
         {step === 'verify' && (
-          <form className="auth-page__form" onSubmit={handleVerifySubmit}>
+          <form className="auth-card__form" onSubmit={handleVerifySubmit} noValidate>
+            <div className="auth-card__verify-icon" aria-hidden="true">
+              <Mail size={22} />
+            </div>
             <TextInput
               label="Verification code"
               value={verifyCode}
@@ -283,7 +297,7 @@ export function CompanyJoinPage() {
               error={Boolean(errors.code)}
               required
             />
-            {error && <p className="auth-page__error">{error}</p>}
+            {error && <p className="auth-card__error" role="alert" aria-live="assertive">{error}</p>}
             <div className="company-join__actions">
               <Button type="submit" loading={isSubmitting} size="lg">
                 Verify email
@@ -293,11 +307,12 @@ export function CompanyJoinPage() {
                 size="lg"
                 loading={isResending}
                 disabled={!canResendCode || isSubmitting}
+                type="button"
                 onClick={handleResendVerificationCode}
               >
                 {canResendCode ? 'Resend code' : `Resend in ${resendSeconds}s`}
               </Button>
-              <Button variant="secondary" size="lg" onClick={() => setStep('join')}>
+              <Button type="button" variant="secondary" size="lg" onClick={() => setStep('join')}>
                 Edit details
               </Button>
             </div>
@@ -305,11 +320,11 @@ export function CompanyJoinPage() {
         )}
 
         {step === 'done' && (
-          <div className="auth-page__form company-join__done">
-            <div className="auth-page__verify-icon">
+          <div className="auth-card__form company-join__done">
+            <div className="auth-card__verify-icon">
               <CheckCircle2 size={26} />
             </div>
-            <p className="auth-page__subtitle">
+            <p className="auth-card__subtitle">
               Your request is waiting for approval. After it is accepted, sign in with this account.
             </p>
             <Button variant="secondary" size="lg" onClick={() => navigate('/login')}>
@@ -317,7 +332,7 @@ export function CompanyJoinPage() {
             </Button>
           </div>
         )}
-      </section>
-    </main>
+      </div>
+    </AuthShell>
   );
 }

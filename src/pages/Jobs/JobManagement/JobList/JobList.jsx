@@ -172,18 +172,6 @@ export const JobList = memo(function JobList({
     };
   }, [jobsForCards]);
 
-  const activeFilterChips = useMemo(() => {
-    const chips = [];
-    const status = STATUS_FILTERS.find((option) => option.value === overlayFilters.statusQuick);
-    const type = JOB_TYPE_OPTIONS.find((option) => option.value === overlayFilters.typeQuick);
-    const sort = SORT_OPTIONS.find((option) => option.value === overlayFilters.sortQuick);
-    if (status) chips.push({ key: 'statusQuick', label: `Status: ${status.label}` });
-    if (type) chips.push({ key: 'typeQuick', label: `Type: ${type.label}` });
-    if (sort && sort.value !== DEFAULT_SORT)
-      chips.push({ key: 'sortQuick', label: `Sort: ${sort.label}` });
-    return chips;
-  }, [overlayFilters]);
-
   const clearAllOverlayFilters = useCallback(() => {
     const next = { ...INITIAL_OVERLAY };
     setOverlayFilters(next);
@@ -259,7 +247,7 @@ export const JobList = memo(function JobList({
         onFilterClick={() => setIsFilterOpen(true)}
         filterSlot={
           activeFilterCount ? (
-            <AppliedFilterChips chips={activeFilterChips} onClearAll={clearAllOverlayFilters} />
+            <AppliedFilterChips count={activeFilterCount} onClearAll={clearAllOverlayFilters} />
           ) : null
         }
         searchValue={searchValue}

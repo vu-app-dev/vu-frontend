@@ -8,6 +8,7 @@ import { EmptyState } from '../../../../components/ui/EmptyState';
 import { SectionTitle } from '../../../../components/ui/SectionTitle';
 import { Tabs } from '../../../../components/ui/Tabs';
 import { TableHeader, TableRow, TableCell } from '../../../../components/ui/Tables';
+import { Pagination } from '../../../../components/ui/Pagination';
 import { AreaChart } from '../../../../components/ui/Charts';
 import { CHART_BRAND } from '../../../../components/ui/Charts/chartTokens';
 import {
@@ -28,6 +29,7 @@ const TABLE_COLUMNS = [
   { key: 'status', label: 'Status', sortable: false, fr: 1 },
 ];
 const GRID_TEMPLATE = TABLE_COLUMNS.map((column) => `${column.fr}fr`).join(' ');
+const PIPELINE_PER_PAGE = 5;
 function getScoreTone(score) {
   if (score >= 80) return 'strong';
   if (score >= 60) return 'steady';
@@ -54,6 +56,7 @@ export const JobDetails = memo(function JobDetails({
 }) {
   const { dataVersion } = useBackendData();
   const [copied, setCopied] = useState(false);
+  const [pipelinePage, setPipelinePage] = useState(1);
   const [activeMobileTab, setActiveMobileTab] = useState('analysis');
   const mobileScrollRef = useRef(null);
   const shareTimerRef = useRef(null);
@@ -82,6 +85,13 @@ export const JobDetails = memo(function JobDetails({
     () => jobCandidates.filter((candidate) => candidate.status === 'pending').length,
     [jobCandidates]
   );
+
+  const pipelineTotalPages = Math.max(1, Math.ceil(jobCandidates.length / PIPELINE_PER_PAGE));
+  const safePipelinePage = Math.min(pipelinePage, pipelineTotalPages);
+  const paginatedCandidates = useMemo(() => {
+    const start = (safePipelinePage - 1) * PIPELINE_PER_PAGE;
+    return jobCandidates.slice(start, start + PIPELINE_PER_PAGE);
+  }, [jobCandidates, safePipelinePage]);
 
   const candidateBreakdown = useMemo(
     () =>
@@ -201,7 +211,7 @@ export const JobDetails = memo(function JobDetails({
         <div className="job-details__cand-table">
           <TableHeader columns={TABLE_COLUMNS} gridTemplateColumns={GRID_TEMPLATE} />
           {jobCandidates.length > 0 ? (
-            jobCandidates.map((candidate) => (
+            paginatedCandidates.map((candidate) => (
               <TableRow
                 key={candidate.id}
                 gridTemplateColumns={GRID_TEMPLATE}
@@ -246,6 +256,15 @@ export const JobDetails = memo(function JobDetails({
             />
           )}
         </div>
+        {jobCandidates.length > PIPELINE_PER_PAGE && (
+          <Pagination
+            currentPage={safePipelinePage}
+            totalPages={pipelineTotalPages}
+            totalItems={jobCandidates.length}
+            itemsPerPage={PIPELINE_PER_PAGE}
+            onPageChange={setPipelinePage}
+          />
+        )}
       </section>
 
       {job.applicationTrend?.length > 0 && (
@@ -311,7 +330,7 @@ export const JobDetails = memo(function JobDetails({
             Open the candidate flow exactly as applicants will see it.
           </p>
           <Button
-            variant="secondary"
+            variant="primary"
             size="sm"
             iconLeft={<Copy size={16} />}
             onClick={handleShare}

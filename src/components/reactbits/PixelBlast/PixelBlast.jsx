@@ -315,6 +315,7 @@ const PixelBlast = ({
   liquidRadius = 1,
   pixelSizeJitter = 0,
   enableRipples = true,
+  globalRipples = false,
   rippleIntensityScale = 1,
   rippleThickness = 0.1,
   rippleSpeed = 0.3,
@@ -599,12 +600,37 @@ const PixelBlast = ({
     speed,
   ]);
 
+  useEffect(() => {
+    if (!globalRipples || !enableRipples) return undefined;
+
+    const addGlobalRipple = (event) => {
+      const current = threeRef.current;
+      if (!current) return;
+
+      const rect = current.renderer.domElement.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+
+      const scaleX = current.renderer.domElement.width / rect.width;
+      const scaleY = current.renderer.domElement.height / rect.height;
+      const x = (event.clientX - rect.left) * scaleX;
+      const y = (rect.height - (event.clientY - rect.top)) * scaleY;
+      const index = current.clickIx ?? 0;
+
+      current.uniforms.uClickPos.value[index].set(x, y);
+      current.uniforms.uClickTimes.value[index] = current.uniforms.uTime.value;
+      current.clickIx = (index + 1) % MAX_CLICKS;
+    };
+
+    window.addEventListener('pointerdown', addGlobalRipple, { passive: true });
+    return () => window.removeEventListener('pointerdown', addGlobalRipple);
+  }, [enableRipples, globalRipples]);
+
   return (
     <div
       ref={containerRef}
       className={`pixel-blast-container ${className ?? ''}`}
       style={style}
-      aria-label="PixelBlast interactive background"
+      aria-hidden="true"
     />
   );
 };
